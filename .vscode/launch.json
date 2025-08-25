@@ -1,0 +1,51 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "DiscoveryServiceApplication",
+            "request": "launch",
+            "mainClass": "com.dao.discovery_service.DiscoveryServiceApplication",
+            "projectName": ""
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-IdentityServiceApplication<identity-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.code_spark.identity_service.IdentityServiceApplication",
+            "projectName": "identity-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-IdentityServiceApplication<identity_service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.identity_service.IdentityServiceApplication",
+            "projectName": "identity_service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-IdentityServiceApplication<identity-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.identity_service.IdentityServiceApplication",
+            "projectName": "identity-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-DiscoveryServiceApplication<discovery-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.discovery_service.DiscoveryServiceApplication",
+            "projectName": "discovery-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
