@@ -41,6 +41,7 @@ public class DataInitializer implements CommandLineRunner {
         createPermissionIfNotExists("FILE_READ", "Read files", "FILE", "READ");
         createPermissionIfNotExists("FILE_WRITE", "Upload and update files", "FILE", "WRITE");
         createPermissionIfNotExists("FILE_DELETE", "Delete files", "FILE", "DELETE");
+        createPermissionIfNotExists("NOTIFICATION_STREAM", "Open notification stream (SSE)", "NOTIFICATION", "STREAM");
     }
 
     private void initializeRoles() {
@@ -56,7 +57,8 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("ROLE_DELETE").orElseThrow(),
                     permissionRepository.findByName("FILE_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_WRITE").orElseThrow(),
-                    permissionRepository.findByName("FILE_DELETE").orElseThrow()
+                    permissionRepository.findByName("FILE_DELETE").orElseThrow(),
+                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow()
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
@@ -68,7 +70,8 @@ public class DataInitializer implements CommandLineRunner {
             Set<Permission> userPermissions = Set.of(
                     permissionRepository.findByName("USER_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_READ").orElseThrow(),
-                    permissionRepository.findByName("FILE_WRITE").orElseThrow()
+                    permissionRepository.findByName("FILE_WRITE").orElseThrow(),
+                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow()
             );
             userRole.setPermissions(userPermissions);
             roleRepository.save(userRole);

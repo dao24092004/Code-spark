@@ -27,6 +27,8 @@ public class NotificationController {
     private final IdentityServiceClient identityClient;
     private final SseEmitterRegistry registry;
 
+    private static final String PERM_NOTIFICATION_STREAM = "NOTIFICATION.STREAM";
+
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream(@RequestHeader HttpHeaders headers) {
         String authHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);
@@ -43,6 +45,13 @@ public class NotificationController {
             if (userIdObj == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
+
+            // Enforce permission to open notification stream
+            ApiResponse<Boolean> perm = identityClient.checkPermission(token, PERM_NOTIFICATION_STREAM);
+            if (perm == null || !Boolean.TRUE.equals(perm.getData())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             String userId = String.valueOf(userIdObj);
             SseEmitter emitter = registry.register(userId);
             return ResponseEntity.ok(emitter);
