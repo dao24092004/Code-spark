@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Cấu hình các microservice theo best practice
+  # Sử dụng service name (dùng cho docker-compose) và labels
+
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'api-gateway:8080' ] # Giả sử cổng 8080
+        labels:
+          application: 'API Gateway'
+
+  - job_name: 'discovery-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'discovery-service:9999' ] # Cổng mặc định của Eureka
+        labels:
+          application: 'Discovery Service'
+
+  - job_name: 'config-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'config-server:8888' ] # Cổng mặc định của Spring Cloud Config
+        labels:
+          application: 'Config Server'
+
+  - job_name: 'identity-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'identity-service:9000' ] # Giả sử cổng 9000
+        labels:
+          application: 'Identity Service'

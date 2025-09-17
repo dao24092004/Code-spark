@@ -1,0 +1,108 @@
+package com.dao.identity_service.service;
+
+import com.dao.identity_service.dto.AuthResponse;
+import com.dao.identity_service.dto.LoginRequest;
+import com.dao.identity_service.dto.RegisterRequest;
+import com.dao.identity_service.dto.UserDto;
+import com.dao.identity_service.entity.User;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class AuthService {
+
+    private final UserService userService;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthResponse register(RegisterRequest request) {
+        UserDto savedUser = userService.createUser(request);
+        
+        // Get actual User entity for token generation
+        User userEntity = userService.findByUsername(savedUser.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found after creation"));
+        
+        String accessToken = jwtService.generateTokenWithUserId(userEntity, savedUser.getId());
+        String refreshToken = jwtService.generateRefreshToken(userEntity);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(mapToUserDto(userEntity))
+                .build();
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsernameOrEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (AuthenticationException e) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        User user = userService.findByUsernameOrEmail(request.getUsernameOrEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        userService.updateLastLogin(user.getUsername());
+        
+        String accessToken = jwtService.generateTokenWithUserId(user, user.getId());
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(mapToUserDto(user))
+                .build();
+    }
+
+    public AuthResponse refreshToken(String refreshToken) {
+        String username = jwtService.extractUsername(refreshToken);
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (jwtService.isTokenValid(refreshToken, user)) {
+            String newAccessToken = jwtService.generateTokenWithUserId(user, user.getId());
+            String newRefreshToken = jwtService.generateRefreshToken(user);
+
+            return AuthResponse.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken)
+                    .user(mapToUserDto(user))
+                    .build();
+        } else {
+            throw new RuntimeException("Invalid refresh token");
+        }
+    }
+
+    private AuthResponse.UserDto mapToUserDto(User user) {
+        return AuthResponse.UserDto.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .avatarUrl(user.getAvatarUrl())
+                .roles(user.getRoles().stream()
+                        .map(role -> role.getName())
+                        .collect(Collectors.toSet()))
+                .permissions(user.getAuthorities().stream()
+                        .map(authority -> authority.getAuthority())
+                        .collect(Collectors.toSet()))
+                .build();
+    }
+}

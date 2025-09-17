@@ -1,0 +1,107 @@
+*.jar
+ .env 
+ 
+ # Allow Maven Wrapper JAR
+ !.mvn/wrapper/maven-wrapper.jar
+ 
+ # OS-specific files
+ .DS_Store
+ Thumbs.db
+ 
+ # IDE settings
+ .idea/
+ *.iml
+ *.ipr
+ *.iws
+ .project
+ .classpath
+ .settings/
+ 
+ # Build outputs
+ target/
+ !**/src/**/target/
+ build/
+ out/
+ dist/
+ 
+ # Maven release files
+ pom.xml.tag
+ pom.xml.releaseBackup
+ pom.xml.versionsBackup
+ pom.xml.next
+ release.properties
+ dependency-reduced-pom.xml
+ 
+ # Java artifacts
+ *.class
+ *.war
+ *.ear
+ *.nar
+ *.zip
+ *.tar.gz
+ *.rar
+ hs_err_pid*
+ replay_pid*
+ 
+ # Environment and secrets
+ .env
+ .env.*
+ !.env.example
+ !.env.sample
+ 
+ # Spring Boot local configs
+ application-local.yml
+ application-local.yaml
+ application-local.properties
+ application-*.properties.local
+ application-*.yml.local
+ application-*.yaml.local
+ 
+ # Docker
+ docker-compose.override.yml
+ .docker/
+ *.pid
+ 
+ # Databases and caches (local data)
+ data/
+ tmp/
+ *.db
+ *.sqlite
+ *.rdb
+ 
+ # Coverage and reports
+ coverage/
+ .nyc_output/
+ lcov.info
+ site/
+ jacoco.exec
+ target/site/
+ 
+ # Kafka/Zookeeper local data
+ kafka-data/
+ zookeeper-data/
+ 
+ # Node/yarn (if any UI in services)
+ node_modules/
+ npm-debug.log*
+ yarn-debug.log*
+ yarn-error.log*
+ 
+ # Uploads
+ services/file-service/uploads/*
+ !services/file-service/uploads/.gitkeep
+ 
+ # Logs
+ logs/
+ log/
+ *.log
+ 
+ # VS Code - keep common project configs
+ .vscode/*
+ !.vscode/settings.json
+ !.vscode/launch.json
+ !.vscode/extensions.json
+ 
+ # Misc
+ *.swp
+ *.swo
