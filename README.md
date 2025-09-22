@@ -241,3 +241,101 @@ POST /api/v1/inter-service/check-permission?token={jwt}&permission=FILE_READ
 ## License
 
 MIT License - see LICENSE file for details.
+
+
+
+Ok 👍 bạn chỉ muốn tác động vào **2 DB** (`mongo-db` và `postgres-db`) thôi thì làm như sau:
+
+### Bước 1: Dừng container
+
+```bash
+docker compose stop mongo-db postgres-db
+```
+
+### Bước 2: Xóa container
+
+```bash
+docker compose rm -f mongo-db postgres-db
+```
+
+### Bước 3: Xóa image cũ
+
+```bash
+docker rmi mongo:latest
+docker rmi postgres:latest
+```
+
+(Nếu image đang bị “dangling” thì dùng `docker images` để xem rồi `docker rmi <IMAGE_ID>`.)
+
+### Bước 4: Chạy lại và pull image mới
+
+```bash
+docker compose up -d mongo-db postgres-db
+```
+
+👉 Như vậy chỉ MongoDB và Postgres bị down → remove → pull lại, còn Kafka với Redis vẫn chạy bình thường.
+
+Bạn có muốn mình viết luôn đoạn `docker-compose.yml` mẫu cho 2 DB này (Mongo + Postgres) để dễ tái sử dụng không?
+
+
+
+Bạn muốn **xem các database con bên trong PostgreSQL** (tức là các DB được tạo trong 1 instance Postgres). Có vài cách:
+
+---
+
+### 🔹 Cách 1: Dùng `psql` trong container
+
+1. Vào container `postgres-db`:
+
+```bash
+docker exec -it postgres-db psql -U postgres
+```
+
+(`postgres` là user mặc định, bạn đổi nếu khác)
+
+2. Sau đó gõ:
+
+```sql
+\l
+```
+
+hoặc
+
+```sql
+\list
+```
+
+👉 Sẽ hiện ra tất cả database trong PostgreSQL.
+
+3. Nếu muốn kết nối vào 1 DB cụ thể:
+
+```sql
+\c <database_name>
+```
+
+---
+
+### 🔹 Cách 2: Dùng lệnh trực tiếp từ ngoài container
+
+```bash
+docker exec -it postgres-db psql -U postgres -c "\l"
+```
+
+---
+
+### 🔹 Cách 3: Dùng GUI tool (nếu bạn muốn dễ thao tác)
+
+* **pgAdmin** (web UI của Postgres)
+* **DBeaver** hoặc **TablePlus** (kết nối qua cổng `5432` đã map ra)
+
+Kết nối bằng thông tin:
+
+* Host: `localhost`
+* Port: `5432`
+* User: `postgres` (mặc định)
+* Password: (bạn đặt trong `docker-compose.yml`)
+
+---
+
+👉 Bạn muốn mình viết luôn câu lệnh `docker exec` để vừa vào `postgres-db` vừa show hết các DB ngay không?
+

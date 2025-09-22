@@ -1,0 +1,125 @@
+{
+	"compiler": {
+		"version": "0.8.0+commit.c7dfd78e"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "string",
+						"name": "hash",
+						"type": "string"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					}
+				],
+				"name": "DocumentRegistered",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "string",
+						"name": "_hash",
+						"type": "string"
+					}
+				],
+				"name": "getDocumentInfo",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "string",
+						"name": "_hash",
+						"type": "string"
+					}
+				],
+				"name": "registerDocument",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"getDocumentInfo(string)": {
+					"details": "Verifies the registration details of a document hash.",
+					"params": {
+						"_hash": "The SHA-256 hash of the document to verify."
+					},
+					"returns": {
+						"owner": "The address of the owner who registered the document.",
+						"timestamp": "The timestamp of registration."
+					}
+				},
+				"registerDocument(string)": {
+					"details": "Registers a new document hash. The hash must not have been previously registered.",
+					"params": {
+						"_hash": "The SHA-256 hash of the document."
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/Copyright.sol": "Copyright"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/Copyright.sol": {
+			"keccak256": "0x80903b5ded5ba1aefae89850813b2b9cafe6334a0aab9766f786bdf2343b572e",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://0fdbcb578542aafb688f98d43bee88dc7542d26605d95a374ce76e11b71c2aa6",
+				"dweb:/ipfs/QmV43bLR4Q7jZdFCwk5FpwgGZ2iZkNs3QTxMwtugSs1fhw"
+			]
+		}
+	},
+	"version": 1
+}

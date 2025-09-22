@@ -63,6 +63,25 @@ services:
     networks:
       - microservice-net
 
+  # 4. Ganache local blockchain
+  ganache:
+    image: trufflesuite/ganache-cli:latest
+    container_name: ganache
+    ports:
+      - "7545:7545"
+    volumes:
+      - ganache_data:/ganache/data
+    command: >
+      --db /ganache/data 
+      --host 0.0.0.0 
+      --port 7545 
+      -m "${GANACHE_MNEMONIC}" 
+      --networkId 5777
+    networks:
+      microservice-net:
+        aliases:
+          - ganache-cli
+
   # 5. Apache Kafka message broker
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -146,7 +165,24 @@ services:
       - postgres-db
       - mongo-db
       - redis
-
+  organization-service:
+    build: ./services/organization-service
+    container_name: organization-service
+    ports:
+      - "9006:9006"
+    networks:
+      - microservice-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${DB_NAME_ORGANIZATION}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
+      - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+    depends_on:
+      - discovery-service
+      - config-server
+      - postgres-db
   file-service:
     build: ./services/file-service
     container_name: file-service
@@ -206,6 +242,28 @@ services:
       - config-server
       - kafka
 
+  copyright-service:
+    build: ./services/copyright-service
+    container_name: copyright-service
+    ports:
+      - "9005:3000"
+    networks:
+      - microservice-net
+    environment:
+      - PG_HOST=postgres-db
+      - PG_PORT=5432
+      - PG_DATABASE=copyright_db
+      - PG_USER=${POSTGRES_USER}
+      - PG_PASSWORD=${POSTGRES_PASSWORD}
+      - ACCOUNT_PRIVATE_KEY=${ACCOUNT_PRIVATE_KEY}
+      - WEB3_PROVIDER_URL=http://ganache:7545
+      - EUREKA_HOST=discovery-service
+      - EUREKA_PORT=9999
+    depends_on:
+      - postgres-db
+      - discovery-service
+      - ganache
+
 # Khai báo mạng chung cho các container
 networks:
   microservice-net:
@@ -217,3 +275,4 @@ volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  ganache_data: # Thêm volume cho Ganache

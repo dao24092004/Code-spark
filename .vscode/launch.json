@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "OnlineExamServiceApplication",
+            "request": "launch",
+            "mainClass": "com.dao.onlineexamservice.OnlineExamServiceApplication",
+            "projectName": "online-exam-service"
+        },
+        {
+            "type": "java",
             "name": "DiscoveryServiceApplication",
             "request": "launch",
             "mainClass": "com.dao.discovery_service.DiscoveryServiceApplication",
@@ -87,6 +94,37 @@
             "cwd": "${workspaceFolder}",
             "mainClass": "com.dao.profileservice.ProfileServiceApplication",
             "projectName": "profile-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-OrganizationServiceApplication<organization-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.organizationservice.OrganizationServiceApplication",
+            "projectName": "organization-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=33605 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=organization-service"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-NotificationServiceApplication<notification-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.codespark.notificationservice.NotificationServiceApplication",
+            "projectName": "notification-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-AdminServiceApplication<admin-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.adminservice.AdminServiceApplication",
+            "projectName": "admin-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
