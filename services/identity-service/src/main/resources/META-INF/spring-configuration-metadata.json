@@ -1,0 +1,51 @@
+{
+  "groups": [
+    {
+      "name": "app.jwt",
+      "type": "com.dao.identity_service.config.JwtProperties",
+      "sourceType": "com.dao.identity_service.config.JwtProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "Secret key used for signing JWT tokens. Should be a secure, random string with sufficient length.",
+      "sourceType": "com.dao.identity_service.config.JwtProperties"
+    },
+    {
+      "name": "app.jwt.expiration-ms",
+      "type": "java.lang.Long",
+      "description": "Expiration time for access tokens in milliseconds. Default: 86400000 (24 hours)",
+      "sourceType": "com.dao.identity_service.config.JwtProperties",
+      "defaultValue": 86400000
+    },
+    {
+      "name": "app.jwt.refresh-expiration-ms",
+      "type": "java.lang.Long",
+      "description": "Expiration time for refresh tokens in milliseconds. Default: 604800000 (7 days)",
+      "sourceType": "com.dao.identity_service.config.JwtProperties",
+      "defaultValue": 604800000
+    },
+    {
+      "name": "app.jwt.issuer",
+      "type": "java.lang.String",
+      "description": "Issuer claim for JWT tokens.",
+      "sourceType": "com.dao.identity_service.config.JwtProperties",
+      "defaultValue": "identity-service"
+    },
+    {
+      "name": "app.jwt.audience",
+      "type": "java.lang.String",
+      "description": "Audience claim for JWT tokens.",
+      "sourceType": "com.dao.identity_service.config.JwtProperties",
+      "defaultValue": "code-spark-app"
+    },
+    {
+      "name": "app.inter-service.secret",
+      "type": "java.lang.String",
+      "description": "Secret key used for inter-service communication.",
+      "sourceType": "java.lang.String"
+    }
+  ]
+}

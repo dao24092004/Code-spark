@@ -339,3 +339,87 @@ Kết nối bằng thông tin:
 
 👉 Bạn muốn mình viết luôn câu lệnh `docker exec` để vừa vào `postgres-db` vừa show hết các DB ngay không?
 
+✦ Rất vui được làm rõ khi nào nên sử dụng từng thành phần. Dưới đây là các tình huống sử dụng cụ thể cho mỗi loại.
+
+  ---
+
+  1. Khi nào dùng AppException
+
+  => Dùng bên trong các class Service (`@Service`) khi logic nghiệp vụ của bạn gặp một lỗi có thể lường trước được.
+
+  Đây là thành phần bạn sẽ sử dụng nhiều nhất trong lúc viết code hàng ngày.
+
+  Các ví dụ cụ thể:
+
+   * Xác thực thất bại: Người dùng cung cấp sai mật khẩu hoặc email không tồn tại.
+
+   1     // trong AuthService
+   2     throw new AppException("Tên đăng nhập hoặc mật khẩu không hợp lệ", HttpStatus.UNAUTHORIZED);
+   * Không tìm thấy tài nguyên: Cố gắng lấy một người dùng với ID không có trong cơ sở dữ liệu.
+
+   1     // trong UserService
+   2     User user = userRepository.findById(id)
+   3         .orElseThrow(() -> new AppException("Không tìm thấy người dùng với id: " + id, HttpStatus.NOT_FOUND));
+   * Dữ liệu đầu vào không hợp lệ (về mặt logic): Người dùng cố gắng chuyển nhiều tiền hơn số dư họ có.
+   1     // trong PaymentService
+   2     if (amount > balance) {
+   3         throw new AppException("Số dư không đủ", HttpStatus.BAD_REQUEST);
+   4     }
+   * Xung đột dữ liệu: Người dùng đăng ký một email đã được sử dụng.
+   1     // trong UserService
+   2     if (userRepository.existsByEmail(email)) {
+   3         throw new AppException("Email này đã được sử dụng", HttpStatus.CONFLICT);
+   4     }
+
+  Tóm lại: Bất cứ khi nào bạn có một câu lệnh if để kiểm tra một điều kiện lỗi về nghiệp vụ, bạn nên throw new AppException.
+
+  ---
+
+  2. Khi nào dùng ApiResponse
+
+  => Dùng làm kiểu dữ liệu trả về (return type) cho các phương thức trong Controller (`@RestController`) đối với các trường hợp xử lý thành công.
+
+  Bạn chỉ cần tạo ra các ApiResponse cho các kịch bản thành công.
+
+  Ví dụ cụ thể:
+
+   1 @GetMapping("/{id}")
+   2 public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
+   3     // userService.findById có thể ném ra AppException nếu không tìm thấy
+   4     UserDto user = userService.findById(id);
+   5 
+   6     // Nếu code chạy đến đây, nghĩa là đã thành công
+   7     return ResponseEntity.ok(ApiResponse.success("Lấy thông tin người dùng thành công", user));
+   8 }
+
+  Quan trọng: Bạn không cần phải tự tay tạo ApiResponse.error(...) trong Controller nữa. GlobalExceptionHandler sẽ làm việc đó giúp bạn khi có lỗi
+  xảy ra.
+
+  ---
+
+  3. Khi nào dùng (chỉnh sửa) GlobalExceptionHandler
+
+  => Bạn chỉ cần chỉnh sửa file này khi bạn muốn thêm một cách xử lý đặc biệt cho một loại Exception có sẵn của Java/Spring hoặc của một thư viện 
+  bên thứ ba nào đó.
+
+  Đây là thành phần "cài đặt một lần và quên đi". Bạn sẽ ít khi phải động vào nó.
+
+  Ví dụ cụ thể:
+
+  Giả sử hệ thống của bạn có một yêu cầu rất đặc biệt là khi có lỗi về ràng buộc dữ liệu trong database (ví dụ: DataIntegrityViolationException),
+  bạn không muốn nó trả về lỗi 500 chung chung, mà muốn trả về một thông báo cụ thể hơn với mã lỗi 409 (Conflict).
+
+  Lúc đó, bạn sẽ mở file GlobalExceptionHandler.java và thêm một phương thức mới:
+
+   1 @ExceptionHandler(DataIntegrityViolationException.class)
+   2 public ResponseEntity<ApiResponse<Object>> handleDatabaseConflict(DataIntegrityViolationException ex) {
+   3     return ResponseEntity
+   4             .status(HttpStatus.CONFLICT) // 409
+   5             .body(ApiResponse.error("Lỗi xung đột dữ liệu trong cơ sở dữ liệu."));
+   6 }
+
+  Bảng Tóm Tắt Nhanh
+
+  | Component                | Dùng Khi Nào?                                                                                             |
+
+ℹA potential loop was detected. This can happen due to repetitive tool calls or other model behavior. The request has been halted.

@@ -22,6 +22,12 @@ const getDocumentInfoFromChain = async (hash) => {
         
         return null;
     } catch (error) {
+        // If the error is a decoding error, it likely means the hash was not found
+        // and the contract returned an empty value, which is not valid ABI-encoded data.
+        if (error.message.includes("Returned values aren't valid")) {
+            console.log(`Hash ${hash} not found on the blockchain (decoding error).`);
+            return null; // Treat as "not found"
+        }
         console.error('Detailed error fetching document info from blockchain:', error);
         throw new Error(`Failed to query blockchain. Reason: ${error.message}`);
     }

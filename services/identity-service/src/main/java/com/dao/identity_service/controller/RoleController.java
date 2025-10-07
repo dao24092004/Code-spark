@@ -1,11 +1,10 @@
 package com.dao.identity_service.controller;
 
-import com.dao.identity_service.dto.ApiResponse;
+import com.dao.common.dto.ApiResponse;
 import com.dao.identity_service.dto.CreateRoleRequest;
 import com.dao.identity_service.dto.RoleDto;
 import com.dao.identity_service.service.RoleService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -21,39 +20,35 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/roles")
 @RequiredArgsConstructor
-@Slf4j
 public class RoleController {
 
     private final RoleService roleService;
 
+    /**
+     * Lấy tất cả các vai trò.
+     */
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<List<RoleDto>>> getAllRoles() {
-        try {
-            List<RoleDto> roles = roleService.findAllRoles();
-            return ResponseEntity.ok(ApiResponse.success("Roles retrieved successfully", roles));
-        } catch (Exception e) {
-            log.error("Error getting all roles: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error retrieving roles"));
-        }
+        List<RoleDto> roles = roleService.findAllRoles();
+        return ResponseEntity.ok(ApiResponse.success("Roles retrieved successfully", roles));
     }
 
+    /**
+     * Lấy tất cả các vai trò với phân trang.
+     */
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<Page<RoleDto>>> getAllRolesPaged(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        try {
-            Page<RoleDto> roles = roleService.findAllRoles(pageable);
-            return ResponseEntity.ok(ApiResponse.success("Roles retrieved successfully", roles));
-        } catch (Exception e) {
-            log.error("Error getting paged roles: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error retrieving roles"));
-        }
+        Page<RoleDto> roles = roleService.findAllRoles(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Roles retrieved successfully", roles));
     }
 
+    /**
+     * Lấy vai trò theo ID.
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<RoleDto>> getRoleById(@PathVariable Long id) {
@@ -61,6 +56,9 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.success("Role retrieved successfully", role));
     }
 
+    /**
+     * Lấy vai trò theo tên.
+     */
     @GetMapping("/name/{name}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<RoleDto>> getRoleByName(@PathVariable String name) {
@@ -68,6 +66,9 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.success("Role retrieved successfully", role));
     }
 
+    /**
+     * Tạo một vai trò mới.
+     */
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> createRole(@Valid @RequestBody CreateRoleRequest request) {
@@ -76,6 +77,9 @@ public class RoleController {
                 .body(ApiResponse.success("Role created successfully", createdRole));
     }
 
+    /**
+     * Cập nhật một vai trò đã có theo ID.
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> updateRole(
@@ -86,16 +90,35 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.success("Role updated successfully", updatedRole));
     }
 
+    /**
+     * Thêm permissions vào role (giữ nguyên các permissions hiện có)
+     */
     @PutMapping("/{id}/permissions")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
-    public ResponseEntity<ApiResponse<RoleDto>> assignPermissions(
+    public ResponseEntity<ApiResponse<RoleDto>> addPermissionsToRole(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds
     ) {
-        RoleDto updatedRole = roleService.assignPermissions(id, permissionIds);
-        return ResponseEntity.ok(ApiResponse.success("Permissions assigned successfully", updatedRole));
+        RoleDto updatedRole = roleService.addPermissions(id, permissionIds);
+        return ResponseEntity.ok(ApiResponse.success("Permissions added successfully", updatedRole));
+    }
+    
+    /**
+     * Cập nhật toàn bộ permissions của role (xóa hết cũ và thêm mới)
+     */
+    @PutMapping("/{id}/permissions/replace")
+    @PreAuthorize("hasAuthority('ROLE_WRITE')")
+    public ResponseEntity<ApiResponse<RoleDto>> replaceRolePermissions(
+            @PathVariable Long id,
+            @RequestBody Set<Long> permissionIds
+    ) {
+        RoleDto updatedRole = roleService.replacePermissions(id, permissionIds);
+        return ResponseEntity.ok(ApiResponse.success("Permissions replaced successfully", updatedRole));
     }
 
+    /**
+     * Xóa quyền khỏi một vai trò.
+     */
     @DeleteMapping("/{id}/permissions")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> removePermissions(
@@ -106,6 +129,9 @@ public class RoleController {
         return ResponseEntity.ok(ApiResponse.success("Permissions removed successfully", updatedRole));
     }
 
+    /**
+     * Xóa một vai trò theo ID.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_DELETE')")
     public ResponseEntity<ApiResponse<String>> deleteRole(@PathVariable Long id) {
@@ -114,6 +140,9 @@ public class RoleController {
     }
 
     
+    /**
+     * Kiểm tra xem một vai trò với tên đã cho có tồn tại hay không.
+     */
     @GetMapping("/{name}/exists")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<Boolean>> checkRoleExists(@PathVariable String name) {

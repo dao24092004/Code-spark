@@ -250,19 +250,62 @@ services:
     networks:
       - microservice-net
     environment:
-      - PG_HOST=postgres-db
-      - PG_PORT=5432
-      - PG_DATABASE=copyright_db
-      - PG_USER=${POSTGRES_USER}
-      - PG_PASSWORD=${POSTGRES_PASSWORD}
-      - ACCOUNT_PRIVATE_KEY=${ACCOUNT_PRIVATE_KEY}
+      - NODE_ENV=production
+      - PORT=3000
+
+      # Database
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=copyright_db
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Blockchain
       - WEB3_PROVIDER_URL=http://ganache:7545
+      - ACCOUNT_PRIVATE_KEY=${ACCOUNT_PRIVATE_KEY}
+
+      # Service Discovery
       - EUREKA_HOST=discovery-service
       - EUREKA_PORT=9999
+      - SERVICE_DISCOVERY_ENABLED=true
+
+      # API Gateway
+      - API_GATEWAY_BASE_URL=http://api-gateway:8080
     depends_on:
       - postgres-db
       - discovery-service
       - ganache
+      - contract-deployer
+    volumes:
+      - copyright_uploads:/app/uploads
+      - ./services/copyright-service/contract-address.txt:/app/contract-address.txt:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Contract Deployer for Copyright Service
+  contract-deployer:
+    build:
+      context: ./services/copyright-service
+      dockerfile: Dockerfile.deployer
+    container_name: copyright-deployer
+    networks:
+      - microservice-net
+    environment:
+      - GANACHE_URL=http://ganache:7545
+      - CONTRACT_ADDRESS_FILE=/app/contract-address.txt
+    volumes:
+      - ./services/copyright-service/contract-address.txt:/app/contract-address.txt
+      - ./services/copyright-service/contracts:/app/contracts
+      - ./services/copyright-service/artifacts:/app/artifacts
+    depends_on:
+      - ganache
+    profiles:
+      - deploy
+    restart: "no"
 
 # Khai báo mạng chung cho các container
 networks:
@@ -276,3 +319,4 @@ volumes:
   mongo_data:
   redis_data:
   ganache_data: # Thêm volume cho Ganache
+  copyright_uploads: # Volume cho uploads của copyright service

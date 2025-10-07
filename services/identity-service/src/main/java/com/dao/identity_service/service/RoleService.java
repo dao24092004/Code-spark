@@ -122,8 +122,11 @@ public class RoleService {
         return roleMapper.toDto(savedRole);
     }
 
+    /**
+     * Thay thế toàn bộ permissions của role bằng danh sách mới
+     */
     public RoleDto assignPermissions(Long roleId, Set<Long> permissionIds) {
-        log.info("Assigning permissions {} to role {}", permissionIds, roleId);
+        log.info("Replacing all permissions for role {} with: {}", roleId, permissionIds);
 
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
@@ -141,6 +144,56 @@ public class RoleService {
         
         log.info("Successfully assigned {} permissions to role {}", permissions.size(), roleId);
         return roleMapper.toDto(savedRole);
+    }
+    
+    /**
+     * Thêm permissions vào role hiện có (không xóa permissions cũ)
+     */
+    public RoleDto addPermissions(Long roleId, Set<Long> permissionIds) {
+        log.info("Adding permissions {} to role {}", permissionIds, roleId);
+
+        if (permissionIds == null || permissionIds.isEmpty()) {
+            return findRoleById(roleId);
+        }
+
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
+
+        Set<Long> existingPermissionIds = role.getPermissions().stream()
+                .map(Permission::getId)
+                .collect(Collectors.toSet());
+                
+        // Lọc ra chỉ các permission chưa có trong role
+        Set<Long> newPermissionIds = permissionIds.stream()
+                .filter(id -> !existingPermissionIds.contains(id))
+                .collect(Collectors.toSet());
+                
+        if (newPermissionIds.isEmpty()) {
+            log.info("No new permissions to add to role {}", roleId);
+            return roleMapper.toDto(role);
+        }
+
+        Set<Permission> permissionsToAdd = permissionRepository.findAllById(newPermissionIds)
+                .stream()
+                .collect(Collectors.toSet());
+
+        if (permissionsToAdd.size() != newPermissionIds.size()) {
+            throw new ResourceNotFoundException("Permission", "ids", newPermissionIds);
+        }
+
+        role.getPermissions().addAll(permissionsToAdd);
+        Role savedRole = roleRepository.save(role);
+        
+        log.info("Successfully added {} new permissions to role {}", permissionsToAdd.size(), roleId);
+        return roleMapper.toDto(savedRole);
+    }
+    
+    /**
+     * Thay thế toàn bộ permissions của role (tương tự assignPermissions cũ)
+     * Được giữ lại để tương thích ngược
+     */
+    public RoleDto replacePermissions(Long roleId, Set<Long> permissionIds) {
+        return assignPermissions(roleId, permissionIds);
     }
 
     public RoleDto removePermissions(Long roleId, Set<Long> permissionIds) {

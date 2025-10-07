@@ -31,6 +31,9 @@ public class FileController {
     @Autowired
     private AuthorizationService authorizationService;
 
+    /**
+     * Tải lên một tệp.
+     */
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
         String token = extractBearerToken(request);
@@ -45,6 +48,9 @@ public class FileController {
         return ResponseEntity.ok("File uploaded successfully. Download URI: " + fileDownloadUri);
     }
 
+    /**
+     * Tải lên nhiều tệp.
+     */
     @PostMapping("/uploadMultiple")
     public ResponseEntity<List<String>> uploadMultipleFiles(@RequestParam("files") MultipartFile[] files, HttpServletRequest request) {
         String token = extractBearerToken(request);
@@ -62,6 +68,9 @@ public class FileController {
         return ResponseEntity.ok(fileDownloadUris);
     }
 
+    /**
+     * Tải xuống một tệp.
+     */
     @GetMapping("/download/{fileName:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) {
         String token = extractBearerToken(request);

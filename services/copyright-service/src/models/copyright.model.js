@@ -6,6 +6,10 @@ const Copyright = sequelize.define('Copyright', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    storedFilename: {
+        type: DataTypes.STRING,
+        allowNull: true,  // Allow null for existing records during migration
+    },
     hash: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -20,5 +24,17 @@ const Copyright = sequelize.define('Copyright', {
 }, {
     timestamps: true,
 });
+
+// Define associations
+Copyright.associate = (models) => {
+    Copyright.hasMany(models.DocumentSimilarity, {
+        foreignKey: 'sourceDocumentId',
+        as: 'sourceSimilarities'
+    });
+    Copyright.hasMany(models.DocumentSimilarity, {
+        foreignKey: 'targetDocumentId',
+        as: 'targetSimilarities'
+    });
+};
 
 module.exports = Copyright;

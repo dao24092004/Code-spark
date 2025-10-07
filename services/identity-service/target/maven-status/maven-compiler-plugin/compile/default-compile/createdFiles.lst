@@ -1,4 +1,5 @@
 com/dao/identity_service/exception/BadRequestException.class
+com/dao/identity_service/config/JwtProperties.class
 com/dao/identity_service/dto/ChangePasswordRequest$ChangePasswordRequestBuilder.class
 com/dao/identity_service/dto/CreateRoleRequest.class
 com/dao/identity_service/entity/User$UserBuilder.class
@@ -6,7 +7,7 @@ com/dao/identity_service/service/UserService.class
 com/dao/identity_service/exception/ResourceNotFoundException.class
 com/dao/identity_service/entity/Permission.class
 com/dao/identity_service/entity/Role.class
-com/dao/identity_service/SecurityConfig.class
+com/dao/identity_service/config/IdentityServiceConfig.class
 com/dao/identity_service/controller/PermissionController.class
 com/dao/identity_service/controller/UserController.class
 com/dao/identity_service/dto/RoleDto$RoleDtoBuilder.class
@@ -24,7 +25,6 @@ com/dao/identity_service/dto/PermissionDto$PermissionDtoBuilder.class
 com/dao/identity_service/dto/AuthResponse$UserDto.class
 com/dao/identity_service/entity/Permission$PermissionBuilder.class
 com/dao/identity_service/dto/RoleDto.class
-com/dao/identity_service/service/InterServiceAuthService$ServiceUserDetails.class
 com/dao/identity_service/service/InterServiceAuthService.class
 com/dao/identity_service/service/RoleService.class
 com/dao/identity_service/dto/LoginRequest.class
@@ -35,7 +35,8 @@ com/dao/identity_service/dto/UpdateUserRequest.class
 com/dao/identity_service/repository/PermissionRepository.class
 com/dao/identity_service/dto/CreateRoleRequest$CreateRoleRequestBuilder.class
 com/dao/identity_service/controller/InterServiceController.class
-com/dao/identity_service/service/JwtService.class
+com/dao/identity_service/security/JwtAuthenticationFilter.class
+com/dao/identity_service/security/SecurityConfig.class
 com/dao/identity_service/dto/AuthResponse$AuthResponseBuilder.class
 com/dao/identity_service/controller/AuthController.class
 com/dao/identity_service/exception/ResourceAlreadyExistsException.class
@@ -43,15 +44,15 @@ com/dao/identity_service/mapper/RoleMapper.class
 com/dao/identity_service/service/AuthService.class
 com/dao/identity_service/controller/RoleController.class
 com/dao/identity_service/dto/ChangePasswordRequest.class
-com/dao/identity_service/dto/ApiResponse$ApiResponseBuilder.class
-com/dao/identity_service/dto/ApiResponse.class
+com/dao/identity_service/security/JwtService.class
 com/dao/identity_service/repository/UserRepository.class
-com/dao/identity_service/config/JwtAuthenticationFilter.class
 com/dao/identity_service/exception/UnauthorizedException.class
 com/dao/identity_service/dto/PermissionDto.class
 com/dao/identity_service/mapper/UserMapper.class
+com/dao/identity_service/config/JwtConfig.class
 com/dao/identity_service/dto/CreatePermissionRequest.class
 com/dao/identity_service/repository/RoleRepository.class
 com/dao/identity_service/dto/RegisterRequest$RegisterRequestBuilder.class
 com/dao/identity_service/dto/UserDto$UserDtoBuilder.class
+com/dao/identity_service/security/JwtTokenProvider.class
 com/dao/identity_service/dto/RegisterRequest.class

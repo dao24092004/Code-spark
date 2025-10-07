@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install necessary tools
+RUN apk add --no-cache curl
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm ci && npm cache clean --force
+
+# Copy deployment scripts and contracts
+COPY scripts/deploy-contracts.js ./scripts/
+COPY contracts ./contracts
+COPY artifacts ./artifacts
+
+# Make deployment script executable
+RUN chmod +x ./scripts/deploy-contracts.js
+
+# Run deployment
+CMD ["node", "scripts/deploy-contracts.js"]

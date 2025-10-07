@@ -1,5 +1,6 @@
 package com.dao.profileservice.service.impl;
 
+import com.dao.common.exception.AppException;
 import com.dao.profileservice.client.FileServiceClient;
 import com.dao.profileservice.client.IdentityServiceClient;
 import com.dao.profileservice.dto.FileDto;
@@ -12,6 +13,7 @@ import com.dao.profileservice.service.ProfileService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +32,15 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public Profile createProfile(ProfileDto profileDto) {
-        UserDto user = getUserFromIdentityService(profileDto.getUserId());
+        // Check if user exists first
+        try {
+            identityServiceClient.getUserById(profileDto.getUserId());
+        } catch (FeignException.NotFound e) {
+            throw new AppException("User not found with id: " + profileDto.getUserId(), HttpStatus.NOT_FOUND);
+        }
 
-        if (user == null) {
-            throw new RuntimeException("User not found with id: " + profileDto.getUserId());
+        if (profileRepository.findByUserId(profileDto.getUserId()).isPresent()) {
+            throw new AppException("Profile already exists for user: " + profileDto.getUserId(), HttpStatus.CONFLICT);
         }
 
         Profile profile = Profile.builder()
@@ -55,7 +62,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public Profile getProfileByUserId(Long userId) {
         return profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found for user: " + userId));
+                .orElseThrow(() -> new AppException("Profile not found for user: " + userId, HttpStatus.NOT_FOUND));
     }
 
     @Override
@@ -89,7 +96,7 @@ public class ProfileServiceImpl implements ProfileService {
         } catch (FeignException e) {
             log.error("Failed to fetch user data from identity service for user: {}, error: {}",
                      userId, e.getMessage());
-            return null;
+            throw new AppException("Error fetching user data from identity service", HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
 
@@ -100,7 +107,7 @@ public class ProfileServiceImpl implements ProfileService {
         } catch (FeignException e) {
             log.error("Failed to fetch user files from file service for user: {}, error: {}",
                      userId, e.getMessage());
-            return List.of();
+            return List.of(); // Return empty list if files are not critical
         }
     }
 
@@ -114,19 +121,13 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = getProfileByUserId(userId);
 
         UserDto user = null;
-        List<FileDto> files = List.of();
-
         try {
             user = getUserFromIdentityService(userId);
-        } catch (Exception e) {
-            log.warn("Could not fetch user data synchronously, using basic profile data only");
+        } catch (AppException e) {
+            log.warn("Could not fetch user data for complete profile, proceeding without it. Reason: {}", e.getMessage());
         }
 
-        try {
-            files = getUserFiles(userId);
-        } catch (Exception e) {
-            log.warn("Could not fetch user files, files list will be empty");
-        }
+        List<FileDto> files = getUserFiles(userId);
 
         return ProfileDataResponse.builder()
                 .profile(profile)

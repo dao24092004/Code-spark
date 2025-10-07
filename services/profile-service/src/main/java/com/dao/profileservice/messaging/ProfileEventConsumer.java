@@ -1,5 +1,8 @@
 package com.dao.profileservice.messaging;
 
+import com.dao.profileservice.dto.ProfileDto;
+import com.dao.profileservice.messaging.dto.UserRegisteredEvent;
+import com.dao.profileservice.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -13,10 +16,22 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class ProfileEventConsumer {
 
+    private final ProfileService profileService;
+
     @KafkaListener(topics = "user.registered", groupId = "profile-service-group")
-    public void handleUserRegistered(@Payload Object userRegisteredEvent,
-                                    @Header(KafkaHeaders.RECEIVED_KEY) String key) {
+    public void handleUserRegistered(@Payload UserRegisteredEvent userRegisteredEvent,
+                                     @Header(KafkaHeaders.RECEIVED_KEY) String key) {
         log.info("Received user registered event with key: {}, payload: {}", key, userRegisteredEvent);
+        try {
+            ProfileDto profileDto = new ProfileDto();
+            profileDto.setUserId(userRegisteredEvent.getUserId());
+            profileDto.setFirstName(userRegisteredEvent.getFirstName());
+            profileDto.setLastName(userRegisteredEvent.getLastName());
+            profileDto.setEmail(userRegisteredEvent.getEmail());
+            profileService.createProfile(profileDto);
+        } catch (Exception e) {
+            log.error("Failed to create profile for user: {}. Reason: {}", userRegisteredEvent.getUserId(), e.getMessage());
+        }
     }
 
     @KafkaListener(topics = "user.updated", groupId = "profile-service-group")

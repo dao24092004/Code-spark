@@ -1,3 +1,7 @@
 /home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/FileController.java
 /home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/FileServiceApplication.java
 /home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/FileStorageService.java
+/home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/client/IdentityAuthClient.java
+/home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/dto/ApiResponse.java
+/home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/security/AuthorizationService.java
+/home/minhdao/projects/team/code_spark/services/file-service/src/main/java/com/dao/fileservice/security/Permissions.java
