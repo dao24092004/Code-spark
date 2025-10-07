@@ -29,6 +29,12 @@ public class NotificationController {
 
     private static final String PERM_NOTIFICATION_STREAM = "NOTIFICATION.STREAM";
 
+    /**
+     * Tạo kết nối Server-Sent Events (SSE) để nhận thông báo real-time.
+     *
+     * @param headers Headers của request, chứa token xác thực.
+     * @return ResponseEntity chứa SseEmitter để client đăng ký nhận sự kiện.
+     */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream(@RequestHeader HttpHeaders headers) {
         String authHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);

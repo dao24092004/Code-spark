@@ -7,10 +7,10 @@ const app = express();
 app.use(express.json());
 
 // API Routes
-app.use('/copyrights', copyrightRoutes);
+app.use('/', copyrightRoutes);
 
 // Health check endpoint
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
     res.status(200).send('Copyright service is running.');
 });
 

@@ -1,6 +1,10 @@
 const Copyright = require('../models/copyright.model.js');
+const DocumentSimilarity = require('../models/documentSimilarity.model.js');
 const blockchainService = require('../services/blockchain.service');
 const fileService = require('../services/file.service');
+const similarityService = require('../services/similarity.service');
+const serviceCommunication = require('../services/communication');
+const dataSynchronizer = require('../services/synchronizer');
 const { account } = require('../config/web3');
 const { Op } = require('sequelize');
 
@@ -13,7 +17,7 @@ const createCopyright = async (req, res) => {
     try {
         const hash = fileService.calculateHash(req.file.path);
 
-        // Check if hash exists in DB
+        // Check if hash exists in DB (exact duplicate)
         const existingCopyright = await Copyright.findOne({ where: { hash: hash } });
         if (existingCopyright) {
             return res.status(409).json({
@@ -30,15 +34,61 @@ const createCopyright = async (req, res) => {
             });
         }
 
+        // Get all existing documents for similarity check
+        const existingDocuments = await Copyright.findAll({
+            where: {
+                storedFilename: {
+                    [Op.not]: null
+                }
+            }
+        });
+
+        // Check content similarity
+        const similarityResult = await similarityService.checkSimilarity(req.file.path, existingDocuments);
+
+        if (similarityResult.isSimilar) {
+            return res.status(409).json({
+                message: 'This document content is very similar to existing registered documents.',
+                similarityInfo: {
+                    similarDocuments: similarityResult.similarDocuments,
+                    threshold: similarityService.similarityThreshold,
+                    message: `Document has ${similarityResult.similarityScore * 100}% similarity with existing content.`
+                }
+            });
+        }
+
         // 1. Interact with Ethereum Smart Contract
         const transactionHash = await blockchainService.registerDocumentOnChain(hash);
 
         // 2. Save copyright info to PostgreSQL
         const newCopyright = await Copyright.create({
-            filename: req.file.originalname,
+            filename: req.file.originalname,  // Keep original name for display
             hash: hash,
             ownerAddress: account.address,
-            transactionHash: transactionHash ? String(transactionHash) : null
+            transactionHash: transactionHash ? String(transactionHash) : null,
+            storedFilename: req.file.filename  // Store actual filename for file access
+        });
+
+        // 3. Save similarity records if needed
+        if (similarityResult.similarDocuments.length > 0) {
+            for (const similarDoc of similarityResult.similarDocuments) {
+                await DocumentSimilarity.create({
+                    sourceDocumentId: newCopyright.id,
+                    targetDocumentId: similarDoc.id,
+                    similarityScore: similarDoc.similarityScore
+                });
+            }
+        }
+
+        // 4. Synchronize data with other microservices
+        const syncResult = await dataSynchronizer.syncCopyrightRegistration({
+            id: newCopyright.id,
+            hash: newCopyright.hash,
+            filename: newCopyright.filename,
+            ownerAddress: newCopyright.ownerAddress,
+            transactionHash: newCopyright.transactionHash,
+            similarityChecked: similarityResult.isSimilar,
+            similarDocuments: similarityResult.similarDocuments
         });
 
         const blockchainRegistered = transactionHash !== null;
@@ -47,14 +97,18 @@ const createCopyright = async (req, res) => {
                 ? 'File uploaded, hashed, and successfully registered on blockchain!'
                 : 'File uploaded and hashed. Blockchain registration skipped (blockchain unavailable).',
             copyright: newCopyright,
-            blockchainRegistered: blockchainRegistered
+            blockchainRegistered: blockchainRegistered,
+            filePath: req.file.path,
+            similarityChecked: true,
+            wasSimilar: similarityResult.isSimilar,
+            similarDocuments: similarityResult.similarDocuments,
+            syncResult: syncResult
         });
 
     } catch (error) {
         console.error('Error during copyright registration:', error);
         res.status(500).send(error.message || 'An internal server error occurred.');
-    } finally {
-        fileService.cleanupFile(req.file.path);
+        // Don't cleanup file on error - let user know file is still there
     }
 };
 
@@ -118,8 +172,48 @@ const deleteCopyright = async (req, res) => {
         res.status(500).send('An internal server error occurred.');
     }
 };
+const checkSimilarity = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    }
 
-// --- New API Controllers ---
+    try {
+        // Get all existing documents for similarity check
+        const existingDocuments = await Copyright.findAll({
+            where: {
+                storedFilename: {
+                    [Op.not]: null
+                }
+            }
+        });
+
+        // Check content similarity
+        const similarityResult = await similarityService.checkSimilarity(req.file.path, existingDocuments);
+
+        res.status(200).json({
+            message: similarityResult.isSimilar
+                ? 'Document has similar content to existing registered documents.'
+                : 'Document content is unique.',
+            similarityInfo: {
+                isSimilar: similarityResult.isSimilar,
+                similarDocuments: similarityResult.similarDocuments,
+                threshold: similarityService.similarityThreshold,
+                totalDocumentsChecked: existingDocuments.length,
+                message: similarityResult.isSimilar
+                    ? `Document has ${similarityResult.similarityScore * 100}% similarity with existing content.`
+                    : 'No significant similarity found.'
+            },
+            filePath: req.file.path
+        });
+
+    } catch (error) {
+        console.error('Error checking similarity:', error);
+        res.status(500).send('An internal server error occurred while checking similarity.');
+    } finally {
+        // Clean up uploaded file since this is just a check
+        fileService.cleanupFile(req.file.path);
+    }
+};
 
 // SEARCH: Find copyrights by criteria
 const searchCopyrights = async (req, res) => {
@@ -205,6 +299,7 @@ module.exports = {
     getCopyrightById,
     updateCopyright,
     deleteCopyright,
+    checkSimilarity,
     searchCopyrights,
     getCopyrightByHash,
     verifyCopyright,

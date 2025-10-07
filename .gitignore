@@ -7,7 +7,10 @@
 # OS-specific files
 .DS_Store
 Thumbs.db
-
+.cursor
+.aider.tags.cache.v4
+.claude
+.gemini
 # IDE settings
 .idea/
 *.iml
@@ -108,3 +111,10 @@ log/
 
 # Nested repos / scaffolds (do not commit)
 clean-repo/
+.aider*
+.env
+.env
+.env
+.env
+.env
+.env

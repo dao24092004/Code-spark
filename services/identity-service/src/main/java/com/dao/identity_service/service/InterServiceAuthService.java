@@ -1,6 +1,7 @@
 package com.dao.identity_service.service;
 
 import com.dao.identity_service.entity.User;
+import com.dao.identity_service.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -102,67 +103,6 @@ public class InterServiceAuthService {
     }
 
     public String generateServiceToken(String serviceName) {
-        // Generate a special token for inter-service communication
-        // This is a simplified approach - in production, you might use a different strategy
-        try {
-            java.lang.reflect.Method buildTokenMethod = jwtService.getClass().getDeclaredMethod(
-                    "buildToken", Map.class, 
-                    org.springframework.security.core.userdetails.UserDetails.class, 
-                    long.class);
-            buildTokenMethod.setAccessible(true);
-            return (String) buildTokenMethod.invoke(
-                    jwtService,
-                    Map.of("service", serviceName, "type", "service"),
-                    new ServiceUserDetails(serviceName),
-                    24 * 60 * 60 * 1000L // 24 hours
-            );
-        } catch (Exception e) {
-            log.error("Failed to generate service token: {}", e.getMessage());
-            throw new RuntimeException("Failed to generate service token", e);
-        }
-    }
-
-    // Inner class for service authentication
-    private static class ServiceUserDetails implements org.springframework.security.core.userdetails.UserDetails {
-        private final String serviceName;
-
-        public ServiceUserDetails(String serviceName) {
-            this.serviceName = serviceName;
-        }
-
-        @Override
-        public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
-            return Set.of(() -> "ROLE_SERVICE");
-        }
-
-        @Override
-        public String getPassword() {
-            return "";
-        }
-
-        @Override
-        public String getUsername() {
-            return serviceName;
-        }
-
-        @Override
-        public boolean isAccountNonExpired() {
-            return true;
-        }
-
-        @Override
-        public boolean isAccountNonLocked() {
-            return true;
-        }
-
-        @Override
-        public boolean isCredentialsNonExpired() {
-            return true;
-        }
-
-        @Override
-        public boolean isEnabled() {
-            return true;
-        }
+        return jwtService.generateServiceToken(serviceName);
     }
 }

@@ -1,0 +1,30 @@
+# Identity Service Configuration for Copyright Integration
+# Add this to your identity-service application.yml
+
+# Copyright Service Integration
+copyright:
+  service:
+    enabled: true
+    url: ${COPYRIGHT_SERVICE_URL:http://localhost:3000}
+    timeout: 10000
+
+# Copyright Count Update Endpoint
+copyright:
+  endpoints:
+    update-count: /api/v1/users/copyright-count
+    get-user-copyrights: /api/v1/copyrights/user/{userAddress}
+
+# User Copyright Statistics
+user:
+  copyright:
+    sync-enabled: true
+    update-on-registration: true
+    track-statistics: true
+
+# Event Listeners for Copyright Events
+event:
+  listeners:
+    copyright-registered:
+      enabled: true
+      handler: com.dao.identity.event.CopyrightRegistrationEventHandler
+      async: true

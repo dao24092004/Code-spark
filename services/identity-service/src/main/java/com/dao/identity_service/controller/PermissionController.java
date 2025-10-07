@@ -1,11 +1,10 @@
 package com.dao.identity_service.controller;
 
-import com.dao.identity_service.dto.ApiResponse;
+import com.dao.common.dto.ApiResponse;
 import com.dao.identity_service.dto.CreatePermissionRequest;
 import com.dao.identity_service.dto.PermissionDto;
 import com.dao.identity_service.service.PermissionService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -21,39 +20,35 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/permissions")
 @RequiredArgsConstructor
-@Slf4j
 public class PermissionController {
 
     private final PermissionService permissionService;
 
+    /**
+     * Lấy tất cả các quyền
+     */
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<List<PermissionDto>>> getAllPermissions() {
-        try {
-            List<PermissionDto> permissions = permissionService.findAllPermissions();
-            return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
-        } catch (Exception e) {
-            log.error("Error getting all permissions: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error retrieving permissions"));
-        }
+        List<PermissionDto> permissions = permissionService.findAllPermissions();
+        return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
 
+    /**
+     * Lấy danh sách quyền có phân trang
+     */
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<Page<PermissionDto>>> getAllPermissionsPaged(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        try {
-            Page<PermissionDto> permissions = permissionService.findAllPermissions(pageable);
-            return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
-        } catch (Exception e) {
-            log.error("Error getting paged permissions: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Error retrieving permissions"));
-        }
+        Page<PermissionDto> permissions = permissionService.findAllPermissions(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
 
+    /**
+     * Lấy thông tin quyền theo ID
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<PermissionDto>> getPermissionById(@PathVariable Long id) {
@@ -61,6 +56,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permission retrieved successfully", permission));
     }
 
+    /**
+     * Lấy thông tin quyền theo tên
+     */
     @GetMapping("/name/{name}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<PermissionDto>> getPermissionByName(@PathVariable String name) {
@@ -68,6 +66,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permission retrieved successfully", permission));
     }
 
+    /**
+     * Lấy danh sách quyền theo tài nguyên
+     */
     @GetMapping("/resource/{resource}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<List<PermissionDto>>> getPermissionsByResource(@PathVariable String resource) {
@@ -75,6 +76,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
 
+    /**
+     * Lấy danh sách quyền theo tài nguyên và hành động
+     */
     @GetMapping("/resource/{resource}/action/{action}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<List<PermissionDto>>> getPermissionsByResourceAndAction(
@@ -85,6 +89,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
 
+    /**
+     * Lấy danh sách quyền theo danh sách ID
+     */
     @PostMapping("/by-ids")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<List<PermissionDto>>> getPermissionsByIds(@RequestBody Set<Long> ids) {
@@ -92,6 +99,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
 
+    /**
+     * Tạo mới một quyền
+     */
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<PermissionDto>> createPermission(@Valid @RequestBody CreatePermissionRequest request) {
@@ -100,6 +110,9 @@ public class PermissionController {
                 .body(ApiResponse.success("Permission created successfully", createdPermission));
     }
 
+    /**
+     * Cập nhật thông tin quyền
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<PermissionDto>> updatePermission(
@@ -110,6 +123,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permission updated successfully", updatedPermission));
     }
 
+    /**
+     * Xóa quyền
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_DELETE')")
     public ResponseEntity<ApiResponse<String>> deletePermission(@PathVariable Long id) {
@@ -117,6 +133,9 @@ public class PermissionController {
         return ResponseEntity.ok(ApiResponse.success("Permission deleted successfully"));
     }
 
+    /**
+     * Kiểm tra quyền có tồn tại không
+     */
     @GetMapping("/{name}/exists")
     @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<Boolean>> checkPermissionExists(@PathVariable String name) {

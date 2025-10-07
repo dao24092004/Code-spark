@@ -1,12 +1,14 @@
 package com.dao.identity_service.service;
 
+import com.dao.common.exception.AppException;
 import com.dao.identity_service.dto.AuthResponse;
 import com.dao.identity_service.dto.LoginRequest;
 import com.dao.identity_service.dto.RegisterRequest;
 import com.dao.identity_service.dto.UserDto;
 import com.dao.identity_service.entity.User;
+import com.dao.identity_service.security.JwtService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -17,7 +19,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class AuthService {
 
@@ -30,9 +31,9 @@ public class AuthService {
         
         // Get actual User entity for token generation
         User userEntity = userService.findByUsername(savedUser.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found after creation"));
+                .orElseThrow(() -> new AppException("User not found after creation", HttpStatus.INTERNAL_SERVER_ERROR));
         
-        String accessToken = jwtService.generateTokenWithUserId(userEntity, savedUser.getId());
+        String accessToken = jwtService.generateTokenWithUserId(userEntity, String.valueOf(savedUser.getId()));
         String refreshToken = jwtService.generateRefreshToken(userEntity);
 
         return AuthResponse.builder()
@@ -51,15 +52,15 @@ public class AuthService {
                     )
             );
         } catch (AuthenticationException e) {
-            throw new RuntimeException("Invalid credentials");
+            throw new AppException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
 
         User user = userService.findByUsernameOrEmail(request.getUsernameOrEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
         userService.updateLastLogin(user.getUsername());
         
-        String accessToken = jwtService.generateTokenWithUserId(user, user.getId());
+        String accessToken = jwtService.generateTokenWithUserId(user, String.valueOf(user.getId()));
         String refreshToken = jwtService.generateRefreshToken(user);
 
         return AuthResponse.builder()
@@ -72,10 +73,10 @@ public class AuthService {
     public AuthResponse refreshToken(String refreshToken) {
         String username = jwtService.extractUsername(refreshToken);
         User user = userService.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
         if (jwtService.isTokenValid(refreshToken, user)) {
-            String newAccessToken = jwtService.generateTokenWithUserId(user, user.getId());
+            String newAccessToken = jwtService.generateTokenWithUserId(user, String.valueOf(user.getId()));
             String newRefreshToken = jwtService.generateRefreshToken(user);
 
             return AuthResponse.builder()
@@ -84,7 +85,7 @@ public class AuthService {
                     .user(mapToUserDto(user))
                     .build();
         } else {
-            throw new RuntimeException("Invalid refresh token");
+            throw new AppException("Invalid refresh token", HttpStatus.UNAUTHORIZED);
         }
     }
 
