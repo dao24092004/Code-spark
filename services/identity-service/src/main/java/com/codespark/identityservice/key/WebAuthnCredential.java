@@ -1,10 +1,9 @@
 package com.codespark.identityservice.key;
 
-import com.webauthn4j.data.attestation.authenticator.AuthenticatorData;
-import com.webauthn4j.data.attestation.statement.AttestationStatement;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import java.time.Instant;
 
 @Entity
 @Table(name = "webauthn_credential")
@@ -17,16 +16,27 @@ public class WebAuthnCredential {
     private Long id;
 
     @Lob
+    @Column(nullable = false)
     private byte[] credentialId;
 
+    @Column(nullable = false)
     private String username;
 
     @Lob
-    private AuthenticatorData authenticatorData;
+    @Column(nullable = false)
+    private byte[] publicKey;
 
-    @Lob
-    private AttestationStatement attestationStatement;
+    @Column(nullable = false)
+    private Long counter;
 
-    private long counter;
+    @Column(nullable = false)
+    private Instant createdAt;
 
+    @Column
+    private Instant lastUsedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
 }

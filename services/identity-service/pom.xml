@@ -168,11 +168,20 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- WebAuthn (Passwordless Login) - Uses Spring Security native support -->
+        <!-- Yubico WebAuthn for FIDO2/Passwordless Authentication -->
         <dependency>
-            <groupId>com.webauthn4j</groupId>
-            <artifactId>webauthn4j-spring-security-core</artifactId>
-            <version>0.11.2.RELEASE</version>
+            <groupId>com.yubico</groupId>
+            <artifactId>webauthn-server-core</artifactId>
+            <version>2.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yubico</groupId>
+            <artifactId>webauthn-server-attestation</artifactId>
+            <version>2.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
 
