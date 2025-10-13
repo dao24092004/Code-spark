@@ -10,9 +10,25 @@ spring:
         - id: identity-service
           uri: lb://identity-service
           predicates:
-            - Path=/identity/**
+            - Path=/api/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=0
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Origin
+                value: "http://localhost:4173"
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Methods
+                value: "GET,POST,PUT,DELETE,OPTIONS"
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Headers
+                value: "*"
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Credentials
+                value: "true"
         - id: profile-service
           uri: lb://profile-service
           predicates:
@@ -64,3 +80,8 @@ springdoc:
 app:
   jwt:
     secret: ${JWT_SECRET:mySecretKey12345678901234567890123456789012345678901234567890}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:3000}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
