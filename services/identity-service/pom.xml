@@ -167,6 +167,13 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- WebAuthn (Passwordless Login) - Uses Spring Security native support -->
+        <dependency>
+            <groupId>com.webauthn4j</groupId>
+            <artifactId>webauthn4j-spring-security-core</artifactId>
+            <version>0.11.2.RELEASE</version>
+        </dependency>
     </dependencies>
 
     <build>
