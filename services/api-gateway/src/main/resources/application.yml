@@ -17,18 +17,6 @@ spring:
               args:
                 name: Access-Control-Allow-Origin
                 value: "http://localhost:4173"
-            - name: AddResponseHeader
-              args:
-                name: Access-Control-Allow-Methods
-                value: "GET,POST,PUT,DELETE,OPTIONS"
-            - name: AddResponseHeader
-              args:
-                name: Access-Control-Allow-Headers
-                value: "*"
-            - name: AddResponseHeader
-              args:
-                name: Access-Control-Allow-Credentials
-                value: "true"
         - id: profile-service
           uri: lb://profile-service
           predicates:

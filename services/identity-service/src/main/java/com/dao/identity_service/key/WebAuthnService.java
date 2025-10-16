@@ -1,6 +1,7 @@
-package com.codespark.identityservice.key;
+package com.dao.identity_service.key;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,12 +21,16 @@ public class WebAuthnService {
     /**
      * Tạo assertion options cho authentication (simplified)
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> startAuthentication(String username) {
         // Kiểm tra user có tồn tại không
-        Optional<byte[]> userIdOpt = credentialRepository.findUserIdByUsername(username);
-        if (userIdOpt.isEmpty()) {
+        Optional<WebAuthnCredential> credentialOpt = credentialRepository.findUserIdByUsername(username);
+        if (credentialOpt.isEmpty()) {
             throw new RuntimeException("User not found or no credentials registered");
         }
+
+        WebAuthnCredential credential = credentialOpt.get();
+        byte[] userId = credential.getCredentialId();
 
         // Tạo challenge ngẫu nhiên
         String challenge = generateChallenge();
@@ -33,7 +38,7 @@ public class WebAuthnService {
         return Map.of(
             "challenge", challenge,
             "rpId", "localhost",
-            "userId", Base64.getEncoder().encodeToString(userIdOpt.get()),
+            "userId", Base64.getEncoder().encodeToString(userId),
             "allowCredentials", getAllowCredentials(username)
         );
     }
@@ -41,6 +46,7 @@ public class WebAuthnService {
     /**
      * Xác thực assertion từ client (simplified)
      */
+    @Transactional
     public WebAuthnAuthenticationResult finishAuthentication(String username,
                                                            String credentialId,
                                                            String clientDataJSON,
@@ -49,7 +55,6 @@ public class WebAuthnService {
         try {
             // Trong thực tế sẽ verify signature và authenticator data
             // Ở đây chỉ kiểm tra credential có tồn tại không
-
             Optional<WebAuthnCredential> credentialOpt = credentialRepository
                 .findByCredentialId(Base64.getDecoder().decode(credentialId));
 
@@ -108,6 +113,7 @@ public class WebAuthnService {
     /**
      * Hoàn thành quá trình đăng ký thiết bị (simplified)
      */
+    @Transactional
     public WebAuthnRegistrationResult finishRegistration(String username,
                                                         String credentialId,
                                                         String clientDataJSON,

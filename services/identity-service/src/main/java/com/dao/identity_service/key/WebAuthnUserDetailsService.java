@@ -1,6 +1,6 @@
 
 
-package com.codespark.identityservice.key;
+package com.dao.identity_service.key;
 
 // TODO: Fix WebAuthn integration - current WebAuthn4J version doesn't have expected Spring Security classes
 // import com.webauthn4j.springframework.security.authenticator.WebAuthnAuthenticator;

@@ -1,27 +1,22 @@
-package com.codespark.identityservice.controller;
+package com.dao.identity_service.controller;
 
-import com.codespark.identityservice.key.WebAuthnService;
+import com.dao.identity_service.key.WebAuthnService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-
 /**
  * REST Controller xử lý WebAuthn/FIDO2 authentication endpoints (Simplified version for demo)
  */
 @RestController
 @RequestMapping("/api/webauthn")
-@CrossOrigin(origins = "http://localhost:8080") // Cho phép CORS từ frontend
+// Loại bỏ @CrossOrigin vì API Gateway đã xử lý CORS
 public class WebAuthnController {
 
     @Autowired
     private WebAuthnService webAuthnService;
-
-    /**
-     * Bắt đầu quá trình authentication (get assertion options)
-     */
     @PostMapping("/assertion/options")
     public ResponseEntity<?> startAuthentication(@RequestBody Map<String, String> request) {
         try {
