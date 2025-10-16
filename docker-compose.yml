@@ -30,6 +30,8 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: "Asia/Ho_Chi_Minh"
+      PGTZ: "Asia/Ho_Chi_Minh"
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -157,6 +159,8 @@ services:
       - APP_INTER_SERVICE_SECRET=${INTER_SERVICE_SECRET}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
       - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+      - TZ=Asia/Ho_Chi_Minh
+      - PGTZ=Asia/Ho_Chi_Minh
     depends_on:
       - discovery-service
       - config-server
