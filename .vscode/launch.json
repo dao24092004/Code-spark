@@ -127,6 +127,16 @@
             "projectName": "admin-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-ExamServiceApplication<exam-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.examservice.ExamServiceApplication",
+            "projectName": "exam-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

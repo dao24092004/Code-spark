@@ -10,7 +10,7 @@ spring:
         - id: identity-service
           uri: lb://identity-service
           predicates:
-            - Path=/api/**
+            - Path=/identity/**
           filters:
             - StripPrefix=0
             - name: AddResponseHeader
@@ -45,6 +45,12 @@ spring:
           uri: lb://copyright-service
           predicates:
             - Path=/api/copyrights/**
+          filters:
+            - StripPrefix=1
+        - id: exam-service
+          uri: lb://exam-service
+          predicates:
+            - Path=/exam/**
           filters:
             - StripPrefix=1
   data:
