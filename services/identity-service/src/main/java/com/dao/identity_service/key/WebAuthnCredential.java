@@ -1,4 +1,4 @@
-package com.codespark.identityservice.key;
+package com.dao.identity_service.key;
 
 import jakarta.persistence.*;
 import lombok.Getter;
