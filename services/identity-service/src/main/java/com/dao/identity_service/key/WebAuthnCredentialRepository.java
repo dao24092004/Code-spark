@@ -1,4 +1,4 @@
-package com.codespark.identityservice.key;
+package com.dao.identity_service.key;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,8 +13,8 @@ public interface WebAuthnCredentialRepository extends JpaRepository<WebAuthnCred
 
     List<WebAuthnCredential> findByUsername(String username);
 
-    @Query("SELECT c.credentialId FROM WebAuthnCredential c WHERE c.username = :username LIMIT 1")
-    Optional<byte[]> findUserIdByUsername(@Param("username") String username);
+    @Query("SELECT c FROM WebAuthnCredential c WHERE c.username = :username ORDER BY c.createdAt DESC LIMIT 1")
+    Optional<WebAuthnCredential> findUserIdByUsername(@Param("username") String username);
 
     Optional<WebAuthnCredential> findFirstByUsernameOrderByCreatedAtDesc(String username);
 }
