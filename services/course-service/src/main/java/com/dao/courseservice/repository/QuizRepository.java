@@ -20,6 +20,7 @@ public interface QuizRepository extends JpaRepository<Quiz, UUID> {
      * Chỉ fetch đến questions. Việc fetch options sẽ được xử lý riêng.
      * Đổi tên phương thức cho rõ ràng.
      */
-    @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.questions WHERE q.id = :quizId")
-    Optional<Quiz> findByIdWithQuestions(@Param("quizId") UUID quizId);
+    @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.questions quest LEFT JOIN FETCH quest.options WHERE q.id = :quizId")
+    Optional<Quiz> findByIdWithQuestionsAndOptions(@Param("quizId") UUID quizId);
+
 }

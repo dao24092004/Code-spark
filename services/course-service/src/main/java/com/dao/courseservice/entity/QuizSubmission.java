@@ -2,17 +2,14 @@ package com.dao.courseservice.entity;
 
 import io.hypersistence.utils.hibernate.type.json.JsonType; // <--- THÊM IMPORT NÀY
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type; // <--- THÊM IMPORT NÀY
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.Map;
 import java.util.List;
+import lombok.*;
 
 @Data
 @Builder
@@ -26,7 +23,8 @@ public class QuizSubmission {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Mối quan hệ: Nhiều Submission thuộc về một Quiz
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
@@ -36,9 +34,8 @@ public class QuizSubmission {
 
     private Integer score;
 
-    @Type(JsonType.class) // <-- Báo cho Hibernate dùng bộ chuyển đổi JSON
-    @Column(name = "answers", columnDefinition = "jsonb") // <-- Đảm bảo cột trong DB là jsonb
-    private Map<UUID, List<UUID>> answers;
+    @Column(columnDefinition = "text")
+    private String answers;
 
     @CreationTimestamp
     private LocalDateTime submittedAt;

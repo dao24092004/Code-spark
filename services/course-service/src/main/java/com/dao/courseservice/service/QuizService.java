@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.core.JsonProcessingException; // <-- SỬA LẠI: Thêm import này
+import com.fasterxml.jackson.databind.ObjectMapper; // <-- SỬA LẠI: Thêm import này
 
 import java.util.List;
 import java.util.Set;
@@ -62,7 +64,7 @@ class QuizServiceImpl implements QuizService {
     private final QuizSubmissionRepository submissionRepository;
     private final RewardRepository rewardRepository;
     private final QuizMapper quizMapper;
-
+    private final ObjectMapper objectMapper; // <-- SỬA LẠI: Inject ObjectMapper vào đây
     //--------------------------------------------------------------------------
     // Lấy chi tiết bài quiz cho học sinh (ẩn đáp án đúng)
     //--------------------------------------------------------------------------
@@ -72,45 +74,43 @@ class QuizServiceImpl implements QuizService {
     public QuizDetailResponse getQuizDetailsForStudent(UUID quizId) {
         log.info("Fetching quiz details for id: {}", quizId);
 
-        Quiz quiz = quizRepository.findByIdWithQuestions(quizId)
-            .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
+        // SỬA LẠI: Dùng đúng phương thức để tải đầy đủ dữ liệu
+        Quiz quiz = quizRepository.findByIdWithQuestionsAndOptions(quizId)
+                .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
 
-        // Dùng mapper để chuyển đổi, mapper sẽ tự động che giấu đáp án
         return quizMapper.toQuizDetailResponseForStudent(quiz);
     }
-
-    //--------------------------------------------------------------------------
-    // Học sinh nộp bài làm quiz
-    //--------------------------------------------------------------------------
 
     @Override
     public QuizSubmissionResultResponse submitQuiz(UUID quizId, SubmitQuizRequest request) {
         log.info("Student {} submitting quiz {}", request.getStudentId(), quizId);
 
-        // 1. Lấy toàn bộ thông tin quiz, bao gồm cả đáp án đúng để chấm điểm
-        Quiz quiz = quizRepository.findByIdWithQuestions(quizId)
-            .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
+        Quiz quiz = quizRepository.findByIdWithQuestionsAndOptions(quizId)
+                .orElseThrow(() -> new ResourceNotFoundException("Quiz", "id", quizId));
 
-        // 2. Chấm điểm
         int score = calculateScore(quiz, request);
 
-        // 3. Tạo và lưu đối tượng bài nộp (submission)
         QuizSubmission submission = new QuizSubmission();
         submission.setQuiz(quiz);
         submission.setStudentId(request.getStudentId());
         submission.setScore(score);
-        submission.setAnswers(request.getAnswers());
+
+        // Chuyển đổi Map sang chuỗi JSON trước khi lưu
+        try {
+            submission.setAnswers(objectMapper.writeValueAsString(request.getAnswers()));
+        } catch (JsonProcessingException e) {
+            log.error("Error serializing answers to JSON string", e);
+            // Bạn có thể ném ra lỗi hoặc xử lý khác ở đây
+        }
 
         QuizSubmission savedSubmission = submissionRepository.save(submission);
         log.info("Submission {} from student {} saved with score {}",
                 savedSubmission.getId(), request.getStudentId(), score);
 
-        // 4. (UC32) Trao thưởng token nếu có điểm
         if (score > 0) {
             grantReward(request.getStudentId(), score * 10, "PASS_QUIZ", savedSubmission.getId());
         }
 
-        // 5. Chuyển đổi sang DTO và trả về kết quả
         return quizMapper.toQuizSubmissionResultResponse(savedSubmission);
     }
 

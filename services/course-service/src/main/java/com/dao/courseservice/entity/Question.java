@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import java.util.List;
 import java.util.Set;
@@ -11,8 +14,11 @@ import java.util.HashSet;
 import java.util.UUID;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.BatchSize;
+import lombok.ToString;
+import lombok.*;
 
-@Data
+@Getter // Thêm @Getter
+@Setter // Thêm @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,10 +30,12 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Mối quan hệ: Nhiều Question thuộc về một Quiz
+    @ToString.Exclude // Bỏ qua trường này khi tạo phương thức toString()
+    @EqualsAndHashCode.Exclude // Bỏ qua trường này khi tạo equals() và hashCode()
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
+    
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -36,7 +44,6 @@ public class Question {
     private String type;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @BatchSize(size = 25)
-    private List<QuestionOption> options;
+    private Set<QuestionOption> options;
     private Integer displayOrder;
 }

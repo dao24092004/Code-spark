@@ -4,13 +4,21 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+
+import lombok.ToString;
+
 import org.hibernate.annotations.CreationTimestamp;
 import java.util.List; 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Set;
 
-@Data
+@Getter 
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,10 +30,13 @@ public class Quiz {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Mối quan hệ: Nhiều Quiz thuộc về một Course
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+
 
     @Column(nullable = false)
     private String title;
@@ -39,5 +50,5 @@ public class Quiz {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Question> questions;
+    private Set<Question> questions;
 }

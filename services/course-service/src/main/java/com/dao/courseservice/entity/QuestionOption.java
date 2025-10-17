@@ -1,26 +1,27 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
+// SỬA LẠI: Bỏ @Data, thêm @Getter và @Setter
+import lombok.Getter;
+import lombok.Setter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.util.UUID;
 
-@Data
+@Getter // Thêm @Getter
+@Setter // Thêm @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "cm_question_options")
 public class QuestionOption {
-
+    
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Mối quan hệ: Nhiều Option thuộc về một Question
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
