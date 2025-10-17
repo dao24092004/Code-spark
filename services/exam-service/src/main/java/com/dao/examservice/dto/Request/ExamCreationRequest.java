@@ -1,4 +1,4 @@
-package com.dao.examservice.dto.Resquest;
+package com.dao.examservice.dto.Request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

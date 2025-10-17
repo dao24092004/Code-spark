@@ -137,6 +137,16 @@
             "projectName": "exam-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-AnalyticsServiceApplication<analytics-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.analyticsservice.AnalyticsServiceApplication",
+            "projectName": "analytics-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }
