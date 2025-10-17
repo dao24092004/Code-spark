@@ -1,14 +1,11 @@
 package com.dao.courseservice.entity;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType; // <--- THÊM IMPORT NÀY
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type; // <--- THÊM IMPORT NÀY
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.List;
 import lombok.*;
 
 @Data
