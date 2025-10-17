@@ -16,10 +16,10 @@ import java.util.UUID;
 public interface QuizRepository extends JpaRepository<Quiz, UUID> {
     
     /**
-     * Lấy thông tin chi tiết của một bài quiz, bao gồm tất cả câu hỏi và các lựa chọn.
-     * 'LEFT JOIN FETCH' được sử dụng để tải tất cả dữ liệu liên quan trong một lần gọi DB.
-     * Rất hữu ích khi học sinh bắt đầu làm bài quiz.
+     * SỬA LẠI QUERY:
+     * Chỉ fetch đến questions. Việc fetch options sẽ được xử lý riêng.
+     * Đổi tên phương thức cho rõ ràng.
      */
-    @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.questions quest LEFT JOIN FETCH quest.options WHERE q.id = :quizId")
-    Optional<Quiz> findByIdWithQuestionsAndOptions(@Param("quizId") UUID quizId);
+    @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.questions WHERE q.id = :quizId")
+    Optional<Quiz> findByIdWithQuestions(@Param("quizId") UUID quizId);
 }
