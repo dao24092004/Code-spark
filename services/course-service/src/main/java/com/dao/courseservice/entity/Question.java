@@ -3,19 +3,15 @@ package com.dao.courseservice.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import java.util.List;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.UUID;
-import org.hibernate.annotations.BatchSize;
-import org.hibernate.annotations.BatchSize;
+
 import lombok.ToString;
-import lombok.*;
+
 
 @Getter // Thêm @Getter
 @Setter // Thêm @Setter
