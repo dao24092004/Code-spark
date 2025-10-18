@@ -1,0 +1,57 @@
+package com.dao.examservice.service;
+
+import com.dao.examservice.dto.request.QuestionCreationRequest;
+import com.dao.examservice.dto.request.QuestionSearchRequest;
+import com.dao.examservice.entity.Question;
+import com.dao.examservice.repository.QuestionRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class QuestionService {
+
+    private final QuestionRepository questionRepository;
+
+    public QuestionService(QuestionRepository questionRepository) {
+        this.questionRepository = questionRepository;
+    }
+
+    @Transactional
+    public Question create(QuestionCreationRequest request) {
+        Question q = new Question();
+        q.setType(request.type);
+        q.setContent(request.content);
+        q.setDifficulty(request.difficulty);
+        q.setExplanation(request.explanation);
+        q.setScore(request.score);
+        q.setText(request.text);
+        if (request.tags != null) q.setTags(request.tags);
+        return questionRepository.save(q);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Question> search(QuestionSearchRequest request) {
+        List<String> tags = request.tags == null ? Collections.emptyList() : new ArrayList<>(request.tags);
+        return questionRepository.search(tags, tags.isEmpty(), request.minDifficulty, request.maxDifficulty);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> generateRandomIds(int count, QuestionSearchRequest filter) {
+        List<Question> pool = search(filter);
+        Collections.shuffle(pool);
+        return pool.stream().limit(count).map(Question::getId).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        questionRepository.deleteById(id);
+    }
+}
+
+

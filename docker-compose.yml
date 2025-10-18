@@ -282,6 +282,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+  exam-service:
+    build:
+      context: .
+      dockerfile: services/exam-service/Dockerfile
+    container_name: exam-service
+    ports:
+      - "9007:9005"
+    networks:
+      - microservice-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/exam_db
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
+      - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
 
   # Contract Deployer for Copyright Service
   contract-deployer:
