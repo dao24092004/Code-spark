@@ -61,17 +61,15 @@ public class ExamController {
     // POST /exams/{id}/schedule: schedule & register
     @PostMapping("/{id}/schedule")
     public ResponseEntity<ExamResponse> schedule(@PathVariable UUID id, @RequestBody ExamScheduleRequest request) {
-        ExamRegistration reg = examService.scheduleAndRegister(id, request);
-        return ResponseEntity.ok(toResponse(reg.getExam()));
+        Exam exam = examService.scheduleAndRegister(id, request);
+        return ResponseEntity.ok(toResponse(exam));
     }
 
     // POST /exams/{id}/generate-questions: generate random question IDs (simple shuffle)
     @PostMapping("/{id}/generate-questions")
-    public ResponseEntity<GeneratedQuestionsResponse> generate(@PathVariable UUID id, @RequestParam(defaultValue = "10") int count) {
-        // For now, ignore exam id and return random IDs from filtered pool (can enhance to use requiredTags)
-        QuestionSearchRequest filter = new QuestionSearchRequest();
+    public ResponseEntity<GeneratedQuestionsResponse> generate(@PathVariable UUID id, @RequestBody com.dao.examservice.dto.request.GenerateQuestionsRequest request) {
         GeneratedQuestionsResponse r = new GeneratedQuestionsResponse();
-        r.questionIds = questionService.generateRandomIds(count, filter);
+        r.questionIds = questionService.generateRandomIds(request);
         return ResponseEntity.ok(r);
     }
 

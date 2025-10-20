@@ -19,7 +19,7 @@ public class ExamRegistration {
     @JoinColumn(name = "exam_id", nullable = false)
     private Exam exam;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "registered_at", nullable = false)

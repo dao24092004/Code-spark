@@ -53,7 +53,12 @@ public class QuestionController {
     @PostMapping("/generate")
     public ResponseEntity<GeneratedQuestionsResponse> generate(@RequestParam(defaultValue = "10") int count, @RequestBody(required = false) QuestionSearchRequest filter) {
         if (filter == null) filter = new QuestionSearchRequest();
-        List<UUID> ids = questionService.generateRandomIds(count, filter);
+        com.dao.examservice.dto.request.GenerateQuestionsRequest serviceRequest = new com.dao.examservice.dto.request.GenerateQuestionsRequest();
+        serviceRequest.count = count;
+        serviceRequest.tags = filter.tags;
+        serviceRequest.minDifficulty = filter.minDifficulty;
+        serviceRequest.maxDifficulty = filter.maxDifficulty;
+        List<UUID> ids = questionService.generateRandomIds(serviceRequest);
         GeneratedQuestionsResponse r = new GeneratedQuestionsResponse();
         r.questionIds = new ArrayList<>(ids);
         return ResponseEntity.ok(r);

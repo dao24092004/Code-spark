@@ -42,10 +42,20 @@ public class QuestionService {
     }
 
     @Transactional(readOnly = true)
-    public List<UUID> generateRandomIds(int count, QuestionSearchRequest filter) {
+    public List<UUID> generateRandomIds(com.dao.examservice.dto.request.GenerateQuestionsRequest request) {
+        QuestionSearchRequest filter = new QuestionSearchRequest();
+        filter.tags = request.tags;
+        filter.minDifficulty = request.minDifficulty;
+        filter.maxDifficulty = request.maxDifficulty;
+
         List<Question> pool = search(filter);
+
+        if (pool == null || pool.isEmpty() || request.count <= 0) {
+            return Collections.emptyList();
+        }
+
         Collections.shuffle(pool);
-        return pool.stream().limit(count).map(Question::getId).collect(Collectors.toList());
+        return pool.stream().limit(request.count).map(Question::getId).collect(Collectors.toList());
     }
 
     @Transactional

@@ -56,16 +56,27 @@ public class ExamService {
     }
 
     @Transactional
-    public ExamRegistration scheduleAndRegister(UUID examId, ExamScheduleRequest request) {
+    public Exam scheduleAndRegister(UUID examId, ExamScheduleRequest request) {
         Exam exam = examRepository.findById(examId).orElseThrow(() -> new ResourceNotFoundException("Exam not found"));
-        if (request.startAt != null) exam.setStartAt(request.startAt);
-        if (request.endAt != null) exam.setEndAt(request.endAt);
-        examRepository.save(exam);
+        if (request.startAt != null) {
+            exam.setStartAt(request.startAt);
+        }
+        if (request.endAt != null) {
+            exam.setEndAt(request.endAt);
+        }
 
-        ExamRegistration reg = new ExamRegistration();
-        reg.setExam(exam);
-        reg.setUserId(request.userId);
-        return registrationRepository.save(reg);
+        if (request.candidateIds != null && !request.candidateIds.isEmpty()) {
+            List<ExamRegistration> registrations = new java.util.ArrayList<>();
+            for (UUID candidateId : request.candidateIds) {
+                ExamRegistration reg = new ExamRegistration();
+                reg.setExam(exam);
+                reg.setUserId(candidateId);
+                registrations.add(reg);
+            }
+            registrationRepository.saveAll(registrations);
+        }
+
+        return exam;
     }
 
     @Transactional(readOnly = true)
