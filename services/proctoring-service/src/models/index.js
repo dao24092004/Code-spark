@@ -12,8 +12,8 @@ const sequelize = new Sequelize(
   config.db.password,
   {
     host: config.db.host,
-    port: config.db.port,            // ✅ thêm dòng này
-    dialect: config.db.dialect,      // ✅ dùng đúng giá trị từ .env
+    port: config.db.port,            
+    dialect: config.db.dialect,      
     logging: false, // Tắt log SQL cho đỡ rối terminal
   }
 );
