@@ -1,7 +1,7 @@
-com/dao/fileservice/FileStorageService.class
-com/dao/fileservice/dto/ApiResponse.class
-com/dao/fileservice/FileController.class
-com/dao/fileservice/client/IdentityAuthClient.class
-com/dao/fileservice/security/Permissions.class
-com/dao/fileservice/FileServiceApplication.class
-com/dao/fileservice/security/AuthorizationService.class
+com\dao\fileservice\security\Permissions.class
+com\dao\fileservice\security\AuthorizationService.class
+com\dao\fileservice\dto\ApiResponse.class
+com\dao\fileservice\FileServiceApplication.class
+com\dao\fileservice\client\IdentityAuthClient.class
+com\dao\fileservice\FileController.class
+com\dao\fileservice\FileStorageService.class
