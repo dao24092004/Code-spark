@@ -75,7 +75,8 @@
             "mainClass": "com.dao.apigateway.ApiGatewayApplication",
             "projectName": "api-gateway",
             "args": "",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=64489 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=api-gateway"
         },
         {
             "type": "java",
@@ -125,6 +126,16 @@
             "cwd": "${workspaceFolder}",
             "mainClass": "com.dao.adminservice.AdminServiceApplication",
             "projectName": "admin-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-CourseServiceApplication<course-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.courseservice.CourseServiceApplication",
+            "projectName": "course-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }

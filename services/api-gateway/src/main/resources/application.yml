@@ -35,6 +35,12 @@ spring:
             - Path=/api/copyrights/**
           filters:
             - StripPrefix=1
+        - id: course-service
+          uri: lb://course-service
+          predicates:
+            - Path=/course/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost
