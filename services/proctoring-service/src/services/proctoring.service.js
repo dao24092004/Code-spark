@@ -1,28 +1,47 @@
-// file: src/services/proctoring.service.js
+// file: proctoring-service/src/services/proctoring.service.js
 
 const db = require('../models');
+console.log('[DEBUG MODELS in proctoring.service]', Object.keys(db));
+
 const aiService = require('./ai.service');
 const blockchainService = require('./blockchain.service');
 
-// Các loại vi phạm nghiêm trọng cần ghi lên blockchain
 const SEVERE_VIOLATIONS = ['MOBILE_PHONE_DETECTED', 'MULTIPLE_FACES', 'FACE_NOT_DETECTED'];
 
 /**
- * Xử lý dữ liệu giám sát nhận được.
+ * ✅ Tạo một phiên giám sát mới (exam session)
+ */
+async function createSession({ user_id, exam_id }) {
+  try {
+    const newSession = await db.ExamSession.create({
+      userId: user_id,
+      examId: exam_id,
+      startTime: new Date(), // ✅ phải là startTime (đúng theo model)
+      status: 'in_progress',      // hoặc giữ 'in_progress' nếu bạn muốn mặc định
+    });
+
+    console.log(`[ProctoringService] Đã tạo phiên giám sát mới:`, newSession.id);
+    return newSession;
+  } catch (error) {
+    console.error('❌ Lỗi khi tạo phiên giám sát:', error);
+    throw error;
+  }
+}
+
+
+/**
+ * Nhận dữ liệu giám sát từ AI
  */
 async function handleProctoringData(sessionId, imageBuffer) {
   const violations = await aiService.analyzeFrame(imageBuffer);
-
-  if (!violations || violations.length === 0) {
-    return; 
-  }
+  if (!violations || violations.length === 0) return;
 
   console.log(`[Service] Phát hiện ${violations.length} vi phạm cho phiên thi ${sessionId}.`);
 
   for (const violation of violations) {
     const eventData = {
-      sessionId: sessionId,
-      studentId: 'student-001', // Tạm thời hardcode để test
+      sessionId,
+      studentId: 'student-001',
       eventType: violation.event_type,
       severity: violation.severity,
       metadata: violation.metadata,
@@ -34,14 +53,12 @@ async function handleProctoringData(sessionId, imageBuffer) {
 
       if (SEVERE_VIOLATIONS.includes(eventData.eventType)) {
         console.log(`[Blockchain] Vi phạm nghiêm trọng [${eventData.eventType}], đang chuẩn bị ghi...`);
-        
         const blockchainData = {
           sessionId: eventData.sessionId,
           studentId: eventData.studentId,
           violationType: eventData.eventType,
-          transactionHash: newEvent.id.toString(), 
+          transactionHash: newEvent.id.toString(),
         };
-        
         // await blockchainService.recordViolation(blockchainData);
       }
     } catch (error) {
@@ -51,16 +68,12 @@ async function handleProctoringData(sessionId, imageBuffer) {
 }
 
 /**
- * Lấy tất cả các sự kiện vi phạm của một phiên thi.
+ * Lấy danh sách các sự kiện vi phạm của một phiên thi
  */
 async function getEventsBySession(sessionId) {
   try {
     const events = await db.ProctoringEvent.findAll({
-      // === PHẦN ĐÃ SỬA LỖI ===
-      // Sử dụng thuộc tính 'sessionId' (camelCase) đã định nghĩa trong model.
-      // Sequelize sẽ tự động chuyển nó thành 'session_id' (snake_case) khi truy vấn DB
-      // nhờ vào tùy chọn 'field: 'session_id'' trong file model.
-      where: { sessionId: sessionId }, 
+      where: { sessionId },
       order: [['timestamp', 'ASC']],
     });
     return events;
@@ -71,6 +84,7 @@ async function getEventsBySession(sessionId) {
 }
 
 module.exports = {
+  createSession,
   handleProctoringData,
   getEventsBySession,
 };
