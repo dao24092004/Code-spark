@@ -28,6 +28,28 @@ async function getEventsBySession(req, res) {
   }
 }
 
+async function startProctoringSession(req, res) {
+  try {
+    // Lấy userId và examId (chính là submissionId) từ body của request
+    const { userId, examId } = req.body;
+    if (!userId || !examId) {
+      return res.status(400).json({ message: 'userId và examId là bắt buộc.' });
+    }
+
+    // Gọi đến service để tạo một bản ghi exam_session mới
+    const newSession = await proctoringService.createSession({
+      user_id: userId,
+      exam_id: examId, // Lưu lại submissionId để liên kết
+    });
+
+    // Trả về response thành công với status 201 (Created)
+    res.status(201).json(newSession);
+  } catch (error) {
+    console.error('Error in startProctoringSession controller:', error);
+    res.status(500).json({ message: 'Lỗi khi tạo phiên giám sát.' });
+  }
+}
 module.exports = {
   getEventsBySession,
+  startProctoringSession,
 };
