@@ -1,5 +1,6 @@
 {
     "configurations": [
+        
         {
             "type": "java",
             "name": "OnlineExamServiceApplication",
@@ -131,11 +132,31 @@
         },
         {
             "type": "java",
+            "name": "Spring Boot-ExamServiceApplication<exam-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.examservice.ExamServiceApplication",
+            "projectName": "exam-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-CourseServiceApplication<course-service>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
             "mainClass": "com.dao.courseservice.CourseServiceApplication",
             "projectName": "course-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-AnalyticsServiceApplication<analytics-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.analyticsservice.AnalyticsServiceApplication",
+            "projectName": "analytics-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }

@@ -286,6 +286,45 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+  exam-service:
+    build:
+      context: .
+      dockerfile: services/exam-service/Dockerfile
+    container_name: exam-service
+    ports:
+      - "9007:9005"
+    networks:
+      - microservice-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/exam_db
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
+      - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+
+  analytics-service:
+    build: ./services/analytics-service
+    container_name: analytics-service
+    ports:
+      - "9008:9004"
+    networks:
+      - microservice-net
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/analytics_db
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo-db:27017/analytics_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
+      - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+    depends_on:
+      - discovery-service
+      - config-server
+      - postgres-db
+      - mongo-db
 
   # Contract Deployer for Copyright Service
   contract-deployer:
