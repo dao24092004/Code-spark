@@ -42,6 +42,8 @@
         <module>services/file-service</module>
         <module>services/notification-service</module>
         <module>services/common-library</module>
+        <module>services/exam-service</module>
+        <module>services/analytics-service</module>
     </modules>
 
 </project>

@@ -1,54 +1,51 @@
 package com.dao.analyticsservice.controller;
 
-import com.dao.analyticsservice.dto.AuditLogDto;
-import com.dao.analyticsservice.dto.CheatingStatsDto;
-import com.dao.analyticsservice.dto.DashboardDto;
-import com.dao.analyticsservice.dto.ExamResultDto;
-import com.dao.analyticsservice.dto.RecommendationDto;
+import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
+import com.dao.analyticsservice.dto.response.DashboardResponse;
+import com.dao.analyticsservice.dto.response.ExamResultResponse;
+import com.dao.analyticsservice.dto.response.RecommendationResponse;
 import com.dao.analyticsservice.service.AnalyticsService;
-import lombok.RequiredArgsConstructor;
+import com.dao.common.dto.ApiResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/analytics")
-@RequiredArgsConstructor
+@RequestMapping("analytics")
 public class AnalyticsController {
 
-    private final AnalyticsService analyticsService;
+    @Autowired
+    private AnalyticsService analyticsService;
 
     @GetMapping("/exam-results")
-    public ResponseEntity<List<ExamResultDto>> getExamResults(
-            @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String classId) {
-        return ResponseEntity.ok(analyticsService.getExamResults(userId, classId));
+    public ResponseEntity<ApiResponse<List<ExamResultResponse>>> getExamResults(
+            @RequestParam(required = false) UUID examId,
+            @RequestParam(required = false) UUID userId) {
+        List<ExamResultResponse> results = analyticsService.getExamResults(examId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Exam results fetched successfully", results));
     }
 
     @GetMapping("/cheating-stats")
-    public ResponseEntity<List<CheatingStatsDto>> getCheatingStats(
-            @RequestParam String examId) {
-        return ResponseEntity.ok(analyticsService.getCheatingStats(examId));
+    public ResponseEntity<ApiResponse<CheatingStatsResponse>> getCheatingStats(
+            @RequestParam UUID examId) {
+        CheatingStatsResponse stats = analyticsService.getCheatingStats(examId);
+        return ResponseEntity.ok(ApiResponse.success("Cheating statistics fetched successfully", stats));
     }
 
     @GetMapping("/dashboards")
-    public ResponseEntity<DashboardDto> getDashboard(
-            @RequestParam String userId) {
-        return ResponseEntity.ok(analyticsService.getDashboard(userId));
+    public ResponseEntity<ApiResponse<DashboardResponse>> getDashboardData(
+            @RequestParam UUID userId) {
+        DashboardResponse dashboard = analyticsService.getDashboardData(userId);
+        return ResponseEntity.ok(ApiResponse.success("Dashboard data fetched successfully", dashboard));
     }
 
     @GetMapping("/recommendations")
-    public ResponseEntity<List<RecommendationDto>> getRecommendations(
-            @RequestParam String studentId) {
-        return ResponseEntity.ok(analyticsService.getRecommendations(studentId));
-    }
-
-    @GetMapping("/audit-logs")
-    public ResponseEntity<List<AuditLogDto>> getAuditLogs() {
-        return ResponseEntity.ok(analyticsService.getAuditLogs());
+    public ResponseEntity<ApiResponse<List<RecommendationResponse>>> getRecommendations(
+            @RequestParam UUID userId) {
+        List<RecommendationResponse> recommendations = analyticsService.getRecommendations(userId);
+        return ResponseEntity.ok(ApiResponse.success("Recommendations fetched successfully", recommendations));
     }
 }

@@ -47,6 +47,12 @@ spring:
             - Path=/course/**
           filters:
             - StripPrefix=1
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/analytics/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost
