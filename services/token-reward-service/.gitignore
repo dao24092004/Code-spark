@@ -1,0 +1,5 @@
+ # Thư mục chứa các thư viện đã cài, rất nặng và không cần đưa lên Git
+node_modules
+
+# File chứa tất cả các thông tin bí mật
+.env
