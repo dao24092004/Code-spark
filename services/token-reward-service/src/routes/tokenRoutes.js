@@ -2,19 +2,21 @@
 const express = require('express');
 const router = express.Router();
 const tokenController = require('../controllers/tokenController');
+const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 // Định nghĩa một route: Khi có request POST tới /grant,
 // hàm grantTokenHandler trong tokenController sẽ được gọi.
-router.post('/grant', tokenController.grantTokenHandler);
+router.post('/grant', authenticateToken, checkPermission('token:grant'), tokenController.grantTokenHandler);
+
 // UC27: Tiêu token (mới)
-router.post('/spend', tokenController.spendTokenHandler);
+router.post('/spend', authenticateToken, checkPermission('token:spend'), tokenController.spendTokenHandler);
 
 // UC28a: Lấy số dư (mới) - dùng param :studentId
-router.get('/balance/:studentId', tokenController.getBalanceHandler);
+router.get('/balance/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getBalanceHandler);
 
 // UC28b: Lấy lịch sử (mới) - dùng param :studentId
-router.get('/history/:studentId', tokenController.getHistoryHandler);
+router.get('/history/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getHistoryHandler);
 
-router.post('/withdraw', tokenController.withdrawTokenHandler);
+router.post('/withdraw', authenticateToken, checkPermission('token:withdraw'), tokenController.withdrawTokenHandler);
 
 module.exports = router; 

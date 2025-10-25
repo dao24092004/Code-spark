@@ -56,3 +56,15 @@ node scripts/populate-db.js
 
 *   `POST /api/tokens/reward`: Award tokens to a user.
 *   `GET /api/users/:id/balance`: Get the token balance of a user.
+
+## Authorization
+
+Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
+
+| Method | Route                   | Permission Required   |
+|--------|-------------------------|-----------------------|
+| POST   | `/grant`                | `token:grant`         |
+| POST   | `/spend`                | `token:spend`         |
+| GET    | `/balance/:studentId`   | `token:read:self`     |
+| GET    | `/history/:studentId`   | `token:read:self`     |
+| POST   | `/withdraw`             | `token:withdraw`      |
