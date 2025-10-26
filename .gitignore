@@ -1,5 +1,9 @@
 ### Maven ###
 target/
+*.jar
+*.war
+*.ear
+*.class
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -8,6 +12,29 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+
+# Maven status files
+**/target/
+**/maven-status/
+**/*.lst
+**/*.createdFiles
+**/*.inputFiles
+**/*.jar.original
+
+# Compiled class files
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+
+# Maven wrapper
+.mvn/
+mvnw
+mvnw.cmd
+
+# Build directories
+build/
+out/
 
 ### IntelliJ IDEA ###
 .idea/
@@ -59,3 +86,22 @@ Thumbs.db
 # ignore build and cache files from each microservice
 **/target/
 **/build/
+**/maven-status/
+**/classes/
+
+# Application specific
+application-local.yml
+application-dev.yml
+application-prod.yml
+
+# Node modules (if any frontend)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Coverage reports
+coverage/
+*.lcov

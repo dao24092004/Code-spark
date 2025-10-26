@@ -32,10 +32,22 @@ spring:
             - Path=/api/copyrights/**
           filters:
             - StripPrefix=1
+        - id: exam-service
+          uri: lb://exam-service
+          predicates:
+            - Path=/exam/**
+          filters:
+            - StripPrefix=1
         - id: course-service
           uri: lb://course-service
           predicates:
             - Path=/course/**
+          filters:
+            - StripPrefix=1
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/analytics/**
           filters:
             - StripPrefix=1
   data:
