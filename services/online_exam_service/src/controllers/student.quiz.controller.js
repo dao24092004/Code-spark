@@ -10,8 +10,7 @@ async function startQuiz(req, res) {
   try {
     // Lấy quizId từ URL (ví dụ: /api/quizzes/abc-123/start)
     const { quizId } = req.params;
-    // Tạm thời lấy userId, trong thực tế sẽ lấy từ token JWT
-    const userId = 1; // Giả sử là user có ID = 1
+    const userId = req.user.id; // Lấy userId từ token JWT đã được xác thực
 
     // Gọi đến service để xử lý logic
     const result = await quizService.startQuiz(userId, quizId);

@@ -6,7 +6,8 @@ const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 // Định nghĩa một route: Khi có request POST tới /grant,
 // hàm grantTokenHandler trong tokenController sẽ được gọi.
-router.post('/grant', authenticateToken, checkPermission('token:grant'), tokenController.grantTokenHandler);
+//router.post('/grant', authenticateToken, checkPermission('token:grant'), tokenController.grantTokenHandler);
+router.post('/grant', authenticateToken, tokenController.grantTokenHandler);
 
 // UC27: Tiêu token (mới)
 router.post('/spend', authenticateToken, checkPermission('token:spend'), tokenController.spendTokenHandler);

@@ -10,6 +10,7 @@ router.get('/sessions/:sessionId/events', authenticateToken, checkPermission('pr
 
 // <<< BỔ SUNG >>>
 // Route mới: Để nhận lệnh bắt đầu một phiên giám sát từ service khác
-router.post('/sessions/start-monitoring', authenticateToken, checkPermission('proctoring:session:start'), proctoringController.startProctoringSession);
+//router.post('/sessions/start-monitoring', authenticateToken, checkPermission('proctoring:session:start'), proctoringController.startProctoringSession);
+router.post('/sessions/start-monitoring', authenticateToken, proctoringController.startProctoringSession);
 
 module.exports = router;

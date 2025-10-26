@@ -30,8 +30,8 @@ async function getEventsBySession(req, res) {
 
 async function startProctoringSession(req, res) {
   try {
-    // Lấy userId và examId (chính là submissionId) từ body của request
-    const { userId, examId } = req.body;
+    const userId = req.user.id; // Lấy userId từ token JWT đã được xác thực
+    const { examId } = req.body;
     if (!userId || !examId) {
       return res.status(400).json({ message: 'userId và examId là bắt buộc.' });
     }

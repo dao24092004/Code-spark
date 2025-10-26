@@ -6,7 +6,8 @@ const studentQuizController = require('../controllers/student.quiz.controller');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 // Route để bắt đầu bài thi
-router.post('/:quizId/start', authenticateToken, checkPermission('quiz:start'), studentQuizController.startQuiz);
+//router.post('/:quizId/start', authenticateToken, checkPermission('quiz:start'), studentQuizController.startQuiz);
+router.post('/:quizId/start', authenticateToken, studentQuizController.startQuiz);
 
 // <<< BỔ SUNG DÒNG NÀY >>>
 // Route để nộp bài thi

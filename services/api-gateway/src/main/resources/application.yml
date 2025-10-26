@@ -41,6 +41,24 @@ spring:
             - Path=/course/**
           filters:
             - StripPrefix=1
+        - id: token-reward--service 
+          uri: lb://token-reward-service 
+          predicates:
+            - Path=/api/tokens/**
+          filters:
+            - StripPrefix=1
+        - id: proctoring-service
+          uri: lb://proctoring-service
+          predicates:
+            - Path=/api/proctoring/**
+          filters:
+            - StripPrefix=1
+        - id: online-exam-service
+          uri: lb://online-exam-service
+          predicates:
+            - Path=/api/exam/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost
