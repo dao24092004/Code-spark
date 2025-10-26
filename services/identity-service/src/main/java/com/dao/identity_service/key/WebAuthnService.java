@@ -1,167 +1,126 @@
 package com.dao.identity_service.key;
 
+import com.dao.common.exception.AppException;
+import com.yubico.webauthn.*;
+import com.yubico.webauthn.data.*;
+import java.time.Instant;
+import com.yubico.webauthn.data.ClientRegistrationExtensionOutputs;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
-import java.util.stream.Collectors;
 
-/**
- * Service xử lý WebAuthn/FIDO2 authentication (Simplified version for demo)
- * Trong thực tế sẽ sử dụng Yubico WebAuthn hoặc thư viện tương tự
- */
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Service
 public class WebAuthnService {
 
     private final WebAuthnCredentialRepository credentialRepository;
+    private final RelyingParty relyingParty;
+    private final Map<String, PublicKeyCredentialCreationOptions> registrationChallenges = new ConcurrentHashMap<>();
 
-    public WebAuthnService(WebAuthnCredentialRepository credentialRepository) {
+    private final Map<String, AssertionRequest> assertionRequests = new ConcurrentHashMap<>();
+
+    public WebAuthnService(WebAuthnCredentialRepository credentialRepository, RelyingParty relyingParty) {
         this.credentialRepository = credentialRepository;
+        this.relyingParty = relyingParty;
     }
 
-    /**
-     * Tạo assertion options cho authentication (simplified)
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> startAuthentication(String username) {
-        // Kiểm tra user có tồn tại không
-        Optional<WebAuthnCredential> credentialOpt = credentialRepository.findUserIdByUsername(username);
-        if (credentialOpt.isEmpty()) {
-            throw new RuntimeException("User not found or no credentials registered");
+
+
+    public AssertionRequest startAuthentication(String username) {
+        if (credentialRepository.findByUsername(username).isEmpty()) {
+            throw new AppException("User not found or no WebAuthn credentials registered for this user.", HttpStatus.BAD_REQUEST);
         }
-
-        WebAuthnCredential credential = credentialOpt.get();
-        byte[] userId = credential.getCredentialId();
-
-        // Tạo challenge ngẫu nhiên
-        String challenge = generateChallenge();
-
-        return Map.of(
-            "challenge", challenge,
-            "rpId", "localhost",
-            "userId", Base64.getEncoder().encodeToString(userId),
-            "allowCredentials", getAllowCredentials(username)
-        );
+        AssertionRequest assertionRequest = relyingParty.startAssertion(StartAssertionOptions.builder()
+            .username(username)
+            .build());
+        assertionRequests.put(username, assertionRequest);
+        return assertionRequest;
     }
 
-    /**
-     * Xác thực assertion từ client (simplified)
-     */
     @Transactional
-    public WebAuthnAuthenticationResult finishAuthentication(String username,
-                                                           String credentialId,
-                                                           String clientDataJSON,
-                                                           String authenticatorData,
-                                                           String signature) {
+    public WebAuthnAuthenticationResult finishAuthentication(String responseJson) {
         try {
-            // Trong thực tế sẽ verify signature và authenticator data
-            // Ở đây chỉ kiểm tra credential có tồn tại không
-            Optional<WebAuthnCredential> credentialOpt = credentialRepository
-                .findByCredentialId(Base64.getDecoder().decode(credentialId));
+            // Parse the incoming JSON response
+            var response = PublicKeyCredential.parseAssertionResponseJson(responseJson);
+            String username = response.getResponse().getUserHandle().get().toString(); // Adjust based on actual username retrieval
 
-            if (credentialOpt.isPresent()) {
-                WebAuthnCredential credential = credentialOpt.get();
-
-                // Cập nhật last used time
-                credential.setLastUsedAt(java.time.Instant.now());
-                credentialRepository.save(credential);
-
-                return new WebAuthnAuthenticationResult(
-                    true,
-                    credential.getUsername(),
-                    credentialId
-                );
-            } else {
-                return new WebAuthnAuthenticationResult(false, null, null);
+            AssertionRequest assertionRequest = assertionRequests.get(username);
+            if (assertionRequest == null) {
+                throw new AppException("No authentication challenge found for user.", HttpStatus.BAD_REQUEST);
             }
 
+            com.yubico.webauthn.AssertionResult result = relyingParty.finishAssertion(FinishAssertionOptions.builder()
+                .request(assertionRequest)
+                .response(response)
+                .build());
+
+            if (result.isSuccess()) {
+                credentialRepository.findByCredentialId(result.getCredential().getCredentialId().getBytes()).ifPresent(cred -> {
+                    cred.setCounter(result.getSignatureCount());
+                    cred.setLastUsedAt(Instant.now());
+                    credentialRepository.save(cred);
+                });
+                assertionRequests.remove(username);
+                return new WebAuthnAuthenticationResult(true, result.getUsername(), Base64.getUrlEncoder().encodeToString(result.getCredential().getCredentialId().getBytes()));
+            } else {
+                assertionRequests.remove(username);
+                return new WebAuthnAuthenticationResult(false, null, null);
+            }
         } catch (Exception e) {
-            return new WebAuthnAuthenticationResult(false, null, null);
+            throw new AppException("Authentication failed: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
-    /**
-     * Tạo registration options cho đăng ký thiết bị mới (simplified)
-     */
-    public Map<String, Object> startRegistration(String username, String displayName) {
-        // Tạo user ID mới
-        byte[] userId = generateUserId(username);
-        String challenge = generateChallenge();
-
-        return Map.of(
-            "challenge", challenge,
-            "rp", Map.of(
-                "id", "localhost",
-                "name", "CodeSpark"
-            ),
-            "user", Map.of(
-                "id", Base64.getEncoder().encodeToString(userId),
-                "name", username,
-                "displayName", displayName != null ? displayName : username
-            ),
-            "pubKeyCredParams", List.of(
-                Map.of("type", "public-key", "alg", -7),  // ES256
-                Map.of("type", "public-key", "alg", -257) // RS256
-            ),
-            "authenticatorSelection", Map.of(
-                "requireResidentKey", false,
-                "userVerification", "discouraged"
-            ),
-            "attestation", "direct"
-        );
+    public PublicKeyCredentialCreationOptions startRegistration(String username, String displayName) {
+        StartRegistrationOptions options = StartRegistrationOptions.builder()
+                .user(UserIdentity.builder()
+                        .name(username)
+                        .displayName(displayName)
+                        .id(new ByteArray(username.getBytes()))
+                        .build())
+                .build();
+        PublicKeyCredentialCreationOptions creationOptions = relyingParty.startRegistration(options);
+        registrationChallenges.put(username, creationOptions);
+        return creationOptions;
     }
 
-    /**
-     * Hoàn thành quá trình đăng ký thiết bị (simplified)
-     */
+
+
     @Transactional
-    public WebAuthnRegistrationResult finishRegistration(String username,
-                                                        String credentialId,
-                                                        String clientDataJSON,
-                                                        String attestationObject,
-                                                        String publicKey) {
+    public WebAuthnRegistrationResult finishRegistration(String username, String responseJson) {
         try {
-            // Trong thực tế sẽ verify attestation object và public key
-            // Ở đây chỉ lưu credential vào database
+            PublicKeyCredentialCreationOptions creationOptions = registrationChallenges.get(username);
+            if (creationOptions == null) {
+                throw new AppException("No registration challenge found for user.", HttpStatus.BAD_REQUEST);
+            }
 
-            WebAuthnCredential credential = new WebAuthnCredential();
-            credential.setUsername(username);
-            credential.setCredentialId(Base64.getDecoder().decode(credentialId));
-            credential.setPublicKey(Base64.getDecoder().decode(publicKey));
-            credential.setCounter(0L);
+            com.yubico.webauthn.RegistrationResult registrationResult = relyingParty.finishRegistration(FinishRegistrationOptions.builder()
+                    .request(creationOptions)
+                    .response(PublicKeyCredential.parseRegistrationResponseJson(responseJson))
+                    .build());
 
-            credentialRepository.save(credential);
+            WebAuthnCredential newCredential = new WebAuthnCredential();
+            newCredential.setUsername(creationOptions.getUser().getName());
+            newCredential.setCredentialId(registrationResult.getKeyId().getId().getBytes());
+            newCredential.setPublicKey(registrationResult.getPublicKeyCose().getBytes());
+            newCredential.setCounter(registrationResult.getSignatureCount());
 
-            return new WebAuthnRegistrationResult(true, "Registration successful");
+            credentialRepository.save(newCredential);
+            registrationChallenges.remove(username);
+
+            return new WebAuthnRegistrationResult(true, "Registration successful", creationOptions.getUser().getName());
 
         } catch (Exception e) {
-            return new WebAuthnRegistrationResult(false, "Registration failed: " + e.getMessage());
+            registrationChallenges.remove(username);
+            throw new AppException("Registration failed: " + e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
-    private String generateChallenge() {
-        // Tạo challenge ngẫu nhiên 32 bytes
-        byte[] challenge = new byte[32];
-        new Random().nextBytes(challenge);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(challenge);
-    }
 
-    private byte[] generateUserId(String username) {
-        // Tạo user ID từ username
-        return username.getBytes();
-    }
 
-    private List<Map<String, Object>> getAllowCredentials(String username) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (WebAuthnCredential cred : credentialRepository.findByUsername(username)) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("type", "public-key");
-            map.put("id", Base64.getEncoder().encodeToString(cred.getCredentialId()));
-            result.add(map);
-        }
-        return result;
-    }
-
-    // Simplified result classes
     public static class WebAuthnAuthenticationResult {
         private final boolean success;
         private final String username;
@@ -181,13 +140,16 @@ public class WebAuthnService {
     public static class WebAuthnRegistrationResult {
         private final boolean success;
         private final String message;
+        private final String username;
 
-        public WebAuthnRegistrationResult(boolean success, String message) {
+        public WebAuthnRegistrationResult(boolean success, String message, String username) {
             this.success = success;
             this.message = message;
+            this.username = username;
         }
 
         public boolean isSuccess() { return success; }
         public String getMessage() { return message; }
+        public String getUsername() { return username; }
     }
 }

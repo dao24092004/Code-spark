@@ -89,6 +89,19 @@ public class AuthService {
         }
     }
 
+    public AuthResponse generateAuthResponseForUser(User user) {
+        userService.updateLastLogin(user.getUsername());
+        
+        String accessToken = jwtService.generateTokenWithUserId(user, String.valueOf(user.getId()));
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(mapToUserDto(user))
+                .build();
+    }
+
     private AuthResponse.UserDto mapToUserDto(User user) {
         return AuthResponse.UserDto.builder()
                 .id(user.getId())

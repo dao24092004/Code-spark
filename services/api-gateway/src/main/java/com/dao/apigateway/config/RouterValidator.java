@@ -16,6 +16,7 @@ public class RouterValidator {
     public static final List<String> openApiEndpoints = List.of(
             // Auth endpoints
             "/identity/api/v1/auth/**",
+            "/identity/api/webauthn/**",
             "/identity/api/v1/roles/**",
             "/api/v1/auth/**",
 

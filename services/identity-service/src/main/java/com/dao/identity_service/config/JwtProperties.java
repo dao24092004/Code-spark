@@ -14,7 +14,6 @@ import javax.validation.constraints.Positive;
  */
 @Data
 @Validated
-@Configuration
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
     

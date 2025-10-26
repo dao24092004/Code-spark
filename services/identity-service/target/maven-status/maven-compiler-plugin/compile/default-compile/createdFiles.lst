@@ -20,7 +20,6 @@ com/dao/identity_service/exception/GlobalExceptionHandler.class
 com/dao/identity_service/dto/AuthResponse.class
 com/dao/identity_service/dto/UserDto.class
 com/dao/identity_service/service/PermissionService.class
-com/dao/identity_service/controller/WebAuthnController$RegistrationResultRequest.class
 com/dao/identity_service/IdentityServiceApplication.class
 com/dao/identity_service/controller/WebAuthnController$RegistrationOptionsRequest.class
 com/dao/identity_service/dto/AuthResponse$UserDto$UserDtoBuilder.class
@@ -31,6 +30,7 @@ com/dao/identity_service/dto/PermissionDto$PermissionDtoBuilder.class
 com/dao/identity_service/dto/AuthResponse$UserDto.class
 com/dao/identity_service/entity/Permission$PermissionBuilder.class
 com/dao/identity_service/dto/RoleDto.class
+com/dao/identity_service/key/YubicoCredentialRepository.class
 com/dao/identity_service/service/InterServiceAuthService.class
 com/dao/identity_service/service/RoleService.class
 com/dao/identity_service/dto/LoginRequest.class
@@ -52,8 +52,8 @@ com/dao/identity_service/service/AuthService.class
 com/dao/identity_service/controller/RoleController.class
 com/dao/identity_service/dto/ChangePasswordRequest.class
 com/dao/identity_service/security/JwtService.class
-com/dao/identity_service/controller/WebAuthnController$AssertionResultRequest.class
 com/dao/identity_service/repository/UserRepository.class
+com/dao/identity_service/config/WebAuthnConfig.class
 com/dao/identity_service/exception/UnauthorizedException.class
 com/dao/identity_service/dto/PermissionDto.class
 com/dao/identity_service/mapper/UserMapper.class
