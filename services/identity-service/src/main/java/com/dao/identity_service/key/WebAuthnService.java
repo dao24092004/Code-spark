@@ -45,7 +45,7 @@ public class WebAuthnService {
         try {
             // Parse the incoming JSON response
             var response = PublicKeyCredential.parseAssertionResponseJson(responseJson);
-            String username = response.getResponse().getUserHandle().get().toString(); // Adjust based on actual username retrieval
+            String username = new String(response.getResponse().getUserHandle().get().getBytes(), java.nio.charset.StandardCharsets.UTF_8);
 
             AssertionRequest assertionRequest = assertionRequests.get(username);
             if (assertionRequest == null) {
