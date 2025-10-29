@@ -9,13 +9,34 @@ const tokenABI = tokenArtifact.abi;
 const { WEB3_PROVIDER_URL, ACCOUNT_PRIVATE_KEY, CONTRACT_ADDRESS } = process.env;
 
 // 1. Thiết lập kết nối với Ganache
-const provider = new ethers.JsonRpcProvider(WEB3_PROVIDER_URL);
+let provider = null;
+let serverWallet = null;
+let tokenContract = null;
 
-// 2. Thiết lập ví của server (dùng để ký và gửi giao dịch)
-const serverWallet = new ethers.Wallet(ACCOUNT_PRIVATE_KEY, provider);
-
-// 3. Thiết lập đối tượng Contract
-const tokenContract = new ethers.Contract(CONTRACT_ADDRESS, tokenABI, serverWallet);
+try {
+    if (WEB3_PROVIDER_URL && ACCOUNT_PRIVATE_KEY) {
+        // Clean private key - remove any prefix or extra characters
+        const cleanPrivateKey = ACCOUNT_PRIVATE_KEY.replace(/^ACCOUNT_PRIVATE_KEY=/, '').trim();
+        if (!cleanPrivateKey || cleanPrivateKey.length < 40) {
+            throw new Error('Invalid private key format');
+        }
+        provider = new ethers.JsonRpcProvider(WEB3_PROVIDER_URL);
+        serverWallet = new ethers.Wallet(cleanPrivateKey, provider);
+        
+        if (CONTRACT_ADDRESS) {
+            // 3. Thiết lập đối tượng Contract
+            tokenContract = new ethers.Contract(CONTRACT_ADDRESS, tokenABI, serverWallet);
+            console.log('✅ Blockchain service initialized with contract address:', CONTRACT_ADDRESS);
+        } else {
+            console.warn('⚠️  CONTRACT_ADDRESS not set. Blockchain features will be disabled. Deploy contract first.');
+        }
+    } else {
+        console.warn('⚠️  Blockchain configuration missing. Blockchain features will be disabled.');
+    }
+} catch (error) {
+    console.error('❌ Error initializing blockchain service:', error.message);
+    console.warn('⚠️  Blockchain features will be disabled.');
+}
 
 const blockchainService = {
     /**
@@ -23,6 +44,11 @@ const blockchainService = {
      */
     transferTokens: async (toAddress, amount) => {
         try {
+            if (!tokenContract) {
+                console.warn('⚠️  Contract not initialized. Skipping blockchain transfer.');
+                return { success: false, error: 'Contract not initialized. Please deploy contract first.' };
+            }
+
             console.log(`Bắt đầu chuyển on-chain ${amount} token đến ${toAddress}...`);
 
             // Token ERC-20 thường có 18 chữ số thập phân

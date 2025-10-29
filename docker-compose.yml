@@ -141,7 +141,9 @@ services:
       - mongo-db
 
   identity-service:
-    build: ./services/identity-service
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
     container_name: identity-service
     ports:
       - "9000:9000"
@@ -208,7 +210,9 @@ services:
       - ./services/file-service/uploads:/usr/src/app/uploads
 
   profile-service:
-    build: ./services/profile-service
+    build:
+      context: .
+      dockerfile: services/profile-service/Dockerfile
     container_name: profile-service
     ports:
       - "9002:9002"
@@ -306,7 +310,9 @@ services:
       - JWT_EXPIRATION=${JWT_EXPIRATION}
 
   analytics-service:
-    build: ./services/analytics-service
+    build:
+      context: ./services
+      dockerfile: analytics-service/Dockerfile
     container_name: analytics-service
     ports:
       - "9008:9004"
@@ -346,6 +352,49 @@ services:
     profiles:
       - deploy
     restart: "no"
+
+  token-reward-service:
+    build: ./services/token-reward-service
+    container_name: token-reward-service
+    ports:
+      - "9009:3000"
+    networks:
+      - microservice-net
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+
+      # Database
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=token_reward_db
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Blockchain
+      - WEB3_PROVIDER_URL=http://ganache:7545
+      - ACCOUNT_PRIVATE_KEY=${ACCOUNT_PRIVATE_KEY}
+
+      # Service Discovery
+      - EUREKA_HOST=discovery-service
+      - EUREKA_PORT=9999
+      - SERVICE_DISCOVERY_ENABLED=true
+
+      # API Gateway
+      - API_GATEWAY_BASE_URL=http://api-gateway:8080
+    depends_on:
+      - postgres-db
+      - discovery-service
+      - ganache
+    volumes:
+      - ./services/token-reward-service/artifacts:/app/artifacts:ro
+      - ./services/token-reward-service/contracts:/app/contracts:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 # Khai báo mạng chung cho các container
 networks:
