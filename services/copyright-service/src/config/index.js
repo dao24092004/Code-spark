@@ -1,9 +1,5 @@
  const fs = require('fs');
  const path = require('path');
- const envFile = (process.env.NODE_ENV === 'development' && fs.existsSync(path.resolve(process.cwd(), '.env.local')))
-     ? '.env.local'
-     : '.env';
- require('dotenv').config({ path: envFile });
 
 const config = {
     server: {

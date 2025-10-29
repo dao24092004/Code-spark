@@ -3,6 +3,8 @@
 const db = require('../models');
 console.log('[DEBUG MODELS in proctoring.service]', Object.keys(db));
 
+console.log('[DEBUG MODELS in proctoring.service]', Object.keys(db));
+
 const aiService = require('./ai.service');
 const blockchainService = require('./blockchain.service');
 
@@ -106,11 +108,13 @@ async function handleProctoringData(sessionId, studentId, imageBuffer) {
 
 /**
  * Lấy danh sách các sự kiện vi phạm của một phiên thi
+ * Lấy danh sách các sự kiện vi phạm của một phiên thi
  */
 async function getEventsBySession(sessionId) {
   // ... (Code này của bạn đã đúng, giữ nguyên)
   try {
     const events = await db.ProctoringEvent.findAll({
+      where: { sessionId },
       where: { sessionId },
       order: [['timestamp', 'ASC']],
     });
@@ -157,6 +161,7 @@ async function getStudentsInExam(examId) {
 }
 
 module.exports = {
+  createSession,
   createSession,
   handleProctoringData,
   getEventsBySession,

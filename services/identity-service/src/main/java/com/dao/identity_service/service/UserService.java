@@ -41,9 +41,15 @@ public class UserService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsernameWithRolesAndPermissions(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        // Check if input looks like an email (contains @)
+        if (usernameOrEmail.contains("@")) {
+            return userRepository.findByEmailWithRolesAndPermissions(usernameOrEmail)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + usernameOrEmail));
+        } else {
+            return userRepository.findByUsernameWithRolesAndPermissions(usernameOrEmail)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + usernameOrEmail));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -149,7 +155,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserDto> findAllUsers() {
+    public final List<UserDto> findAllUsers() {
         return userRepository.findAll().stream()
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());

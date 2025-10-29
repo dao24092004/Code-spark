@@ -38,7 +38,7 @@ async function deployContracts() {
 
         // Deploy contract
         const deployTx = Contract.deploy({
-            data: contractArtifact.bytecode,
+            data: contractArtifact.data.bytecode.object,
             arguments: [] // Constructor arguments (none for this contract)
         });
 

@@ -25,6 +25,7 @@ public class AuthService {
     private final UserService userService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+  
 
     public AuthResponse register(RegisterRequest request) {
         UserDto savedUser = userService.createUser(request);
@@ -87,6 +88,19 @@ public class AuthService {
         } else {
             throw new AppException("Invalid refresh token", HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    public AuthResponse generateAuthResponseForUser(User user) {
+        userService.updateLastLogin(user.getUsername());
+        
+        String accessToken = jwtService.generateTokenWithUserId(user, String.valueOf(user.getId()));
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(mapToUserDto(user))
+                .build();
     }
 
     private AuthResponse.UserDto mapToUserDto(User user) {
