@@ -25,7 +25,7 @@ services:
 
   # 3. Cơ sở dữ liệu
   postgres-db:
-    image: postgres:latest
+    image: postgres:15
     container_name: postgres-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -65,16 +65,16 @@ services:
 
   # 4. Ganache local blockchain
   ganache:
-    image: trufflesuite/ganache-cli:latest
+    image: trufflesuite/ganache:v7.9.0
     container_name: ganache
     ports:
-      - "7545:7545"
+      - "7545:8545"
     volumes:
       - ganache_data:/ganache/data
     command: >
       --db /ganache/data 
       --host 0.0.0.0 
-      --port 7545 
+      --port 8545 
       -m "${GANACHE_MNEMONIC}" 
       --networkId 5777
     networks:
@@ -143,6 +143,8 @@ services:
   identity-service:
     build: ./services/identity-service
     container_name: identity-service
+    volumes:
+    - ${USERPROFILE}/.m2:/root/.m2
     ports:
       - "9000:9000"
     networks:
@@ -304,6 +306,43 @@ services:
       - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
+
+# ... (Sau service 'copyright-service' hoặc 'exam-service')
+
+  multisig-service:
+    build: ./services/multisig-service
+    container_name: multisig-service
+    ports:
+      - "3001:3001" # Map cổng 3001 của container ra cổng 3001 của máy bạn
+    networks:
+      - microservice-net
+    environment:
+      # Truyền các biến từ tệp .env gốc của code-spark vào container
+      - PORT=3001
+      - NODE_ENV=docker
+      - JWT_SECRET=${JWT_SECRET}
+
+      # Database
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=multisig_db # Đảm bảo database này tồn tại
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASS=${POSTGRES_PASSWORD}
+
+      # Blockchain
+      - RPC_URL=http://ganache:8545
+      - DEPLOYER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY}
+      - SERVICE_ACCOUNT_PRIVATE_KEY=${SERVICE_ACCOUNT_PRIVATE_KEY}
+
+      # Service Discovery
+      - EUREKA_HOST=discovery-service
+      - EUREKA_PORT=9999
+      - EUREKA_ENABLED=true
+
+    depends_on:
+      - postgres-db
+      - discovery-service
+      - ganache
 
   analytics-service:
     build: ./services/analytics-service

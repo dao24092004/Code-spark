@@ -1,0 +1,8 @@
+# Bỏ qua thư mục node_modules trên máy host
+node_modules
+
+# Bỏ qua các tệp npm debug
+npm-debug.log*
+
+# Bỏ qua các biến môi trường cục bộ
+.env
