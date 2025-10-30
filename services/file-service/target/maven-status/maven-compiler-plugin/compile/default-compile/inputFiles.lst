@@ -1,7 +1,7 @@
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\client\IdentityAuthClient.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\dto\ApiResponse.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileController.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileServiceApplication.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileStorageService.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\security\AuthorizationService.java
-D:\Documents(D)\Ky7\NCKH\Code-spark\services\file-service\src\main\java\com\dao\fileservice\security\Permissions.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\client\IdentityAuthClient.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\dto\ApiResponse.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileController.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileServiceApplication.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\FileStorageService.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\security\AuthorizationService.java
+D:\Documents(D)\Ky7\HocMayNangCao\Code-spark\services\file-service\src\main\java\com\dao\fileservice\security\Permissions.java
