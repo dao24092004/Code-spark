@@ -50,6 +50,13 @@ spring:
             - Path=/analytics/**
           filters:
             - StripPrefix=1
+        
+        - id: token-reward-service
+          uri: http://token-reward-service:3000
+          predicates:
+            - Path=/token-reward/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost

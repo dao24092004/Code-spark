@@ -1,58 +1,183 @@
 # Token Reward Service
 
-This service is responsible for managing token rewards for users. It provides endpoints for awarding tokens and tracking user balances.
+Microservice quản lý hệ thống thưởng token (ERC-20) cho học sinh trong platform EduPlatform.
 
-## Technologies Used
+## 🎯 Chức năng chính
 
-*   Node.js
-*   Express.js
-*   Sequelize
-*   PostgreSQL
-*   Hardhat
-*   Ethers.js
+- ✅ Cấp token cho học sinh (grant tokens)
+- ✅ Tiêu token (spend tokens) 
+- ✅ Rút token về blockchain wallet (withdraw)
+- ✅ Xem số dư token (get balance)
+- ✅ Lịch sử giao dịch có phân trang (transaction history)
+- ✅ Off-chain balance management (nhanh)
+- ✅ On-chain withdrawal (khi cần)
 
-## Getting Started
+## 🛠️ Technologies
 
-### Prerequisites
+- **Backend**: Node.js + Express.js
+- **ORM**: Sequelize
+- **Database**: PostgreSQL
+- **Blockchain**: Hardhat + Ethers.js
+- **Network**: Ganache (local testnet)
 
-*   Node.js
-*   PostgreSQL
+## 📚 Documentation
 
-### Installation
+| File | Nội dung |
+|------|----------|
+| [QUICK_START.md](./QUICK_START.md) | ⚡ Khởi động nhanh 5 phút |
+| [HUONG_DAN_CHAY_SERVICE.md](./HUONG_DAN_CHAY_SERVICE.md) | 📖 Hướng dẫn đầy đủ chi tiết |
+| [DBEAVER_SETUP.md](./DBEAVER_SETUP.md) | 🗄️ Setup database với DBeaver |
+| [database-schema.sql](./database-schema.sql) | 📝 SQL script tạo tables |
+| [env.template](./env.template) | ⚙️ Template cấu hình .env |
 
-1.  Clone the repository.
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Set up the database by creating a `.env` file with the following variables:
-    ```
-    DB_USER=your_db_user
-    DB_PASSWORD=your_db_password
-    DB_HOST=your_db_host
-    DB_PORT=your_db_port
-    DB_NAME=your_db_name
-    ```
-4.  Run database migrations (if you have migration files):
-    ```bash
-    npx sequelize-cli db:migrate
-    ```
-
-### Running the Service
+## ⚡ Quick Start
 
 ```bash
-npm start
+# 1. Cài đặt
+npm install
+
+# 2. Cấu hình
+copy env.template .env
+
+# 3. Tạo database
+psql -U postgres -c "CREATE DATABASE token_reward_db;"
+psql -U postgres -d token_reward_db -f database-schema.sql
+
+# 4. Chạy
+npm run dev
+
+# 5. Test
+curl http://localhost:3000/api/tokens/balance/2
 ```
 
-### Seeding the Database
+Xem chi tiết: [QUICK_START.md](./QUICK_START.md)
 
-To populate the database with sample data, run the following command:
+## 🔌 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/tokens/balance/:studentId` | Xem số dư token |
+| `GET` | `/api/tokens/history/:studentId` | Lịch sử giao dịch |
+| `POST` | `/api/tokens/grant` | Cấp token (admin) |
+| `POST` | `/api/tokens/spend` | Tiêu token |
+| `POST` | `/api/tokens/withdraw` | Rút token về blockchain |
+
+## 🗄️ Database Schema
+
+10 tables được tạo:
+- `cm_users` - User balances
+- `cm_rewards` - Transaction history
+- `cm_courses` - Course info
+- `cm_materials` - Learning materials
+- `cm_quizzes` - Quizzes
+- `cm_questions` - Questions
+- `cm_question_options` - Answer options
+- `cm_quiz_submissions` - Student submissions
+- `cm_answers` - Detailed answers
+- `cm_progress` - Learning progress
+
+## 🐳 Docker
 
 ```bash
-node scripts/populate-db.js
+# Chạy với Docker Compose
+cd Code-spark
+docker-compose up -d postgres-db token-reward-service
+
+# Seed data
+docker exec token-reward-service node scripts/populate-db.js
+
+# Check logs
+docker logs token-reward-service -f
 ```
 
-## API Endpoints
+## 🔗 Service URLs
 
-*   `POST /api/tokens/reward`: Award tokens to a user.
-*   `GET /api/users/:id/balance`: Get the token balance of a user.
+| Environment | URL |
+|-------------|-----|
+| Development | http://localhost:3000 |
+| Docker | http://localhost:9009 |
+| Via Gateway | http://localhost:8080/token-reward |
+
+## 🧪 Testing
+
+```bash
+# Get balance
+curl http://localhost:3000/api/tokens/balance/2
+
+# Grant 100 tokens
+curl -X POST http://localhost:3000/api/tokens/grant \
+  -H "Content-Type: application/json" \
+  -d '{"studentId": 2, "amount": 100, "reasonCode": "ADMIN_BONUS"}'
+
+# Check new balance
+curl http://localhost:3000/api/tokens/balance/2
+```
+
+## 📦 Project Structure
+
+```
+token-reward-service/
+├── app.js                    # Express app
+├── server.js                 # Entry point
+├── package.json             
+├── .env                      # Config (create from env.template)
+├── database-schema.sql       # Database setup
+├── src/
+│   ├── controllers/          # Request handlers
+│   ├── services/             # Business logic
+│   ├── models/               # Sequelize models
+│   ├── routes/               # API routes
+│   └── config/               # Configuration
+├── scripts/
+│   ├── deploy-contracts.js   # Deploy blockchain
+│   └── populate-db.js        # Seed database
+└── contracts/
+    └── Token.sol             # ERC-20 smart contract
+```
+
+## 🔧 Development Scripts
+
+```bash
+npm start        # Production mode
+npm run dev      # Development mode (with nodemon)
+npm test         # Run tests (not implemented yet)
+```
+
+## 🎓 Sample Data
+
+Script `database-schema.sql` tạo sẵn:
+
+**3 Users:**
+- User 1: 100 tokens
+- User 2: 50 tokens
+- User 3: 200 tokens
+
+**6 Transactions:**
+- Earn: COMPLETE_LESSON, EXAM_PASS, COMPLETE_CHALLENGE, ADMIN_BONUS, COURSE_COMPLETION
+- Spend: PURCHASE
+
+## 🤝 Integration
+
+Service này tích hợp với:
+- **Identity Service**: Lấy user information
+- **Course Service**: Liên kết với course completion
+- **Exam Service**: Thưởng khi đạt điểm cao
+- **Frontend**: Display balance, history, withdraw
+
+## 📖 Documentation Links
+
+- [Chi tiết đầy đủ](./HUONG_DAN_CHAY_SERVICE.md)
+- [Quick start](./QUICK_START.md)
+- [Database setup](./DBEAVER_SETUP.md)
+
+## 🐛 Troubleshooting
+
+Xem phần [Troubleshooting](./HUONG_DAN_CHAY_SERVICE.md#troubleshooting) trong hướng dẫn chi tiết.
+
+## 📄 License
+
+ISC
+
+---
+
+**Made with ❤️ for EduPlatform**
