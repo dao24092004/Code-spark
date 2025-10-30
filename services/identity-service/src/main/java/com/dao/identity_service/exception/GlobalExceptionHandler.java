@@ -182,6 +182,21 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Constraint violation", errorDetails));
     }
 
+    @ExceptionHandler(com.dao.common.exception.AppException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAppException(
+            com.dao.common.exception.AppException ex,
+            WebRequest request
+    ) {
+        log.error("AppException occurred: {}", ex.getMessage(), ex);
+        
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("timestamp", LocalDateTime.now());
+        errorDetails.put("path", request.getDescription(false));
+        
+        return ResponseEntity.status(ex.getStatus())
+                .body(ApiResponse.error(ex.getMessage(), errorDetails));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(
             Exception ex,
@@ -192,8 +207,13 @@ public class GlobalExceptionHandler {
         Map<String, Object> errorDetails = new HashMap<>();
         errorDetails.put("timestamp", LocalDateTime.now());
         errorDetails.put("path", request.getDescription(false));
+        errorDetails.put("error", ex.getClass().getSimpleName());
+        errorDetails.put("message", ex.getMessage());
+        
+        // Log stack trace để debug
+        ex.printStackTrace();
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Internal server error", errorDetails));
+                .body(ApiResponse.error("Internal server error: " + ex.getMessage(), errorDetails));
     }
 }

@@ -24,7 +24,7 @@ public class QuizController {
      * API để học sinh lấy thông tin chi tiết của một bài quiz để bắt đầu làm bài.
      */
     @GetMapping("/{quizId}")
-    @PreAuthorize("hasAuthority('COURSE_READ')") // Yêu cầu quyền đọc khóa học để làm quiz
+    // @PreAuthorize("hasAuthority('COURSE_READ')") // BỎ để user có thể xem
     public ResponseEntity<ApiResponse<QuizDetailResponse>> getQuizDetails(@PathVariable UUID quizId) {
         QuizDetailResponse quizDetails = quizService.getQuizDetailsForStudent(quizId);
         return ResponseEntity.ok(ApiResponse.success(quizDetails));

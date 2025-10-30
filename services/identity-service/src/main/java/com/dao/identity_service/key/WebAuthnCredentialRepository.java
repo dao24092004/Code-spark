@@ -9,11 +9,12 @@ import java.util.Optional;
 
 public interface WebAuthnCredentialRepository extends JpaRepository<WebAuthnCredential, Long> {
 
-    Optional<WebAuthnCredential> findByCredentialId(byte[] credentialId);
+    @Query("SELECT c FROM WebAuthnCredential c WHERE c.credentialId = :credentialId")
+    Optional<WebAuthnCredential> findByCredentialId(@Param("credentialId") byte[] credentialId);
 
     List<WebAuthnCredential> findByUsername(String username);
 
-    @Query("SELECT c FROM WebAuthnCredential c WHERE c.username = :username ORDER BY c.createdAt DESC LIMIT 1")
+    @Query(value = "SELECT * FROM webauthn_credential WHERE username = :username ORDER BY created_at DESC LIMIT 1", nativeQuery = true)
     Optional<WebAuthnCredential> findUserIdByUsername(@Param("username") String username);
 
     Optional<WebAuthnCredential> findFirstByUsernameOrderByCreatedAtDesc(String username);

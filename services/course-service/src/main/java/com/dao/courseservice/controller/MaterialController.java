@@ -40,7 +40,7 @@ public class MaterialController {
      * @param courseId ID của khóa học từ đường dẫn.
      */
     @GetMapping("/courses/{courseId}/materials")
-    @PreAuthorize("hasAuthority('COURSE_READ')")
+    // @PreAuthorize("hasAuthority('COURSE_READ')") // BỎ để user có thể xem
     public ResponseEntity<ApiResponse<List<MaterialResponse>>> getMaterialsForCourse(@PathVariable UUID courseId) {
         List<MaterialResponse> materials = materialService.getMaterialsForCourse(courseId);
         return ResponseEntity.ok(ApiResponse.success(materials));

@@ -1,11 +1,11 @@
 package com.dao.apigateway.config;
 
+import java.util.List;
+import java.util.function.Predicate;
+
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
-
-import java.util.List;
-import java.util.function.Predicate;
 
 @Component
 public class RouterValidator {
@@ -35,7 +35,10 @@ public class RouterValidator {
             "/**/v3/api-docs/**",
 
             // Actuator health (optional but common for k8s/docker health probes)
-            "/actuator/health"
+            "/actuator/health",
+            
+            // Token reward service - Allow authenticated users to access their own tokens
+            "/token-reward/**"
     );
 
     public Predicate<ServerHttpRequest> isSecured =

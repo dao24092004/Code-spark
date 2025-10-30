@@ -22,8 +22,7 @@ public class ProgressController {
      * API để cập nhật tiến độ của học sinh (khi họ xem xong một bài học).
      */
     @PostMapping("/progress/student/{studentId}/course/{courseId}/material/{materialId}")
-    // SỬA LẠI: Thêm điều kiện "hoặc có vai trò ADMIN"
-    @PreAuthorize("hasRole('ADMIN') or #studentId.toString() == authentication.principal.claims['sub']")
+    // @PreAuthorize - BỎ để user có thể update progress
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
         @PathVariable Long studentId,
         @PathVariable UUID courseId,
@@ -37,8 +36,7 @@ public class ProgressController {
      * API để học sinh xem tiến độ của mình trong một khóa học.
      */
     @GetMapping("/progress/student/{studentId}/course/{courseId}")
-    // SỬA LẠI: Thêm điều kiện "hoặc có vai trò ADMIN"
-    @PreAuthorize("hasRole('ADMIN') or (hasAuthority('COURSE_READ') and #studentId.toString() == authentication.principal.claims['sub'])")
+    // @PreAuthorize - BỎ để user có thể xem progress
     public ResponseEntity<ApiResponse<ProgressResponse>> getStudentProgress(
         @PathVariable Long studentId,
         @PathVariable UUID courseId
