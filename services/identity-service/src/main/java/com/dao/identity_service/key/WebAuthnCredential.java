@@ -15,14 +15,12 @@ public class WebAuthnCredential {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
     @Column(nullable = false)
     private byte[] credentialId;
 
     @Column(nullable = false)
     private String username;
 
-    @Lob
     @Column(nullable = false)
     private byte[] publicKey;
 

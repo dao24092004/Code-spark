@@ -74,6 +74,7 @@ public class WebAuthnService {
         }
     }
 
+    @Transactional(readOnly = true)
     public PublicKeyCredentialCreationOptions startRegistration(String username, String displayName) {
         StartRegistrationOptions options = StartRegistrationOptions.builder()
                 .user(UserIdentity.builder()

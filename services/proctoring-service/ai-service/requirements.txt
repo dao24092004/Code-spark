@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+numpy
+mediapipe
+ultralytics
+scikit-learn
