@@ -65,7 +65,7 @@ class RewardServiceImpl implements RewardService {
                 .studentId(studentId)
                 .tokensAwarded(tokens)
                 .reasonCode(reason)
-                .relatedId(relatedId)
+                .relatedId(relatedId != null ? relatedId.toString() : null)
                 .build();
 
         rewardRepository.save(reward);

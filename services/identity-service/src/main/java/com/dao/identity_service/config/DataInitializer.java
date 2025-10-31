@@ -44,6 +44,12 @@ public class DataInitializer implements CommandLineRunner {
         createPermissionIfNotExists("NOTIFICATION_STREAM", "Open notification stream (SSE)", "NOTIFICATION", "STREAM");
         createPermissionIfNotExists("PROFILE_ADMIN", "Create infomation for user", "PROFILE", "WRITE");
         createPermissionIfNotExists("PROFILE_USER", "Create infomation for user", "PROFILE", "WRITE");
+        createPermissionIfNotExists("COURSE_READ", "Read course information", "COURSE", "READ");
+        createPermissionIfNotExists("COURSE_CREATE", "Create courses", "COURSE", "CREATE");
+        createPermissionIfNotExists("COURSE_WRITE", "Update courses", "COURSE", "WRITE");
+        createPermissionIfNotExists("COURSE_DELETE", "Delete courses", "COURSE", "DELETE");
+        createPermissionIfNotExists("MATERIAL_WRITE", "Create and update materials", "MATERIAL", "WRITE");
+        createPermissionIfNotExists("MATERIAL_DELETE", "Delete materials", "MATERIAL", "DELETE");
     }
 
     private void initializeRoles() {
@@ -62,7 +68,13 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("FILE_DELETE").orElseThrow(),
                     permissionRepository.findByName("PROFILE_ADMIN").orElseThrow(),
                     permissionRepository.findByName("PROFILE_USER").orElseThrow(),
-                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow()
+                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow(),
+                    permissionRepository.findByName("COURSE_READ").orElseThrow(),
+                    permissionRepository.findByName("COURSE_CREATE").orElseThrow(),
+                    permissionRepository.findByName("COURSE_WRITE").orElseThrow(),
+                    permissionRepository.findByName("COURSE_DELETE").orElseThrow(),
+                    permissionRepository.findByName("MATERIAL_WRITE").orElseThrow(),
+                    permissionRepository.findByName("MATERIAL_DELETE").orElseThrow()
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
@@ -76,7 +88,8 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("FILE_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_WRITE").orElseThrow(),
                     permissionRepository.findByName("PROFILE_USER").orElseThrow(),
-                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow()
+                    permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow(),
+                    permissionRepository.findByName("COURSE_READ").orElseThrow()
             );
             userRole.setPermissions(userPermissions);
             roleRepository.save(userRole);

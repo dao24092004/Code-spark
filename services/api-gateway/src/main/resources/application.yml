@@ -10,13 +10,10 @@ spring:
         - id: identity-service
           uri: lb://identity-service
           predicates:
-            - Path=/api/**
+            - Path=/identity/**
           filters:
-            - StripPrefix=0
-            - name: AddResponseHeader
-              args:
-                name: Access-Control-Allow-Origin
-                value: "http://localhost:4173"
+            - StripPrefix=1
+
         - id: profile-service
           uri: lb://profile-service
           predicates:
@@ -33,6 +30,12 @@ spring:
           uri: lb://copyright-service
           predicates:
             - Path=/api/copyrights/**
+          filters:
+            - StripPrefix=1
+        - id: exam-service
+          uri: lb://exam-service
+          predicates:
+            - Path=/exam/**
           filters:
             - StripPrefix=1
         - id: course-service
@@ -65,6 +68,12 @@ spring:
       port: 6379
   main:
     web-application-type: reactive
+  webflux:
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:3000}
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+      allowed-headers: '*'
+      allow-credentials: true
 
 server:
   port: 8080
@@ -92,8 +101,3 @@ springdoc:
 app:
   jwt:
     secret: ${JWT_SECRET:mySecretKey12345678901234567890123456789012345678901234567890}
-
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:3000}
-    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
-    allowed-headers: ${CORS_ALLOWED_HEADERS:*}

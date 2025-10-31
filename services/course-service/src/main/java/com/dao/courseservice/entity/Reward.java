@@ -31,7 +31,8 @@ public class Reward {
     @Column(nullable = false)
     private String reasonCode;
 
-    private UUID relatedId;
+    @Column(length = 255)
+    private String relatedId;
 
     @CreationTimestamp
     private LocalDateTime awardedAt;

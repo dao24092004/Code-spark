@@ -39,10 +39,10 @@ public class CourseController {
 
     /**
      * API để lấy thông tin chi tiết của một khóa học theo ID.
-     * Yêu cầu người dùng phải có quyền 'COURSE_READ'.
+     * Cho phép truy cập công khai để user có thể xem courses.
      */
-    @GetMapping("/{courseId}")  
-    @PreAuthorize("hasAuthority('COURSE_READ')")
+    @GetMapping("/{courseId}")
+    // @PreAuthorize("hasAuthority('COURSE_READ')") // BỎ để user có thể xem
     public ResponseEntity<ApiResponse<CourseResponse>> getCourseById(@PathVariable UUID courseId) {
         CourseResponse courseResponse = courseService.getCourseById(courseId);
         return ResponseEntity.ok(ApiResponse.success(courseResponse));
@@ -50,10 +50,10 @@ public class CourseController {
 
     /**
      * API để lấy danh sách tất cả các khóa học (hỗ trợ phân trang).
-     * Yêu cầu người dùng phải có quyền 'COURSE_READ'.
+     * Cho phép truy cập công khai để user có thể xem courses.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('COURSE_READ')")
+    // @PreAuthorize("hasAuthority('COURSE_READ')") // BỎ để user có thể xem
     public ResponseEntity<ApiResponse<Page<CourseResponse>>> getAllCourses(
             @PageableDefault(size = 10) Pageable pageable
     ) {
