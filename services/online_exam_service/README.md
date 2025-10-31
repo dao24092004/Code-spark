@@ -118,3 +118,13 @@ Dịch vụ backend cho hệ thống thi trực tuyến, cho phép sinh viên l�
 -   `POST /api/quizzes/{quizId}/start`: Sinh viên bắt đầu một bài thi.
 -   `POST /api/submissions/{submissionId}/submit`: Sinh viên nộp bài.
 -   `POST /api/instructor/quizzes/answers/{answerId}/grade`: Giảng viên chấm điểm một câu trả lời tự luận.
+
+## Authorization
+
+Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
+
+| Method | Route                                                 | Permission Required |
+|--------|-------------------------------------------------------|---------------------|
+| POST   | `/api/quizzes/:quizId/start`                          | `quiz:start`        |
+| POST   | `/api/submissions/:submissionId/submit`               | `quiz:submit`       |
+| POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |

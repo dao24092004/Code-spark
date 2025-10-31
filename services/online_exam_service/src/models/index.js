@@ -1,7 +1,7 @@
 // file: src/models/index.js
 
 const { Sequelize, DataTypes } = require('sequelize');
-const config = require('../config');
+const config = require('../config/');
 const fs = require('fs');
 const path = require('path');
 

@@ -3,7 +3,7 @@ require('dotenv').config(); // ✅ Thêm dòng này để đọc file .env
 const http = require('http'); // 1. IMPORT THÊM: Module http gốc của Node.js
 const app = require('./app'); // Express app của chúng ta
 const db = require('./src/models');
-const config = require('./src/config');
+const config = require('./src/config/');
 const { initializeWebSocket } = require('./src/config/websocket.js'); // 2. IMPORT THÊM: "Bộ cài đặt" WebSocket
 
 const PORT = config.server.port || process.env.PORT || 8082; // ✅ Cho fallback khi chưa có config

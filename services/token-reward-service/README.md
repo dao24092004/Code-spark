@@ -143,41 +143,19 @@ npm run dev      # Development mode (with nodemon)
 npm test         # Run tests (not implemented yet)
 ```
 
-## 🎓 Sample Data
+## API Endpoints
 
-Script `database-schema.sql` tạo sẵn:
+*   `POST /api/tokens/reward`: Award tokens to a user.
+*   `GET /api/users/:id/balance`: Get the token balance of a user.
 
-**3 Users:**
-- User 1: 100 tokens
-- User 2: 50 tokens
-- User 3: 200 tokens
+## Authorization
 
-**6 Transactions:**
-- Earn: COMPLETE_LESSON, EXAM_PASS, COMPLETE_CHALLENGE, ADMIN_BONUS, COURSE_COMPLETION
-- Spend: PURCHASE
+Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
 
-## 🤝 Integration
-
-Service này tích hợp với:
-- **Identity Service**: Lấy user information
-- **Course Service**: Liên kết với course completion
-- **Exam Service**: Thưởng khi đạt điểm cao
-- **Frontend**: Display balance, history, withdraw
-
-## 📖 Documentation Links
-
-- [Chi tiết đầy đủ](./HUONG_DAN_CHAY_SERVICE.md)
-- [Quick start](./QUICK_START.md)
-- [Database setup](./DBEAVER_SETUP.md)
-
-## 🐛 Troubleshooting
-
-Xem phần [Troubleshooting](./HUONG_DAN_CHAY_SERVICE.md#troubleshooting) trong hướng dẫn chi tiết.
-
-## 📄 License
-
-ISC
-
----
-
-**Made with ❤️ for EduPlatform**
+| Method | Route                   | Permission Required   |
+|--------|-------------------------|-----------------------|
+| POST   | `/grant`                | `token:grant`         |
+| POST   | `/spend`                | `token:spend`         |
+| GET    | `/balance/:studentId`   | `token:read:self`     |
+| GET    | `/history/:studentId`   | `token:read:self`     |
+| POST   | `/withdraw`             | `token:withdraw`      |
