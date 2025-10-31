@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 // Ví dụ: const tokenRoutes = require('./src/routes/tokenRoutes');
 // app.use('/api/tokens', tokenRoutes);
 const tokenRoutes = require('./src/routes/tokenRoutes');
-app.use('/api/tokens', tokenRoutes);
+app.use('/tokens', tokenRoutes);
 
 // Xuất ra app để file server.js có thể sử dụng
 module.exports = app;

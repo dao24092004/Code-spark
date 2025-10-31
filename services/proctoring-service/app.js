@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 // bắt đầu bằng '/api', hãy chuyển nó đến cho proctoringRoutes xử lý."
 // Ví dụ: /api/sessions/abc/events sẽ được chuyển đến đây.
 - app.use('/api', proctoringRoutes);
-+ app.use('/api/proctoring', proctoringRoutes);
++ app.use('/proctoring', proctoringRoutes);
 
 // === XUẤT APP ĐỂ SERVER.JS SỬ DỤNG ===
 module.exports = app;

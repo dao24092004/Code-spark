@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List; // <-- THÊM IMPORT NÀY
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,5 +23,5 @@ public interface QuizRepository extends JpaRepository<Quiz, UUID> {
      */
     @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.questions quest LEFT JOIN FETCH quest.options WHERE q.id = :quizId")
     Optional<Quiz> findByIdWithQuestionsAndOptions(@Param("quizId") UUID quizId);
-
+    List<Quiz> findByCourseId(UUID courseId);
 }
