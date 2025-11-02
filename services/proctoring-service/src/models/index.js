@@ -1,7 +1,7 @@
 // file: src/models/index.js
 
 const { Sequelize, DataTypes } = require('sequelize');
-const config = require('../config'); // cấu hình DB
+const config = require('../config/'); // cấu hình DB
 
 const sequelize = new Sequelize(
   config.db.database,

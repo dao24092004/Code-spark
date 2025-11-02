@@ -133,3 +133,12 @@ Lấy tất cả các sự kiện vi phạm đã được ghi lại cho một ph
   1. Client kết nối đến WebSocket server với URL chứa `sessionId`. Ví dụ: `ws://localhost:8082?sessionId=session-xyz-789`.
   2. Client gửi từng khung hình (dưới dạng `Blob` hoặc `ArrayBuffer`) đến server.
   3. Server xử lý và không gửi phản hồi trực tiếp qua WebSocket. Các vi phạm sẽ được lưu vào DB và có thể được truy vấn qua API.
+
+## Authorization
+
+Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
+
+| Method | Route                               | Permission Required         |
+|--------|-------------------------------------|-----------------------------|
+| GET    | `/sessions/:sessionId/events`       | `proctoring:events:read`    |
+| POST   | `/sessions/start-monitoring`        | `proctoring:session:start`  |
