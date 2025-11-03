@@ -1,27 +1,35 @@
+// Configuration file cho multisig-service
 require('dotenv').config();
 
-module.exports = {
+const config = {
   server: {
     port: process.env.PORT || 3001,
-    env: process.env.NODE_ENV || 'development',
-    jwtSecret: process.env.JWT_SECRET
+    env: process.env.NODE_ENV || 'development'
   },
-  blockchain: {
-    rpcUrl: process.env.RPC_URL,
-    deployerKey: process.env.DEPLOYER_PRIVATE_KEY,
-    serviceAccountKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY
-  },
+
   database: {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    pass: process.env.DB_PASS,
-    name: process.env.DB_NAME
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    name: process.env.DB_NAME || 'multisig_db',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    dialect: 'postgres',
+    logging: process.env.NODE_ENV === 'development' ? console.log : false
   },
-  discovery: {
-    enabled: process.env.EUREKA_ENABLED === 'true',
-    host: process.env.EUREKA_HOST,
-    port: process.env.EUREKA_PORT,
-    serviceName: 'multisig-service'
+
+  blockchain: {
+    providerUrl: process.env.WEB3_PROVIDER_URL || 'http://localhost:7545',
+    networkId: process.env.NETWORK_ID || 5777,
+    gasLimit: 6721975,
+    gasPrice: 20000000000
+  },
+
+  security: {
+    jwt: {
+      secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+    }
   }
 };
+
+module.exports = config;
+

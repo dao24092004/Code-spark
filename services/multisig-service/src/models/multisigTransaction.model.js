@@ -1,40 +1,60 @@
-module.exports = (sequelize, Sequelize) => {
-    const MultisigTransaction = sequelize.define('MultisigTransaction', {
-        id: {
-            type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV4,
-            primaryKey: true
-        },
-        // transactionId on-chain (là index trong mảng)
-        txIndexOnChain: {
-            type: Sequelize.INTEGER,
-            allowNull: false
-        },
-        txHash: { // Hash của giao dịch on-chain (submit, confirm, execute)
-            type: Sequelize.STRING,
-            allowNull: true
-        },
-        destination: {
-            type: Sequelize.STRING,
-            allowNull: false
-        },
-        value: { // Lưu dưới dạng string (Wei)
-            type: Sequelize.STRING,
-            allowNull: false
-        },
-        data: {
-            type: Sequelize.TEXT,
-            defaultValue: '0x'
-        },
-        status: {
-            type: Sequelize.ENUM('submitted', 'confirmed', 'executed', 'failed'),
-            defaultValue: 'submitted'
-        },
-        // Mảng các địa chỉ đã xác nhận
-        confirmations: {
-            type: Sequelize.ARRAY(Sequelize.STRING),
-            defaultValue: []
-        }
-    });
-    return MultisigTransaction;
-};
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db');
+
+const MultisigTransaction = sequelize.define('MultisigTransaction', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  walletId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'multisig_wallets',
+      key: 'id'
+    },
+    field: 'wallet_id'
+  },
+  txIndexOnChain: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    field: 'tx_index_on_chain'
+  },
+  txHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'tx_hash'
+  },
+  destination: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  value: {
+    type: DataTypes.STRING, // Lưu dạng string để tránh overflow với số lớn
+    allowNull: false
+  },
+  data: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: '0x'
+  },
+  status: {
+    type: DataTypes.ENUM('submitted', 'confirmed', 'executed', 'failed'),
+    allowNull: false,
+    defaultValue: 'submitted'
+  },
+  confirmations: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    allowNull: false,
+    defaultValue: []
+  }
+}, {
+  tableName: 'multisig_transactions',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
+});
+
+module.exports = MultisigTransaction;
+

@@ -313,35 +313,36 @@ services:
     build: ./services/multisig-service
     container_name: multisig-service
     ports:
-      - "3001:3001" # Map cổng 3001 của container ra cổng 3001 của máy bạn
+      - "3001:3001"
     networks:
       - microservice-net
     environment:
-      # Truyền các biến từ tệp .env gốc của code-spark vào container
+      # Server
       - PORT=3001
       - NODE_ENV=docker
-      - JWT_SECRET=${JWT_SECRET}
 
       # Database
       - DB_HOST=postgres-db
       - DB_PORT=5432
-      - DB_NAME=multisig_db # Đảm bảo database này tồn tại
+      - DB_NAME=multisig_db
       - DB_USER=${POSTGRES_USER}
-      - DB_PASS=${POSTGRES_PASSWORD}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
 
-      # Blockchain
-      - RPC_URL=http://ganache:8545
-      - DEPLOYER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY}
-      - SERVICE_ACCOUNT_PRIVATE_KEY=${SERVICE_ACCOUNT_PRIVATE_KEY}
+      # Blockchain (Ganache)
+      - WEB3_PROVIDER_URL=http://ganache:8545
+      - WEB3_HOST=ganache
+      - WEB3_PORT=8545
+      - NETWORK_ID=5777
 
-      # Service Discovery
-      - EUREKA_HOST=discovery-service
-      - EUREKA_PORT=9999
-      - EUREKA_ENABLED=true
+      # Deployer (optional)
+      - DEPLOYER_ADDRESS=${DEPLOYER_ADDRESS:-}
+      - DEPLOYER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY:-}
+
+      # JWT (optional)
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
 
     depends_on:
       - postgres-db
-      - discovery-service
       - ganache
 
   analytics-service:

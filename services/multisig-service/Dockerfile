@@ -1,17 +1,23 @@
-# Giai đoạn 1: Build
-FROM node:18-alpine AS builder
+FROM node:18-alpine
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+COPY truffle-config.js ./
+
+# Install dependencies
 RUN npm install
+
+# Copy source code
 COPY . .
 
-# Giai đoạn 2: Production
-FROM node:18-alpine
-WORKDIR /app
-COPY --from=builder /app ./
+# Compile Truffle contracts
+RUN npm run compile || echo "Truffle compile skipped - will compile at runtime"
 
-# Expose cổng mà service sẽ chạy bên trong container
+# Expose port
 EXPOSE 3001
 
-# Lệnh để khởi động service
+# Start server
 CMD ["npm", "start"]
+

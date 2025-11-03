@@ -1,29 +1,23 @@
-const config = require('../config');
-const Sequelize = require('sequelize');
+const sequelize = require('../config/db');
+const MultisigWallet = require('./multisigWallet.model');
+const MultisigTransaction = require('./multisigTransaction.model');
 
-const sequelize = new Sequelize(config.database.name, config.database.user, config.database.pass, {
-    host: config.database.host,
-    port: config.database.port,
-    dialect: 'postgres',
-    logging: false, // Tắt log SQL
+// Define associations
+MultisigWallet.hasMany(MultisigTransaction, {
+  foreignKey: 'walletId',
+  as: 'transactions'
 });
 
-const db = {};
-db.Sequelize = Sequelize;
-db.sequelize = sequelize;
-
-// Tải các models
-db.MultisigWallet = require('./multisigWallet.model.js')(sequelize, Sequelize);
-db.MultisigTransaction = require('./multisigTransaction.model.js')(sequelize, Sequelize);
-
-// Định nghĩa quan hệ
-db.MultisigWallet.hasMany(db.MultisigTransaction, { 
-    foreignKey: 'walletId',
-    as: 'transactions' 
+MultisigTransaction.belongsTo(MultisigWallet, {
+  foreignKey: 'walletId',
+  as: 'wallet'
 });
-db.MultisigTransaction.belongsTo(db.MultisigWallet, {
-    foreignKey: 'walletId',
-    as: 'wallet'
-});
+
+const db = {
+  sequelize,
+  MultisigWallet,
+  MultisigTransaction
+};
 
 module.exports = db;
+

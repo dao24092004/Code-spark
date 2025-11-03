@@ -1,27 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('../controllers/multisig.controller');
-// const authMiddleware = require('../middlewares/auth.js'); // Sẽ thêm sau
+const multisigController = require('../controllers/multisig.controller');
 
-// --- Quản lý Ví (Wallet) ---
-// (Giả sử đã có authMiddleware)
-router.post('/', controller.createNewWallet);
-router.post('/link', controller.linkExistingWallet);
-router.get('/:id', controller.getWallet);
+// Wallet Management Routes
+router.post('/wallets', multisigController.createNewWallet);
+router.post('/wallets/link', multisigController.linkExistingWallet);
+router.get('/wallets', multisigController.getAllWallets);
+router.get('/wallets/:walletId', multisigController.getWallet);
 
-// --- Quản lý Giao dịch (Transaction) ---
+// Transaction Routes cho một ví cụ thể
+router.post('/wallets/:walletId/transactions', multisigController.submitTransaction);
+router.get('/wallets/:walletId/transactions', multisigController.getTransactions);
 
-// Lấy danh sách giao dịch của 1 ví
-router.get('/:walletId/transactions', controller.getTransactions);
-
-// Tạo (Submit) 1 giao dịch mới cho ví
-router.post('/:walletId/transactions', controller.submitTransaction);
-
-// Xác nhận 1 giao dịch (txId là UUID của DB)
-router.post('/transactions/:txId/confirm', controller.confirmTransaction);
-
-// Thực thi 1 giao dịch (txId là UUID của DB)
-router.post('/transactions/:txId/execute', controller.executeTransaction);
-
+// Transaction Management Routes
+router.get('/transactions/:txId', multisigController.getTransaction);
+router.post('/transactions/:txId/confirm', multisigController.confirmTransaction);
+router.post('/transactions/:txId/execute', multisigController.executeTransaction);
 
 module.exports = router;
+
