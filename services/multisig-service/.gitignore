@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables - QUAN TRỌNG: KHÔNG PUSH .env
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test files
+coverage/
+.nyc_output/
+
+# Build files
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+
+# Test results và debug files - Không cần push
+TEST_RESULTS.md
+API_TEST_SUMMARY.md
+test-wallet.json
+
+# Fix documentation files - Không cần push (là các file ghi lại quá trình fix lỗi)
+FIX_*.md
+DB_FIX_SUMMARY.md
+FIX_SUMMARY.md
+CHECK_NETWORK_ID.md
+INVALID_OPCODE_FIX.md
+
