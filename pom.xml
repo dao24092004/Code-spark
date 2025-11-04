@@ -44,6 +44,7 @@
         <module>services/common-library</module>
         <module>services/exam-service</module>
         <module>services/analytics-service</module>
+        <module>services/course-service</module>
     </modules>
 
 </project>

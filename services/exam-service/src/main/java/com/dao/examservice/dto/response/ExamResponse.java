@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public class ExamResponse {
     public UUID id;
-    public UUID orgId;
+    public UUID courseId;
     public String title;
     public String description;
     public Instant startAt;
@@ -13,7 +13,7 @@ public class ExamResponse {
     public Integer durationMinutes;
     public Integer passScore;
     public Integer maxAttempts;
-    public UUID createdBy;
+    public Long createdBy;
     public String status;
     public Instant createdAt;
 }
