@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "exams")
+@Table(name = "cm_quizzes")
 public class Exam {
 
     public enum ExamStatus { DRAFT, SCHEDULED, ACTIVE, COMPLETED, CANCELLED }
@@ -15,8 +15,8 @@ public class Exam {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "org_id", nullable = false, columnDefinition = "uuid")
-    private UUID orgId;
+    @Column(name = "course_id", nullable = false, columnDefinition = "uuid")
+    private UUID courseId;
 
     @Column(nullable = false)
     private String title;
@@ -30,7 +30,7 @@ public class Exam {
     @Column(name = "end_at")
     private Instant endAt;
 
-    @Column(name = "duration_minutes")
+    @Column(name = "time_limit_minutes")
     private Integer durationMinutes;
 
     @Column(name = "pass_score")
@@ -39,8 +39,8 @@ public class Exam {
     @Column(name = "max_attempts")
     private Integer maxAttempts;
 
-    @Column(name = "created_by", nullable = false, columnDefinition = "uuid")
-    private UUID createdBy;
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -51,8 +51,8 @@ public class Exam {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public UUID getOrgId() { return orgId; }
-    public void setOrgId(UUID orgId) { this.orgId = orgId; }
+    public UUID getCourseId() { return courseId; }
+    public void setCourseId(UUID courseId) { this.courseId = courseId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
@@ -67,8 +67,8 @@ public class Exam {
     public void setPassScore(Integer passScore) { this.passScore = passScore; }
     public Integer getMaxAttempts() { return maxAttempts; }
     public void setMaxAttempts(Integer maxAttempts) { this.maxAttempts = maxAttempts; }
-    public UUID getCreatedBy() { return createdBy; }
-    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public Long getCreatedBy() { return createdBy; }
+    public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
     public ExamStatus getStatus() { return status; }
     public void setStatus(ExamStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "exam_registrations")
+@Table(name = "cm_exam_registrations")
 public class ExamRegistration {
 
     public enum RegistrationStatus { SCHEDULED, REGISTERED, CANCELLED }
@@ -16,11 +16,11 @@ public class ExamRegistration {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "exam_id", nullable = false)
+    @JoinColumn(name = "exam_id", referencedColumnName = "id", nullable = false)
     private Exam exam;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private Long userId;
 
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt = Instant.now();
@@ -33,8 +33,8 @@ public class ExamRegistration {
     public void setId(UUID id) { this.id = id; }
     public Exam getExam() { return exam; }
     public void setExam(Exam exam) { this.exam = exam; }
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public Instant getRegisteredAt() { return registeredAt; }
     public void setRegisteredAt(Instant registeredAt) { this.registeredAt = registeredAt; }
     public RegistrationStatus getStatus() { return status; }
