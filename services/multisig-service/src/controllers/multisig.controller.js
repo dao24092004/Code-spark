@@ -56,6 +56,13 @@ const confirmTransaction = asyncHandler(async (req, res) => {
     res.status(200).json(tx);
 });
 
+// GET /api/v1/multisig/transactions/:txId
+const getTransaction = asyncHandler(async (req, res) => {
+    const { txId } = req.params;
+    const tx = await multisigService.getTransactionById(txId);
+    res.status(200).json(tx);
+});
+
 // POST /api/v1/multisig/transactions/:txId/execute
 const executeTransaction = asyncHandler(async (req, res) => {
     const { txId } = req.params; // Đây là UUID của transaction trong DB
@@ -70,6 +77,7 @@ module.exports = {
     getWallet,
     getTransactions,
     submitTransaction,
+    getTransaction,
     confirmTransaction,
     executeTransaction
 };
