@@ -4,7 +4,8 @@ module.exports = {
   server: {
     port: process.env.PORT || 3001,
     env: process.env.NODE_ENV || 'development',
-    jwtSecret: process.env.JWT_SECRET
+    // JWT secret phải giống với identity-service để verify token
+    jwtSecret: process.env.JWT_SECRET || 'mySecretKey12345678901234567890123456789012345678901234567890'
   },
   blockchain: {
     rpcUrl: process.env.RPC_URL,

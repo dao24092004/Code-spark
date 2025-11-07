@@ -25,7 +25,19 @@ const createWallet = async (req) => {
     // 1. Deploy lên Blockchain
     const contractAddress = await blockchainService.deployMultisigContract(owners, threshold);
     
-    // 2. Lưu vào DB
+    // 2. Fund ETH vào contract wallet (mặc định 500 ETH)
+    // Có thể config qua environment variable INITIAL_WALLET_BALANCE_ETH
+    const initialBalanceEth = parseFloat(process.env.INITIAL_WALLET_BALANCE_ETH) || 500;
+    try {
+        await blockchainService.fundContractWallet(contractAddress, initialBalanceEth);
+        console.log(`✅ Đã fund ${initialBalanceEth} ETH vào contract wallet ${contractAddress}`);
+    } catch (error) {
+        console.warn(`⚠️  Không thể fund ETH vào contract wallet: ${error.message}`);
+        console.warn(`   Contract wallet sẽ có balance = 0 ETH. Bạn cần fund thủ công sau.`);
+        // Không throw error để vẫn tạo được ví, chỉ cảnh báo
+    }
+    
+    // 3. Lưu vào DB
     const newWallet = await MultisigWallet.create({
         creatorId,
         name,
@@ -208,6 +220,16 @@ const executeExistingTransaction = async (transactionId) => {
         throw new Error(`Chưa đủ số lượng xác nhận. Cần ${tx.wallet.threshold}, mới có ${tx.confirmations.length}`);
     }
 
+    // Kiểm tra balance của contract wallet trước khi execute
+    const contractBalance = await web3.eth.getBalance(tx.wallet.contractAddress);
+    const valueInWei = BigInt(tx.value);
+    
+    if (contractBalance < valueInWei) {
+        const balanceEth = web3.utils.fromWei(contractBalance.toString(), 'ether');
+        const valueEth = web3.utils.fromWei(tx.value.toString(), 'ether');
+        throw new Error(`Contract wallet không đủ ETH để thực thi giao dịch. Balance: ${balanceEth} ETH, Cần: ${valueEth} ETH. Vui lòng fund contract wallet trước.`);
+    }
+
     // 1. Gửi execute lên chain
     const txHash = await blockchainService.executeTransaction(
         tx.wallet.contractAddress,
@@ -229,6 +251,16 @@ const getTransactionsForWallet = async (walletId) => {
     });
 };
 
+// API: Lấy thông tin 1 giao dịch theo ID
+const getTransactionById = async (transactionId) => {
+    const tx = await MultisigTransaction.findOne({
+        where: { id: transactionId },
+        include: 'wallet'
+    });
+    if (!tx) throw new Error('Không tìm thấy giao dịch');
+    return tx;
+};
+
 
 module.exports = {
     createWallet,
@@ -237,6 +269,7 @@ module.exports = {
     submitNewTransaction,
     confirmExistingTransaction,
     executeExistingTransaction,
-    getTransactionsForWallet
+    getTransactionsForWallet,
+    getTransactionById
 };
 

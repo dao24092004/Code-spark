@@ -50,6 +50,9 @@ public class DataInitializer implements CommandLineRunner {
         createPermissionIfNotExists("COURSE_DELETE", "Delete courses", "COURSE", "DELETE");
         createPermissionIfNotExists("MATERIAL_WRITE", "Create and update materials", "MATERIAL", "WRITE");
         createPermissionIfNotExists("MATERIAL_DELETE", "Delete materials", "MATERIAL", "DELETE");
+        createPermissionIfNotExists("MULTISIG_READ", "Read course multisig wallet", "MULTISIG", "READ");
+        createPermissionIfNotExists("MULTISIG_CREATE", "Create multisig wallet", "MULTISIG", "CREATE");
+        createPermissionIfNotExists("MULTISIG_WRITE", "Update multisig wallet", "MULTISIG", "WRITE");
     }
 
     private void initializeRoles() {
@@ -74,7 +77,10 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("COURSE_WRITE").orElseThrow(),
                     permissionRepository.findByName("COURSE_DELETE").orElseThrow(),
                     permissionRepository.findByName("MATERIAL_WRITE").orElseThrow(),
-                    permissionRepository.findByName("MATERIAL_DELETE").orElseThrow()
+                    permissionRepository.findByName("MATERIAL_DELETE").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_READ").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_CREATE").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow()
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
@@ -89,7 +95,8 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("FILE_WRITE").orElseThrow(),
                     permissionRepository.findByName("PROFILE_USER").orElseThrow(),
                     permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow(),
-                    permissionRepository.findByName("COURSE_READ").orElseThrow()
+                    permissionRepository.findByName("COURSE_READ").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_READ").orElseThrow()
             );
             userRole.setPermissions(userPermissions);
             roleRepository.save(userRole);
