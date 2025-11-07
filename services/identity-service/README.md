@@ -115,48 +115,48 @@ Dưới đây là một số hình ảnh minh họa các chức năng chính c�
 **1. Giao diện đăng ký tài khoản**
 *(Mô tả: Giao diện cho phép người dùng nhập thông tin để tạo tài khoản mới.)*
 
-![Giao diện đăng ký](hình ảnh demo/Giaodiendangky.png)
+![Giao diện đăng ký](hinh_anh_demo/Giaodiendangky.png)
 
 ---
 
 **2. Giao diện đăng nhập**
 *(Mô tả: Người dùng có thể chọn đăng nhập bằng mật khẩu hoặc sử dụng phương thức không mật khẩu.)*
 
-![Giao diện đăng nhập](hình ảnh demo/Giaodiendangnhap.png)
-![Giao diện đăng nhập bằng WebAuthn](hình ảnh demo/GiaodiendangnhapbangWebAuthn.png)
+![Giao diện đăng nhập](hinh_anh_demo/Giaodiendangnhap.png)
+![Giao diện đăng nhập bằng WebAuthn](hinh_anh_demo/GiaodiendangnhapbangWebAuthn.png)
 
 ---
 
 **3. Đăng ký phương thức xác thực không mật khẩu (WebAuthn)**
 *(Mô tả: Sau khi đăng nhập, người dùng vào trang cá nhân và đăng ký một khóa bảo mật hoặc sinh trắc học.)*
 
-![Đăng ký WebAuthn](hình ảnh demo/GiaodiendangkyWebAuthn.png)
+![Đăng ký WebAuthn](hinh_anh_demo/GiaodiendangkyWebAuthn.png)
 
 ---
 
 **4. Hộp thoại yêu cầu xác thực của trình duyệt/hệ điều hành**
 *(Mô tả: Khi người dùng chọn đăng nhập không mật khẩu, trình duyệt sẽ hiển thị hộp thoại yêu cầu xác nhận bằng vân tay, khuôn mặt hoặc khóa bảo mật.)*
 
-![Xác thực WebAuthn 1](hình ảnh demo/Giaodienyeucauxacthuc_1.png)
-![Xác thực WebAuthn 2](hình ảnh demo/Giaodienyeucauxacthuc_2.png)
+![Xác thực WebAuthn 1](hinh_anh_demo/Giaodienyeucauxacthuc_1.png)
+![Xác thực WebAuthn 2](hinh_anh_demo/Giaodienyeucauxacthuc_2.png)
 
 ---
 
 **5. Giao diện sau khi đăng nhập thành công**
 *(Mô tả: Giao diện chính của ứng dụng sau khi người dùng đã xác thực thành công, hiển thị thông tin người dùng.)*
 
-![Đăng nhập thành công](hình ảnh demo/GiaodiendangnhapthanhcongWebAuthn.png)
+![Đăng nhập thành công](hinh_anh_demo/GiaodiendangnhapthanhcongWebAuthn.png)
 
 ---
 
 **6. Giao diện xác thực thành công**
 
-![Giao diện xác thực thành công](hình ảnh demo/Giaodienxacthucthanhcong.png)
+![Giao diện xác thực thành công](hinh_anh_demo/Giaodienxacthucthanhcong.png)
 
 ---
 
 **7. Giao diện trang chủ**
 
-![Giao diện trang chủ](hình ảnh demo/Giaodientrangchu.png)
+![Giao diện trang chủ](hinh_anh_demo/Giaodientrangchu.png)
 
 ---
