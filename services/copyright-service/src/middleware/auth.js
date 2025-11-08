@@ -9,11 +9,27 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ message: 'Unauthorized: No token provided' });
     }
 
-    jwt.verify(token, config.security.jwt.secret, (err, user) => {
+    jwt.verify(token, config.security.jwt.secret, (err, decoded) => {
         if (err) {
+            console.error('JWT verification error:', err.message);
             return res.status(403).json({ message: 'Forbidden: Invalid token' });
         }
-        req.user = user;
+        
+        // Extract user info and permissions from JWT token
+        req.user = {
+            userId: decoded.userId,
+            username: decoded.sub || decoded.username,
+            email: decoded.email,
+            roles: decoded.roles || [],
+            permissions: decoded.permissions || []
+        };
+        
+        console.log('Authenticated user:', {
+            userId: req.user.userId,
+            username: req.user.username,
+            email: req.user.email,
+            permissions: req.user.permissions
+        });
         next();
     });
 };

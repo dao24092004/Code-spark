@@ -31,11 +31,11 @@ class DataSynchronizer {
 
             // Process immediately if not running
             if (!this.isRunning) {
-                await this.processSyncQueue();
+                this.processSyncQueue();
             }
 
             console.log(`✅ Data synchronization completed for copyright ${copyrightData.id}`);
-            return { success: true, syncedServices: ['analytics', 'notification'] };
+            return { success: true, syncedServices: ['notification'] };
 
         } catch (error) {
             console.error(`❌ Data synchronization failed for copyright ${copyrightData.id}:`, error.message);
@@ -72,9 +72,6 @@ class DataSynchronizer {
             syncPromises.push(this.syncWithIdentityService(syncData));
         }
 
-        // Sync with analytics service
-        syncPromises.push(this.syncWithAnalyticsService(syncData));
-
         // Sync with notification service
         syncPromises.push(this.syncWithNotificationService(syncData));
 
@@ -109,33 +106,6 @@ class DataSynchronizer {
     }
 
     /**
-     * Sync with Java analytics service
-     */
-    async syncWithAnalyticsService(syncData) {
-        try {
-            const analyticsData = {
-                eventType: 'COPYRIGHT_REGISTRATION',
-                userAddress: syncData.ownerAddress,
-                copyrightId: syncData.copyrightId,
-                fileHash: syncData.hash,
-                filename: syncData.filename,
-                timestamp: syncData.timestamp,
-                metadata: {
-                    transactionHash: syncData.transactionHash,
-                    blockchainRegistered: !!syncData.transactionHash,
-                    similarityChecked: syncData.similarityChecked,
-                    similarDocuments: syncData.similarDocuments?.length || 0
-                }
-            };
-
-            await serviceCommunication.sendAnalytics('COPYRIGHT_REGISTRATION', analyticsData);
-            return { service: 'analytics', success: true };
-        } catch (error) {
-            throw new Error(`Java Analytics service sync failed: ${error.message}`);
-        }
-    }
-
-    /**
      * Sync with Java notification service
      */
     async syncWithNotificationService(syncData) {
@@ -162,7 +132,7 @@ class DataSynchronizer {
      * Get service name by index
      */
     getServiceName(index) {
-        const services = ['identity', 'analytics', 'notification'];
+        const services = ['identity', 'notification'];
         return services[index] || `service_${index}`;
     }
 

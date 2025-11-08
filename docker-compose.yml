@@ -235,7 +235,7 @@ services:
     build: ./services/notification-service
     container_name: notification-service
     ports:
-      - "9004:9004"
+      - "9009:9009"
     networks:
       - microservice-net
     environment:
