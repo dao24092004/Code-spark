@@ -1,7 +1,6 @@
 package com.dao.analyticsservice.service;
 
 import com.dao.analyticsservice.client.CourseServiceClient;
-import com.dao.analyticsservice.client.ExamServiceClient;
 import com.dao.analyticsservice.client.IdentityServiceClient;
 import com.dao.analyticsservice.dto.client.CourseSummaryDto;
 import com.dao.analyticsservice.dto.client.PageResponse;
@@ -41,7 +40,6 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final ProctoringEventRepository proctoringEventRepository;
     private final IdentityServiceClient identityServiceClient;
     private final CourseServiceClient courseServiceClient;
-    private final ExamServiceClient examServiceClient;
 
     @Override
     public List<ExamResultResponse> getExamResults(UUID examId, UUID userId) {
@@ -216,22 +214,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
         return byExam.entrySet().stream()
                 .map(entry -> {
-                    UUID examId = entry.getKey();
+                    UUID courseId = entry.getKey();
                     List<ExamResult> examResults = entry.getValue();
                     double avgScore = examResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
-                    UUID courseId = null;
-                    try {
-                        courseId = examServiceClient.getExamById(examId).courseId();
-                    } catch (Exception ignored) {
-                    }
 
-                    String title = "Bài thi " + examId;
-                    if (courseId != null) {
-                        ApiResponse<CourseSummaryDto> courseResponse = courseServiceClient.getCourseById(courseId);
-                        title = Optional.ofNullable(courseResponse)
-                                .map(ApiResponse::getData)
-                                .map(CourseSummaryDto::title)
-                                .orElse("Khóa học " + courseId);
+                    String title = "Khóa học " + courseId;
+                    ApiResponse<CourseSummaryDto> courseResponse = courseServiceClient.getCourseById(courseId);
+                    if (courseResponse != null && courseResponse.isSuccess() && courseResponse.getData() != null) {
+                        title = courseResponse.getData().title();
                     }
 
                     return new TopCourseResponse(courseId, title, examResults.size(), round(avgScore));
