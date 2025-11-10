@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "questions")
+@Table(name = "cm_questions")
 public class Question {
 
     public enum QuestionType { SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, ESSAY }
@@ -20,12 +20,15 @@ public class Question {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quiz_id", nullable = false)
+    private Exam quiz;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private QuestionType type;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "content", columnDefinition = "jsonb", nullable = false)
+    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
 
     private Integer difficulty;
@@ -45,11 +48,14 @@ public class Question {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "question_tags", joinColumns = @JoinColumn(name = "question_id"))
+
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+    public Exam getQuiz() { return quiz; }
+    public void setQuiz(Exam quiz) { this.quiz = quiz; }
     public QuestionType getType() { return type; }
     public void setType(QuestionType type) { this.type = type; }
     public String getContent() { return content; }

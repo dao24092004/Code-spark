@@ -38,7 +38,10 @@ public class RouterValidator {
             "/actuator/health",
             
             // Token reward service - Allow authenticated users to access their own tokens
-            "/token-reward/**"
+            "/token-reward/**",
+            
+            // Multisig service - Allow testing without authentication
+            "/api/v1/multisig/**"
     );
 
     public Predicate<ServerHttpRequest> isSecured =

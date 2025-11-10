@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * DTO trả về thông tin một phần thưởng token đã được trao.
@@ -20,6 +19,6 @@ public class RewardResponse {
     private Long studentId;
     private Integer tokensAwarded;
     private String reasonCode;
-    private UUID relatedId;
+    private String relatedId;
     private LocalDateTime awardedAt;
 }

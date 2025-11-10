@@ -169,7 +169,7 @@ public class ExamController {
     private ExamResponse toResponse(Exam e) {
         ExamResponse r = new ExamResponse();
         r.id = e.getId();
-        r.orgId = e.getOrgId();
+        r.courseId = e.getCourseId();
         r.title = e.getTitle();
         r.description = e.getDescription();
         r.startAt = e.getStartAt();

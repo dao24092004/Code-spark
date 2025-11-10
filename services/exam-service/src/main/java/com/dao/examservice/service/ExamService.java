@@ -66,7 +66,7 @@ public class ExamService {
     @Transactional
     public Exam createExam(ExamCreationRequest request) {
         Exam exam = new Exam();
-        exam.setOrgId(request.orgId);
+        exam.setCourseId(request.courseId);
         exam.setTitle(request.title);
         exam.setDescription(request.description);
         exam.setStartAt(request.startAt);
@@ -144,7 +144,7 @@ public class ExamService {
 
         if (request.candidateIds != null && !request.candidateIds.isEmpty()) {
             List<ExamRegistration> registrations = new java.util.ArrayList<>();
-            for (UUID candidateId : request.candidateIds) {
+            for (Long candidateId : request.candidateIds) {
                 ExamRegistration reg = new ExamRegistration();
                 reg.setExam(exam);
                 reg.setUserId(candidateId);

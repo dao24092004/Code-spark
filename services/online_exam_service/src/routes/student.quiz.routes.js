@@ -3,7 +3,9 @@
 const express = require('express');
 const router = express.Router();
 const studentQuizController = require('../controllers/student.quiz.controller');
+
 const { authenticateToken } = require('../middleware/auth.middleware');
+
 
 // Public routes (không cần authentication)
 // Route để lấy tất cả quiz
@@ -15,5 +17,6 @@ router.get('/:quizId', studentQuizController.getQuizDetails);
 // Protected routes (yêu cầu authentication)
 // Route để bắt đầu bài thi
 router.post('/:quizId/start', authenticateToken, studentQuizController.startQuiz);
+
 
 module.exports = router;

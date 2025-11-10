@@ -978,6 +978,7 @@ DROP TABLE IF EXISTS quiz_rankings CASCADE;
 node scripts/run-migration.js
 ```
 
+<<<<<<< HEAD
 ---
 
 ## Project Structure
@@ -1107,3 +1108,18 @@ online_exam_service/
 **✅ Status:** Production Ready  
 **🔧 Build:** SUCCESS  
 **📅 Last Updated:** 2025-11-05
+=======
+-   `POST /api/quizzes/{quizId}/start`: Sinh viên bắt đầu một bài thi.
+-   `POST /api/submissions/{submissionId}/submit`: Sinh viên nộp bài.
+-   `POST /api/instructor/quizzes/answers/{answerId}/grade`: Giảng viên chấm điểm một câu trả lời tự luận.
+
+## Authorization
+
+Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
+
+| Method | Route                                                 | Permission Required |
+|--------|-------------------------------------------------------|---------------------|
+| POST   | `/api/quizzes/:quizId/start`                          | `quiz:start`        |
+| POST   | `/api/submissions/:submissionId/submit`               | `quiz:submit`       |
+| POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |
+>>>>>>> 20e9e81ef80f7593901af50b4effdad04e76df65

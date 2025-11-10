@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const web3 = require('../config/web3'); // Import đối tượng web3 đã kết nối
-const config = require('../config');
+const config = require('../config/');
 
 // --- TẢI THÔNG TIN CONTRACT ---
 

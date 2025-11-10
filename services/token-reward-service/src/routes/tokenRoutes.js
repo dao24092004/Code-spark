@@ -1,25 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { Reward, Gift } = require('../models');
-const { Op } = require('sequelize');
+const tokenController = require('../controllers/tokenController');
+const { authenticateToken, checkPermission } = require('../middleware/auth');
 
-// ==================== Gift Store ====================
+// Định nghĩa một route: Khi có request POST tới /grant,
+// hàm grantTokenHandler trong tokenController sẽ được gọi.
+//router.post('/grant', authenticateToken, checkPermission('token:grant'), tokenController.grantTokenHandler);
+router.post('/grant', authenticateToken, tokenController.grantTokenHandler);
 
-// GET /api/tokens/gifts - Get available gifts from database
+// UC27: Tiêu token (mới)
+router.post('/spend', authenticateToken, checkPermission('token:spend'), tokenController.spendTokenHandler);
+
+// UC28a: Lấy số dư (mới) - dùng param :studentId
+router.get('/balance/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getBalanceHandler);
+
+// UC28b: Lấy lịch sử (mới) - dùng param :studentId
+router.get('/history/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getHistoryHandler);
+
 router.get('/gifts', async (req, res) => {
     try {
-        const { category } = req.query;
-
-        const whereClause = {};
-        if (category && category !== 'all') {
-            whereClause.category = category;
-        }
-
-        const gifts = await Gift.findAll({
-            where: whereClause,
-            order: [['category', 'ASC'], ['tokenPrice', 'ASC']]
-        });
-
+        const gifts = await Gift.findAll();
         // Transform to match frontend expected format
         const transformedGifts = gifts.map(gift => ({
             id: gift.id,

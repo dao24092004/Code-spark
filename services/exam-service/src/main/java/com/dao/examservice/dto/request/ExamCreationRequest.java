@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class ExamCreationRequest {
-    public UUID orgId;
+    public UUID courseId;
     public String title;
     public String description;
     public Instant startAt;
@@ -13,9 +13,11 @@ public class ExamCreationRequest {
     public Integer durationMinutes;
     public Integer passScore;
     public Integer maxAttempts;
+
     public Integer totalQuestions;
     public UUID createdBy;
     public Set<String> tags;  // ✨ Add tags support
+
 }
 
 
