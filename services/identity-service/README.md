@@ -160,3 +160,10 @@ Dưới đây là một số hình ảnh minh họa các chức năng chính c�
 ![Giao diện trang chủ](hinh_anh_demo/Giaodientrangchu.png)
 
 ---
+
+---
+
+**7. link youtube**
+
+👉 [Xem tại đây](https://youtu.be/dGoNNUuZiBU)
+---
