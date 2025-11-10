@@ -30,8 +30,8 @@ public class CourseController {
      * API để tạo một khóa học mới.
      * Yêu cầu người dùng phải có quyền 'COURSE_CREATE'.
      */
-	@PostMapping
-	@PreAuthorize("hasAnyAuthority('COURSE_CREATE','COURSE_WRITE')")
+    @PostMapping
+    @PreAuthorize("hasAuthority('COURSE_CREATE')")
     public ResponseEntity<ApiResponse<CourseResponse>> createCourse(@Valid @RequestBody CreateCourseRequest request) {
         CourseResponse newCourse = courseService.createCourse(request);
         return ResponseEntity.ok(ApiResponse.success("Course created successfully", newCourse));

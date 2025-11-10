@@ -2,7 +2,6 @@ package com.dao.courseservice.mapper;
 
 import com.dao.courseservice.entity.Material;
 import com.dao.courseservice.request.CreateMaterialRequest;
-import com.dao.courseservice.request.UpdateMaterialRequest;
 import com.dao.courseservice.response.MaterialResponse;
 import org.springframework.stereotype.Component;
 
@@ -39,27 +38,5 @@ public class MaterialMapper {
                 .displayOrder(material.getDisplayOrder())
                 .createdAt(material.getCreatedAt())
                 .build();
-    }
-
-    /**
-     * Áp dụng các thay đổi từ UpdateMaterialRequest lên entity Material hiện tại.
-     * Chỉ cập nhật những trường không null trong request.
-     */
-    public void updateEntity(Material material, UpdateMaterialRequest request) {
-        if (request.getTitle() != null) {
-            material.setTitle(request.getTitle());
-        }
-        if (request.getType() != null) {
-            material.setType(request.getType());
-        }
-        if (request.getStorageKey() != null) {
-            material.setStorageKey(request.getStorageKey());
-        }
-        if (request.getContent() != null) {
-            material.setContent(request.getContent());
-        }
-        if (request.getDisplayOrder() != null) {
-            material.setDisplayOrder(request.getDisplayOrder());
-        }
     }
 }

@@ -7,7 +7,6 @@ import com.dao.courseservice.mapper.MaterialMapper;
 import com.dao.courseservice.repository.CourseRepository;
 import com.dao.courseservice.repository.MaterialRepository;
 import com.dao.courseservice.request.CreateMaterialRequest;
-import com.dao.courseservice.request.UpdateMaterialRequest;
 import com.dao.courseservice.response.MaterialResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ public interface MaterialService {
     MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request);
     List<MaterialResponse> getMaterialsForCourse(UUID courseId);
     void deleteMaterial(UUID materialId);
-    MaterialResponse updateMaterial(UUID materialId, UpdateMaterialRequest request);
 }
 
 //================================================================================
@@ -87,20 +85,5 @@ class MaterialServiceImpl implements MaterialService {
 
         materialRepository.deleteById(materialId);
         log.info("Successfully deleted material with id: {}", materialId);
-    }
-
-    @Override
-    public MaterialResponse updateMaterial(UUID materialId, UpdateMaterialRequest request) {
-        log.info("Updating material with id: {}", materialId);
-
-        Material material = materialRepository.findById(materialId)
-                .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
-
-        materialMapper.updateEntity(material, request);
-
-        Material updatedMaterial = materialRepository.save(material);
-        log.info("Successfully updated material with id: {}", materialId);
-
-        return materialMapper.toMaterialResponse(updatedMaterial);
     }
 }
