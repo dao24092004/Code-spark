@@ -2,13 +2,15 @@ package com.dao.examservice.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
 @Table(name = "exams")
 public class Exam {
 
-    public enum ExamStatus { DRAFT, SCHEDULED, ACTIVE, COMPLETED, CANCELLED }
+    public enum ExamStatus { DRAFT, SCHEDULED, PUBLISHED, ACTIVE, COMPLETED, CANCELLED }
 
     @Id
     @GeneratedValue
@@ -39,6 +41,9 @@ public class Exam {
     @Column(name = "max_attempts")
     private Integer maxAttempts;
 
+    @Column(name = "total_questions")
+    private Integer totalQuestions;
+
     @Column(name = "created_by", nullable = false, columnDefinition = "uuid")
     private UUID createdBy;
 
@@ -48,6 +53,11 @@ public class Exam {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    @ElementCollection
+    @CollectionTable(name = "exam_tags", joinColumns = @JoinColumn(name = "exam_id"))
+    @Column(name = "tag")
+    private Set<String> tags = new HashSet<>();
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -67,12 +77,16 @@ public class Exam {
     public void setPassScore(Integer passScore) { this.passScore = passScore; }
     public Integer getMaxAttempts() { return maxAttempts; }
     public void setMaxAttempts(Integer maxAttempts) { this.maxAttempts = maxAttempts; }
+    public Integer getTotalQuestions() { return totalQuestions; }
+    public void setTotalQuestions(Integer totalQuestions) { this.totalQuestions = totalQuestions; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public ExamStatus getStatus() { return status; }
     public void setStatus(ExamStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Set<String> getTags() { return tags; }
+    public void setTags(Set<String> tags) { this.tags = tags; }
 }
 
 

@@ -8,7 +8,6 @@ const db = require('../models'); // Import các model
  * @returns {Promise<number>} - Điểm số cuối cùng.
  */
 async function autoGrade(submissionId) {
-  console.log(`[Grading] Bắt đầu chấm điểm tự động cho submission ${submissionId}...`);
   try {
     // 1. Lấy thông tin bài làm và các câu hỏi liên quan
     const submission = await db.QuizSubmission.findByPk(submissionId);
@@ -28,9 +27,21 @@ async function autoGrade(submissionId) {
     // 2. Tạo một "answer key" - bản đồ đáp án đúng
     const answerKey = {};
     quiz.questions.forEach(question => {
-      const correctOption = question.options.find(opt => opt.isCorrect === true);
-      if (correctOption) {
-        answerKey[question.id] = correctOption.id; // Lưu ID của đáp án đúng
+      // ✨ FIX: Extract correctAnswer from JSONB content (for exam-service imports)
+      if (question.content && typeof question.content === 'object') {
+        if (question.content.correctAnswer !== undefined && Array.isArray(question.content.options)) {
+          // Convert correctAnswer index to option ID format
+          const correctIndex = question.content.correctAnswer;
+          answerKey[question.id] = `${question.id}-opt-${correctIndex}`;
+        }
+      }
+      
+      // Fallback: Use options association (for native question_options)
+      if (!answerKey[question.id]) {
+        const correctOption = question.options.find(opt => opt.isCorrect === true);
+        if (correctOption) {
+          answerKey[question.id] = correctOption.id;
+        }
       }
     });
 
@@ -40,18 +51,36 @@ async function autoGrade(submissionId) {
     let totalScore = 0;
     
     // 4. So sánh và tính điểm
+    let correctAnswers = 0;
+    let wrongAnswers = 0;
+    const totalQuestions = quiz.questions.length;
+    
     studentAnswers.forEach(answer => {
-      if (answerKey[answer.questionId] && answerKey[answer.questionId] === answer.selectedOptionId) {
+      const correctOptionId = answerKey[answer.questionId];
+      const studentOptionId = answer.selectedOptionId;
+      const isCorrect = correctOptionId && correctOptionId === studentOptionId;
+      
+      if (isCorrect) {
         totalScore += 1; // Giả sử mỗi câu đúng được 1 điểm
+        correctAnswers++;
+      } else {
+        wrongAnswers++;
       }
     });
 
-    // 5. Cập nhật điểm vào database
-    submission.score = totalScore;
+    // 5. Cập nhật điểm vào database (tính phần trăm)
+    const rawPercentage = totalQuestions > 0 ? Number(((totalScore / totalQuestions) * 100).toFixed(2)) : 0;
+    const scorePercentage = Math.round(rawPercentage);
+    submission.score = scorePercentage;
     await submission.save();
-
-    console.log(`[Grading] Chấm điểm thành công. Điểm số: ${totalScore}`);
-    return totalScore;
+    
+    return {
+      score: scorePercentage,
+      scoreRaw: rawPercentage,
+      correctAnswers,
+      wrongAnswers,
+      totalQuestions
+    };
 
   } catch (error) {
     console.error('❌ Lỗi trong quá trình chấm điểm:', error);
@@ -103,8 +132,6 @@ async function manualGrade(answerId, score, comment) {
       submission.studentId,
       totalScore
     );
-
-    console.log(`[Grading] Chấm điểm thủ công thành công. Tổng điểm mới: ${totalScore}. Đã ghi nhận Blockchain.`);
     
     // Trả về bài làm đã được cập nhật
     return submission;

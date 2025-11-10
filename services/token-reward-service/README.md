@@ -40,8 +40,8 @@ npm install
 copy env.template .env
 
 # 3. Tạo database
-psql -U postgres -c "CREATE DATABASE token_reward_db;"
-psql -U postgres -d token_reward_db -f database-schema.sql
+psql -U postgres -c "CREATE DATABASE course_db;"
+psql -U postgres -d course_db -f database-schema.sql
 
 # 4. Chạy
 npm run dev

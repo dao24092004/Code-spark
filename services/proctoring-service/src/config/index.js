@@ -23,6 +23,11 @@ const config = {
     privateKey: process.env.ACCOUNT_PRIVATE_KEY,
     contractAddress: process.env.CONTRACT_ADDRESS,
   },
+  security: {
+    jwt: {
+      secret: process.env.JWT_SECRET,
+    },
+  },
 };
 
 module.exports = config;

@@ -2,6 +2,7 @@ package com.dao.courseservice.controller;
 
 import com.dao.common.dto.ApiResponse;
 import com.dao.courseservice.request.CreateMaterialRequest;
+import com.dao.courseservice.request.UpdateMaterialRequest;
 import com.dao.courseservice.response.MaterialResponse;
 import com.dao.courseservice.service.MaterialService;
 import jakarta.validation.Valid;
@@ -55,5 +56,20 @@ public class MaterialController {
     public ResponseEntity<ApiResponse<Void>> deleteMaterial(@PathVariable UUID materialId) {
         materialService.deleteMaterial(materialId);
         return ResponseEntity.ok(ApiResponse.success("Material deleted successfully"));
+    }
+
+    /**
+     * API để cập nhật thông tin của một học liệu.
+     * @param materialId ID của học liệu cần cập nhật.
+     * @param request Dữ liệu cập nhật.
+     */
+    @PutMapping("/materials/{materialId}")
+    @PreAuthorize("hasAuthority('MATERIAL_WRITE')")
+    public ResponseEntity<ApiResponse<MaterialResponse>> updateMaterial(
+            @PathVariable UUID materialId,
+            @Valid @RequestBody UpdateMaterialRequest request
+    ) {
+        MaterialResponse updatedMaterial = materialService.updateMaterial(materialId, request);
+        return ResponseEntity.ok(ApiResponse.success("Material updated successfully", updatedMaterial));
     }
 }

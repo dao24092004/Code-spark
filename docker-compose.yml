@@ -199,8 +199,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo-db:27017/
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_URL}
-      - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:9999/eureka
+      - EUREKA_INSTANCE_HOSTNAME=file-service
     depends_on:
       - discovery-service
       - config-server
@@ -308,6 +308,10 @@ services:
       - EUREKA_INSTANCE_HOSTNAME=${EUREKA_HOSTNAME}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
+    depends_on:
+      - discovery-service
+      - config-server
+      - postgres-db
 
   analytics-service:
     build:
@@ -367,7 +371,7 @@ services:
       # Database
       - DB_HOST=postgres-db
       - DB_PORT=5432
-      - DB_NAME=token_reward_db
+      - DB_NAME=course_db
       - DB_USER=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
 

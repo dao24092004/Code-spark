@@ -412,7 +412,8 @@ router.get('/admin/rule-performance', async (req, res) => {
 // POST /api/tokens/withdraw - Withdraw tokens to blockchain address
 router.post('/withdraw', async (req, res) => {
     try {
-        const { studentId, amount, address } = req.body;
+        const { studentId, amount, toAddress, address: legacyAddress } = req.body;
+        const address = toAddress || legacyAddress;
 
         if (!studentId || !amount || !address) {
             return res.status(400).json({ error: 'studentId, amount, and address are required' });
@@ -443,9 +444,11 @@ router.post('/withdraw', async (req, res) => {
 
         // TODO: Implement blockchain withdrawal logic here
         // For now, just create a spend record
+        const numericAmount = Number(amount);
+
         const reward = await Reward.create({
             studentId,
-            tokensAwarded: amount,
+            tokensAwarded: numericAmount,
             reasonCode: 'WITHDRAWAL',
             relatedId: address, // Store wallet address in relatedId
             awardedAt: new Date(),
@@ -463,7 +466,7 @@ router.post('/withdraw', async (req, res) => {
                 awardedAt: reward.awardedAt,
                 transaction_type: reward.transaction_type
             },
-            newBalance: currentBalance - amount
+            newBalance: currentBalance - numericAmount
         });
     } catch (error) {
         console.error('Error withdrawing tokens:', error);

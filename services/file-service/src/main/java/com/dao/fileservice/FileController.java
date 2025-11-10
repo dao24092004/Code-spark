@@ -1,5 +1,10 @@
 package com.dao.fileservice;
 
+import com.dao.fileservice.dto.ApiResponse;
+import com.dao.fileservice.dto.FileUploadResponse;
+import com.dao.fileservice.security.AuthorizationService;
+import com.dao.fileservice.security.Permissions;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -10,9 +15,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import jakarta.servlet.http.HttpServletRequest;
-import com.dao.fileservice.security.AuthorizationService;
-import com.dao.fileservice.security.Permissions;
 
 import java.net.MalformedURLException;
 import java.nio.file.Path;
@@ -35,7 +37,7 @@ public class FileController {
      * Tải lên một tệp.
      */
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<FileUploadResponse>> uploadFile(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
         String token = extractBearerToken(request);
         authorizationService.requirePermission(token, Permissions.FILE_WRITE);
         String fileName = fileStorageService.storeFile(file);
@@ -45,27 +47,39 @@ public class FileController {
                 .path(fileName)
                 .toUriString();
 
-        return ResponseEntity.ok("File uploaded successfully. Download URI: " + fileDownloadUri);
+        FileUploadResponse response = FileUploadResponse.builder()
+                .fileName(fileName)
+                .downloadUrl(fileDownloadUri)
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success("File uploaded successfully", response));
     }
 
     /**
      * Tải lên nhiều tệp.
      */
     @PostMapping("/uploadMultiple")
-    public ResponseEntity<List<String>> uploadMultipleFiles(@RequestParam("files") MultipartFile[] files, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<List<FileUploadResponse>>> uploadMultipleFiles(@RequestParam("files") MultipartFile[] files, HttpServletRequest request) {
         String token = extractBearerToken(request);
         authorizationService.requirePermission(token, Permissions.FILE_WRITE);
-        List<String> fileDownloadUris = Arrays.asList(files)
-                .stream()
+        List<FileUploadResponse> uploads = Arrays.stream(files)
                 .map(file -> {
                     String fileName = fileStorageService.storeFile(file);
-                    return ServletUriComponentsBuilder.fromCurrentContextPath()
+                    String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
                             .path("/files/download/")
                             .path(fileName)
                             .toUriString();
+                    return FileUploadResponse.builder()
+                            .fileName(fileName)
+                            .downloadUrl(fileDownloadUri)
+                            .contentType(file.getContentType())
+                            .size(file.getSize())
+                            .build();
                 })
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(fileDownloadUris);
+        return ResponseEntity.ok(ApiResponse.success("Files uploaded successfully", uploads));
     }
 
     /**

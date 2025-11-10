@@ -18,6 +18,7 @@ const config = {
     privateKey: process.env.OWNER_ACCOUNT_PRIVATE_KEY,
   },
   proctoringServiceUrl: process.env.PROCTORING_SERVICE_URL,
+  proctoringServiceToken: process.env.PROCTORING_SERVICE_TOKEN,
 };
 
 module.exports = config;

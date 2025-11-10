@@ -30,7 +30,7 @@ public interface RewardService {
      * @param reason Mã lý do được thưởng (ví dụ: "PASS_QUIZ").
      * @param relatedId ID của đối tượng liên quan (ví dụ: quiz_submission_id).
      */
-    void grantReward(Long studentId, int tokens, String reason, UUID relatedId);
+    RewardResponse grantReward(Long studentId, int tokens, String reason, UUID relatedId);
 
     /**
      * Lấy lịch sử phần thưởng của một học sinh.
@@ -58,18 +58,20 @@ class RewardServiceImpl implements RewardService {
     //--------------------------------------------------------------------------
 
     @Override
-    public void grantReward(Long studentId, int tokens, String reason, UUID relatedId) {
+    public RewardResponse grantReward(Long studentId, int tokens, String reason, UUID relatedId) {
         log.info("Granting {} tokens to student {} for reason: {}", tokens, studentId, reason);
 
         Reward reward = Reward.builder()
                 .studentId(studentId)
                 .tokensAwarded(tokens)
                 .reasonCode(reason)
-                .relatedId(relatedId)
+                .relatedId(relatedId != null ? relatedId.toString() : null)
                 .build();
 
-        rewardRepository.save(reward);
+        Reward savedReward = rewardRepository.save(reward);
         log.info("Reward saved successfully for student {}", studentId);
+
+        return rewardMapper.toRewardResponse(savedReward);
     }
 
     //--------------------------------------------------------------------------

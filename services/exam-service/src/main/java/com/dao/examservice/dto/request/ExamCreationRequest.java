@@ -1,6 +1,7 @@
 package com.dao.examservice.dto.request;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 public class ExamCreationRequest {
@@ -12,7 +13,9 @@ public class ExamCreationRequest {
     public Integer durationMinutes;
     public Integer passScore;
     public Integer maxAttempts;
+    public Integer totalQuestions;
     public UUID createdBy;
+    public Set<String> tags;  // ✨ Add tags support
 }
 
 
