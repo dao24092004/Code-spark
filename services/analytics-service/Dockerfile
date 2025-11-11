@@ -1,7 +1,7 @@
 # Multi-stage build for analytics-service with common-library dependency
 
 # Stage 1: Build common-library and analytics-service
-FROM openjdk:21-jdk-slim AS builder
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
 # Install Maven

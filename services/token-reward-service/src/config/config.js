@@ -3,7 +3,8 @@ require('dotenv').config();
 module.exports = {
   security: {
     jwt: {
-      secret: process.env.JWT_SECRET || 'fallbackSecret',
+      // JWT secret must match identity-service's secret
+      secret: process.env.JWT_SECRET || 'mySecretKey12345678901234567890123456789012345678901234567890',
       expiration: process.env.JWT_EXPIRATION || '86400000',
     },
   },

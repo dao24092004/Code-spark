@@ -24,6 +24,9 @@ const authenticateToken = (req, res, next) => {
 
     console.log('[AUTH] ✅ Token verified successfully.');
     req.user = user;
+    // Also set req.userId for compatibility with controllers that expect it
+    req.userId = user.userId || user.sub || user.id;
+    req.username = user.sub || user.username;
     next();
   });
 };
