@@ -1121,5 +1121,9 @@ Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
 |--------|-------------------------------------------------------|---------------------|
 | POST   | `/api/quizzes/:quizId/start`                          | `quiz:start`        |
 | POST   | `/api/submissions/:submissionId/submit`               | `quiz:submit`       |
+<<<<<<< HEAD
+| POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |
+>>>>>>> 20e9e81ef80f7593901af50b4effdad04e76df65
+=======
 | POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |
 >>>>>>> 20e9e81ef80f7593901af50b4effdad04e76df65

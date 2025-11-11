@@ -10,5 +10,7 @@ const { authenticateToken } = require('../middleware/auth.middleware');
 router.post('/:submissionId/submit', authenticateToken, studentQuizController.submitQuiz);
 
 // URL này sẽ trở thành: GET /api/submissions/:submissionId/result
+router.get('/:submissionId/result', authenticateToken, studentQuizController.getSubmissionResult);
 
 
+module.exports = router;

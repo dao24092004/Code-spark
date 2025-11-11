@@ -59,7 +59,7 @@ const analyzeFrame = async (imageBuffer) => {
 
     const response = await axios.post(AI_SERVICE_URL, formData, {
       headers: { ...formData.getHeaders() },
-      timeout: 10000,
+      timeout: config.ai?.timeout || 30000, // Configurable timeout (default 30s - AI service takes ~19-20s)
       httpAgent,
       httpsAgent,
     });
@@ -71,8 +71,9 @@ const analyzeFrame = async (imageBuffer) => {
       console.error(`[AI SERVICE] ❌ Không thể kết nối đến AI Service tại ${AI_SERVICE_URL}`);
       console.error(`[AI SERVICE]    Message: ${error.message}`);
       console.error(`[AI SERVICE] ⚠️  Đảm bảo Python server đang chạy (uvicorn main:app --host 0.0.0.0 --port 8000 --reload).`);
-    } else if (error.code === 'ETIMEDOUT') {
-      console.error(`[AI SERVICE] ⏱️  Timeout khi gọi AI Service (quá 10 giây)`);
+    } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+      const timeoutSeconds = (config.ai?.timeout || 30000) / 1000;
+      console.error(`[AI SERVICE] ⏱️  Timeout khi gọi AI Service (quá ${timeoutSeconds} giây)`);
     } else if (error.response) {
       // In ra lỗi chi tiết từ server AI
       console.error(`[AI SERVICE] ❌ Lỗi từ AI Service (${error.response.status}):`, error.response.data);

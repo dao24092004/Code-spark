@@ -10,7 +10,7 @@ const db = require('../models');
 router.post('/grant', authenticateToken, tokenController.grantTokenHandler);
 
 // UC27: Tiêu token (mới)
-router.post('/spend', authenticateToken, checkPermission('token:spend'), tokenController.spendTokenHandler);
+router.post('/spend', authenticateToken, tokenController.spendTokenHandler);
 
 // Test route để debug
 router.get('/test', (req, res) => {
@@ -79,105 +79,11 @@ router.get('/gifts/:id', async (req, res) => {
 // Route đã được định nghĩa ở trên (dòng 18) với controller
 
 // ==================== Grant Tokens (Admin) ====================
-
-// POST /api/tokens/grant - Grant tokens to a student
-router.post('/grant', async (req, res) => {
-    try {
-        const { studentId, amount, reasonCode, relatedId } = req.body;
-
-        if (!studentId || !amount) {
-            return res.status(400).json({ error: 'studentId and amount are required' });
-        }
-
-        const reward = await db.Reward.create({
-            studentId,
-            tokensAwarded: amount,
-            reasonCode: reasonCode || 'ADMIN_GRANT',
-            relatedId: relatedId || null,
-            awardedAt: new Date(),
-            transaction_type: 'EARN'
-        });
-
-        res.status(201).json({
-            message: 'Tokens granted successfully',
-            reward: {
-                id: reward.id.toString(),
-                studentId: reward.studentId.toString(),
-                tokensAwarded: reward.tokensAwarded,
-                reasonCode: reward.reasonCode,
-                relatedId: reward.relatedId,
-                awardedAt: reward.awardedAt,
-                transaction_type: reward.transaction_type
-            }
-        });
-    } catch (error) {
-        console.error('Error granting tokens:', error);
-        res.status(500).json({ error: 'Failed to grant tokens' });
-    }
-});
+// Route handled above via controller
 
 // ==================== Spend Tokens ====================
 
-// POST /api/tokens/spend - Spend tokens (purchase, redeem)
-router.post('/spend', async (req, res) => {
-    try {
-        const { studentId, amount, reasonCode, relatedId } = req.body;
-
-        if (!studentId || !amount) {
-            return res.status(400).json({ error: 'studentId and amount are required' });
-        }
-
-        // Check if user has enough balance
-        const earnRecords = await db.Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'EARN'
-            }
-        });
-
-        const spendRecords = await db.Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'SPEND'
-            }
-        });
-
-        const totalEarned = earnRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const totalSpent = spendRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const currentBalance = totalEarned - totalSpent;
-
-        if (currentBalance < amount) {
-            return res.status(400).json({ error: 'Insufficient balance' });
-        }
-
-        // Create spend record
-        const reward = await db.Reward.create({
-            studentId,
-            tokensAwarded: amount,
-            reasonCode: reasonCode || 'PURCHASE',
-            relatedId: relatedId || null,
-            awardedAt: new Date(),
-            transaction_type: 'SPEND'
-        });
-
-        res.status(201).json({
-            message: 'Tokens spent successfully',
-            reward: {
-                id: reward.id.toString(),
-                studentId: reward.studentId.toString(),
-                tokensAwarded: reward.tokensAwarded,
-                reasonCode: reward.reasonCode,
-                relatedId: reward.relatedId,
-                awardedAt: reward.awardedAt,
-                transaction_type: reward.transaction_type
-            },
-            newBalance: currentBalance - amount
-        });
-    } catch (error) {
-        console.error('Error spending tokens:', error);
-        res.status(500).json({ error: 'Failed to spend tokens' });
-    }
-});
+// POST /api/tokens/spend - handled above via controller
 
 // ==================== Admin Endpoints ====================
 
@@ -343,71 +249,8 @@ router.get('/admin/rule-performance', async (req, res) => {
 });
 
 // ==================== Withdraw Tokens ====================
-
-// POST /api/tokens/withdraw - Withdraw tokens to blockchain address
-router.post('/withdraw', async (req, res) => {
-    try {
-        const { studentId, amount, toAddress, address: legacyAddress } = req.body;
-        const address = toAddress || legacyAddress;
-
-        if (!studentId || !amount || !address) {
-            return res.status(400).json({ error: 'studentId, amount, and address are required' });
-        }
-
-        // Check balance
-        const earnRecords = await db.Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'EARN'
-            }
-        });
-
-        const spendRecords = await db.Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'SPEND'
-            }
-        });
-
-        const totalEarned = earnRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const totalSpent = spendRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const currentBalance = totalEarned - totalSpent;
-
-        if (currentBalance < amount) {
-            return res.status(400).json({ error: 'Insufficient balance' });
-        }
-
-        // TODO: Implement blockchain withdrawal logic here
-        // For now, just create a spend record
-        const numericAmount = Number(amount);
-
-        const reward = await db.Reward.create({
-            studentId,
-            tokensAwarded: numericAmount,
-            reasonCode: 'WITHDRAWAL',
-            relatedId: address, // Store wallet address in relatedId
-            awardedAt: new Date(),
-            transaction_type: 'SPEND'
-        });
-
-        res.status(201).json({
-            message: 'Withdrawal request submitted successfully',
-            reward: {
-                id: reward.id.toString(),
-                studentId: reward.studentId.toString(),
-                tokensAwarded: reward.tokensAwarded,
-                reasonCode: reward.reasonCode,
-                address: reward.relatedId,
-                awardedAt: reward.awardedAt,
-                transaction_type: reward.transaction_type
-            },
-            newBalance: currentBalance - numericAmount
-        });
-    } catch (error) {
-        console.error('Error withdrawing tokens:', error);
-        res.status(500).json({ error: 'Failed to withdraw tokens' });
-    }
-});
+// Use controller which performs on-chain transfer via blockchainService
+router.post('/withdraw', authenticateToken, tokenController.withdrawTokenHandler);
 
 // Route catch-all để debug (phải đặt ở cuối cùng)
 // Lưu ý: Route này chỉ chạy nếu không có route nào match trước đó

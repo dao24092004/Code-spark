@@ -5,8 +5,6 @@ const router = express.Router();
 const studentQuizController = require('../controllers/student.quiz.controller');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
 
-const { authenticateToken } = require('../middleware/auth.middleware');
-
 
 // Public routes (không cần authentication)
 // Route để lấy tất cả quiz

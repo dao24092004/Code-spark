@@ -12,7 +12,16 @@ async function startQuiz(req, res) {
     // Lấy quizId từ URL (ví dụ: /api/quizzes/abc-123/start)
     const { quizId } = req.params;
     // Lấy userId từ JWT token (đã được verify bởi auth middleware)
-    const userId = req.userId;
+    const userId = req.userId || req.user?.userId || req.user?.sub || req.user?.id;
+
+    // Validate userId
+    if (!userId) {
+      console.error('❌ userId is undefined. req.user:', req.user);
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in token. Please login again.'
+      });
+    }
 
     // Gọi đến service để xử lý logic
     const authHeader = req.headers['authorization'] || '';
@@ -133,7 +142,16 @@ async function getQuizDetails(req, res) {
 async function getMySubmissions(req, res) {
   try {
     // Lấy userId từ JWT token (đã được verify bởi auth middleware)
-    const userId = req.userId;
+    const userId = req.userId || req.user?.userId || req.user?.sub || req.user?.id;
+    
+    // Validate userId
+    if (!userId) {
+      console.error('❌ userId is undefined. req.user:', req.user);
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in token. Please login again.'
+      });
+    }
     
     const submissions = await quizService.getStudentSubmissions(userId);
     
@@ -154,7 +172,16 @@ async function getSubmissionResult(req, res) {
   try {
     const { submissionId } = req.params;
     // Lấy userId từ JWT token (đã được verify bởi auth middleware)
-    const userId = req.userId;
+    const userId = req.userId || req.user?.userId || req.user?.sub || req.user?.id;
+    
+    // Validate userId
+    if (!userId) {
+      console.error('❌ userId is undefined. req.user:', req.user);
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in token. Please login again.'
+      });
+    }
     
     const result = await quizService.getSubmissionResult(submissionId, userId);
     
