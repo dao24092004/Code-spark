@@ -42,7 +42,7 @@ app.use(express.json());
 
 // <-- 2. SỬ DỤNG ROUTER VỚI PREFIX '/api'
 // Dòng này nói với Express: "Mọi request đến '/api' hãy đưa cho mainRouter xử lý"
-app.use('/api', mainRouter);
+app.use('/', mainRouter);
 
 // Khởi động server
 const server = app.listen(PORT, async () => {

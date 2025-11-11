@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const studentQuizController = require('../controllers/student.quiz.controller');
+const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const { authenticateToken } = require('../middleware/auth.middleware');
 
