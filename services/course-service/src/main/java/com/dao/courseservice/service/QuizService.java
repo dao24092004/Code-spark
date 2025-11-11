@@ -179,14 +179,6 @@ class QuizServiceImpl implements QuizService {
          rewardRepository.save(reward);
     }
 
-
-        Reward reward = Reward.builder()
-                .studentId(studentId)
-                .tokensAwarded(tokens)
-                .reasonCode(reason)
-                .relatedId(relatedId != null ? relatedId.toString() : null)
-                .build();
-
     // ========================================================================
     // [THÊM MỚI] - Nghiệp vụ CRUD cho Admin
     // ========================================================================

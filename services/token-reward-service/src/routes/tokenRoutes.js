@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const tokenController = require('../controllers/tokenController');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
+const db = require('../models');
 
 // Định nghĩa một route: Khi có request POST tới /grant,
 // hàm grantTokenHandler trong tokenController sẽ được gọi.
@@ -11,15 +12,20 @@ router.post('/grant', authenticateToken, tokenController.grantTokenHandler);
 // UC27: Tiêu token (mới)
 router.post('/spend', authenticateToken, checkPermission('token:spend'), tokenController.spendTokenHandler);
 
+// Test route để debug
+router.get('/test', (req, res) => {
+    res.json({ message: 'Route test works!' });
+});
+
 // UC28a: Lấy số dư (mới) - dùng param :studentId
-router.get('/balance/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getBalanceHandler);
+router.get('/balance/:studentId', authenticateToken, tokenController.getBalanceHandler);
 
 // UC28b: Lấy lịch sử (mới) - dùng param :studentId
-router.get('/history/:studentId', authenticateToken, checkPermission('token:read:self'), tokenController.getHistoryHandler);
+router.get('/history/:studentId', authenticateToken, tokenController.getHistoryHandler);
 
 router.get('/gifts', async (req, res) => {
     try {
-        const gifts = await Gift.findAll();
+        const gifts = await db.Gift.findAll();
         // Transform to match frontend expected format
         const transformedGifts = gifts.map(gift => ({
             id: gift.id,
@@ -42,7 +48,7 @@ router.get('/gifts', async (req, res) => {
 router.get('/gifts/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const gift = await Gift.findByPk(id);
+        const gift = await db.Gift.findByPk(id);
 
         if (!gift) {
             return res.status(404).json({ error: 'Gift not found' });
@@ -67,81 +73,10 @@ router.get('/gifts/:id', async (req, res) => {
 });
 
 // ==================== Token Balance ====================
-
-// GET /api/tokens/balance/:studentId - Get user's token balance
-router.get('/balance/:studentId', async (req, res) => {
-    try {
-        const { studentId } = req.params;
-
-        // Calculate balance from rewards
-        const earnRecords = await Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'EARN'
-            }
-        });
-
-        const spendRecords = await Reward.findAll({
-            where: {
-                studentId,
-                transaction_type: 'SPEND'
-            }
-        });
-
-        const totalEarned = earnRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const totalSpent = spendRecords.reduce((sum, record) => sum + Number(record.tokensAwarded), 0);
-        const balance = totalEarned - totalSpent;
-
-        res.json({
-            tokenBalance: balance,
-            balance,
-            totalEarned,
-            totalSpent
-        });
-    } catch (error) {
-        console.error('Error getting balance:', error);
-        res.status(500).json({ error: 'Failed to get balance' });
-    }
-});
+// Route đã được định nghĩa ở trên (dòng 15) với controller
 
 // ==================== Token History ====================
-
-// GET /api/tokens/history/:studentId - Get user's transaction history
-router.get('/history/:studentId', async (req, res) => {
-    try {
-        const { studentId } = req.params;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const offset = (page - 1) * limit;
-
-        const { count, rows: rewards } = await Reward.findAndCountAll({
-            where: { studentId },
-            order: [['awardedAt', 'DESC']],
-            limit,
-            offset
-        });
-
-        const totalPages = Math.ceil(count / limit);
-
-        res.json({
-            totalItems: count,
-            totalPages,
-            currentPage: page,
-            rewards: rewards.map(r => ({
-                id: r.id.toString(),
-                studentId: r.studentId.toString(),
-                tokensAwarded: r.tokensAwarded,
-                reasonCode: r.reasonCode,
-                relatedId: r.relatedId,
-                awardedAt: r.awardedAt,
-                transaction_type: r.transaction_type
-            }))
-        });
-    } catch (error) {
-        console.error('Error getting history:', error);
-        res.status(500).json({ error: 'Failed to get history' });
-    }
-});
+// Route đã được định nghĩa ở trên (dòng 18) với controller
 
 // ==================== Grant Tokens (Admin) ====================
 
@@ -154,7 +89,7 @@ router.post('/grant', async (req, res) => {
             return res.status(400).json({ error: 'studentId and amount are required' });
         }
 
-        const reward = await Reward.create({
+        const reward = await db.Reward.create({
             studentId,
             tokensAwarded: amount,
             reasonCode: reasonCode || 'ADMIN_GRANT',
@@ -193,14 +128,14 @@ router.post('/spend', async (req, res) => {
         }
 
         // Check if user has enough balance
-        const earnRecords = await Reward.findAll({
+        const earnRecords = await db.Reward.findAll({
             where: {
                 studentId,
                 transaction_type: 'EARN'
             }
         });
 
-        const spendRecords = await Reward.findAll({
+        const spendRecords = await db.Reward.findAll({
             where: {
                 studentId,
                 transaction_type: 'SPEND'
@@ -216,7 +151,7 @@ router.post('/spend', async (req, res) => {
         }
 
         // Create spend record
-        const reward = await Reward.create({
+        const reward = await db.Reward.create({
             studentId,
             tokensAwarded: amount,
             reasonCode: reasonCode || 'PURCHASE',
@@ -253,7 +188,7 @@ router.get('/admin/transactions', async (req, res) => {
         const limit = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
 
-        const { count, rows: rewards } = await Reward.findAndCountAll({
+        const { count, rows: rewards } = await db.Reward.findAndCountAll({
             order: [['awardedAt', 'DESC']],
             limit,
             offset
@@ -284,7 +219,7 @@ router.get('/admin/transactions', async (req, res) => {
 // GET /api/tokens/admin/stats - Get overall statistics (admin only)
 router.get('/admin/stats', async (req, res) => {
     try {
-        const allRewards = await Reward.findAll();
+        const allRewards = await db.Reward.findAll();
 
         const earnRecords = allRewards.filter(r => r.transaction_type === 'EARN');
         const spendRecords = allRewards.filter(r => r.transaction_type === 'SPEND');
@@ -325,7 +260,7 @@ router.get('/admin/top-users', async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         
         // Get all rewards grouped by student
-        const allRewards = await Reward.findAll();
+        const allRewards = await db.Reward.findAll();
         
         // Calculate balance for each student
         const userBalances = {};
@@ -366,7 +301,7 @@ router.get('/admin/top-users', async (req, res) => {
 router.get('/admin/rule-performance', async (req, res) => {
     try {
         // Get all rewards grouped by reason code
-        const allRewards = await Reward.findAll({
+        const allRewards = await db.Reward.findAll({
             where: {
                 transaction_type: 'EARN'
             }
@@ -420,14 +355,14 @@ router.post('/withdraw', async (req, res) => {
         }
 
         // Check balance
-        const earnRecords = await Reward.findAll({
+        const earnRecords = await db.Reward.findAll({
             where: {
                 studentId,
                 transaction_type: 'EARN'
             }
         });
 
-        const spendRecords = await Reward.findAll({
+        const spendRecords = await db.Reward.findAll({
             where: {
                 studentId,
                 transaction_type: 'SPEND'
@@ -446,7 +381,7 @@ router.post('/withdraw', async (req, res) => {
         // For now, just create a spend record
         const numericAmount = Number(amount);
 
-        const reward = await Reward.create({
+        const reward = await db.Reward.create({
             studentId,
             tokensAwarded: numericAmount,
             reasonCode: 'WITHDRAWAL',
@@ -472,6 +407,14 @@ router.post('/withdraw', async (req, res) => {
         console.error('Error withdrawing tokens:', error);
         res.status(500).json({ error: 'Failed to withdraw tokens' });
     }
+});
+
+// Route catch-all để debug (phải đặt ở cuối cùng)
+// Lưu ý: Route này chỉ chạy nếu không có route nào match trước đó
+router.use((req, res, next) => {
+    console.log('⚠️ Route not matched:', req.method, req.originalUrl);
+    console.log('Available routes should include: GET /balance/:studentId');
+    next();
 });
 
 module.exports = router; 

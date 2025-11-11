@@ -89,7 +89,7 @@ except FileNotFoundError:
     print("WARNING:  Không tìm thấy file 'violation_model.pkl'.")
 
 SCREENSHOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads", "screenshots"))
-SAVE_FRAMES_ENABLED = os.getenv("SAVE_DEBUG_FRAMES", "true").lower() == "true"
+SAVE_FRAMES_ENABLED = os.getenv("SAVE_DEBUG_FRAMES", "false").lower() == "true"
 MAX_DEBUG_FRAMES = int(os.getenv("DEBUG_FRAME_SAVE_LIMIT", "12"))
 _saved_frame_count = 0
 
