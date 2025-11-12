@@ -1,0 +1,16 @@
+# Thư mục chứa các gói đã cài đặt
+node_modules/
+
+# File chứa biến môi trường và bí mật
+.env
+
+# Các file log
+*.log
+npm-debug.log*
+
+# IDE specific files
+.idea/
+.vscode/
+
+# Package lock file
+package-lock.json

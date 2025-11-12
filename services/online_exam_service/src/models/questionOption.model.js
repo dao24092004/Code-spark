@@ -22,8 +22,8 @@ module.exports = (sequelize, DataTypes) => {
       field: 'is_correct' // Map với cột trong DB
     }
   }, {
-    tableName: 'cm_question_options',
-    timestamps: false, // Bảng này không có cột createdAt/updatedAt
+    tableName: 'question_options', // CHANGED: Align with migration
+    timestamps: false,
   });
 
   return QuestionOption;

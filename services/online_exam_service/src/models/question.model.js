@@ -6,26 +6,46 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    quizId: {
-      type: DataTypes.UUID,
+    type: {
+      type: DataTypes.STRING(50),
       allowNull: false,
-      field: 'quiz_id'
     },
     content: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+    },
+    text: {
+      type: DataTypes.STRING(2000),
+      allowNull: true,
+    },
+    difficulty: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    explanation: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
     },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
-    displayOrder: {
-        type: DataTypes.INTEGER,
-        field: 'display_order'
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'created_at'
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'updated_at'
     }
   }, {
-    tableName: 'cm_questions',
-    timestamps: false,
+    tableName: 'questions', // CHANGED: Use exam-service's table
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   });
   return Question;
 };

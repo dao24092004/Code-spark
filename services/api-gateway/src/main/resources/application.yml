@@ -62,6 +62,12 @@ spring:
             - Path=/api/exam/**
           filters:
             - StripPrefix=1
+        - id: multisig-service
+          uri: http://127.0.0.1:3001
+          predicates:
+            - Path=/api/v1/multisig/**
+          filters:
+            - StripPrefix=0
   data:
     redis:
       host: localhost

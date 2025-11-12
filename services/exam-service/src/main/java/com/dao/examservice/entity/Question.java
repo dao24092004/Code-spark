@@ -46,8 +46,9 @@ public class Question {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @ElementCollection
-    @CollectionTable(name = "cm_question_tags", joinColumns = @JoinColumn(name = "question_id"))
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "question_tags", joinColumns = @JoinColumn(name = "question_id"))
+
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();
 

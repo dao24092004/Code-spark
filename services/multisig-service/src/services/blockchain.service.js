@@ -212,11 +212,51 @@ const executeTransaction = async (contractAddress, txIndexOnChain) => {
     return receipt.transactionHash;
 };
 
+// Fund ETH vào contract wallet
+// amountInEth: Số lượng ETH muốn fund (mặc định 500 ETH)
+const fundContractWallet = async (contractAddress, amountInEth = 500) => {
+    try {
+        const amountWei = web3.utils.toWei(amountInEth.toString(), 'ether');
+        
+        console.log(`💰 Đang fund ${amountInEth} ETH vào contract wallet ${contractAddress}...`);
+        
+        // Kiểm tra balance của Service Account trước
+        const serviceBalance = await web3.eth.getBalance(account.address);
+        const serviceBalanceEth = parseFloat(web3.utils.fromWei(serviceBalance.toString(), 'ether'));
+        
+        if (serviceBalance < BigInt(amountWei)) {
+            throw new Error(`Service Account không đủ ETH để fund. Balance: ${serviceBalanceEth} ETH, Cần: ${amountInEth} ETH`);
+        }
+        
+        // Gửi ETH vào contract wallet
+        const receipt = await web3.eth.sendTransaction({
+            from: account.address,
+            to: contractAddress,
+            value: amountWei,
+            gas: 21000,  // Gas limit cho simple transfer
+            gasPrice: await web3.eth.getGasPrice()
+        });
+        
+        console.log(`✅ Đã fund ${amountInEth} ETH vào contract wallet. Transaction Hash: ${receipt.transactionHash}`);
+        
+        // Kiểm tra balance mới của contract wallet
+        const newBalance = await web3.eth.getBalance(contractAddress);
+        const newBalanceEth = parseFloat(web3.utils.fromWei(newBalance.toString(), 'ether'));
+        console.log(`✅ Contract wallet balance: ${newBalanceEth} ETH`);
+        
+        return receipt.transactionHash;
+    } catch (error) {
+        console.error(`❌ Lỗi khi fund contract wallet: ${error.message}`);
+        throw error;
+    }
+};
+
 module.exports = {
     deployMultisigContract,
     getOnChainWalletDetails,
     submitTransaction,
     confirmTransaction,
-    executeTransaction
+    executeTransaction,
+    fundContractWallet
 };
 

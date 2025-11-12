@@ -20,14 +20,35 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
     },
     submittedAt: {
-        type: DataTypes.DATE,
-        field: 'submitted_at'
+      type: DataTypes.DATE,
+      field: 'submitted_at'
     },
     answers: {
-        type: DataTypes.TEXT,
+      type: DataTypes.TEXT,
+    },
+    // New tracking fields
+    startedAt: {
+      type: DataTypes.DATE,
+      field: 'started_at'
+    },
+    timeSpentSeconds: {
+      type: DataTypes.INTEGER,
+      field: 'time_spent_seconds'
+    },
+    correctAnswers: {
+      type: DataTypes.INTEGER,
+      field: 'correct_answers'
+    },
+    wrongAnswers: {
+      type: DataTypes.INTEGER,
+      field: 'wrong_answers'
+    },
+    totalQuestions: {
+      type: DataTypes.INTEGER,
+      field: 'total_questions'
     }
   }, {
-    tableName: 'cm_quiz_submissions',
+    tableName: 'quiz_submissions', // CHANGED: Align with migration
     timestamps: false,
   });
   return QuizSubmission;

@@ -7,13 +7,17 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "migrate": "node scripts/run-migration.js",
+    "test:db": "node scripts/test-shared-db.js",
+    "test:sync": "node scripts/test-e2e-sync.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.12.2",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "joi": "^18.0.1",

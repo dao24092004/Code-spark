@@ -1,4 +1,4 @@
-FROM openjdk:21-jdk-slim AS builder
+FROM eclipse-temurin:21-jdk AS builder
 
 WORKDIR /app
 
@@ -30,8 +30,8 @@ COPY services/identity-service/pom.xml ./pom.xml
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
 # Download dependencies first (cached layer)
-RUN ./mvnw dependency:go-offline || \
-    (echo "Dependency download failed, retrying..." && sleep 5 && ./mvnw dependency:go-offline)
+# RUN ./mvnw dependency:go-offline || \
+#     (echo "Dependency download failed, retrying..." && sleep 5 && ./mvnw dependency:go-offline)
 
 # Copy source code
 COPY services/identity-service/src/ src/
