@@ -48,17 +48,9 @@ const config = {
                 updateCopyrightCount: '/api/users/copyright-count'
             }
         },
-        analytics: {
-            name: 'analytics-service',
-            baseUrl: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:8082',
-            endpoints: {
-                // For communication.js compatibility
-                sendEvent: '/api/events'
-            }
-        },
         notification: {
             name: 'notification-service',
-            baseUrl: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:8083',
+            baseUrl: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:9009',
             endpoints: {
                 // For communication.js compatibility
                 sendNotification: '/api/notifications'
@@ -67,10 +59,10 @@ const config = {
     },
     security: {
         jwt: {
-            secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
+            secret: process.env.JWT_SECRET || 'mySecretKey12345678901234567890123456789012345678901234567890',
             expiresIn: process.env.JWT_EXPIRES_IN || '24h'
         },
-        corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8080'],
+        corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:4173'],
         rateLimit: {
             windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
             max: parseInt(process.env.RATE_LIMIT_MAX) || 100
@@ -83,7 +75,7 @@ const config = {
         chainId: parseInt(process.env.BLOCKCHAIN_CHAIN_ID || process.env.WEB3_CHAIN_ID, 10) || 1337
     },
     fileUpload: {
-        maxSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 10485760,
+        maxSize: parseInt(process.env.UPLOAD_MAX_SIZE) || 104857600, // 100MB default (was 10MB)
         allowedTypes: process.env.UPLOAD_ALLOWED_TYPES ? process.env.UPLOAD_ALLOWED_TYPES.split(',') : [
             'application/pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

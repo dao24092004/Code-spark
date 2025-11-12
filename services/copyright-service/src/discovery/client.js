@@ -93,11 +93,6 @@ class ServiceDiscovery {
      * Get local IP address
      */
     getLocalIP() {
-        console.log(`[DEBUG] Server environment is: ${config.server.env}`);
-        if (config.server.env === 'development') {
-            console.log('[DEBUG] Returning localhost for development environment.');
-            return 'localhost';
-        }
         const os = require('os');
         const interfaces = os.networkInterfaces();
         for (const name of Object.keys(interfaces)) {

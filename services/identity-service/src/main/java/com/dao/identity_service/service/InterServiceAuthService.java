@@ -23,6 +23,7 @@ public class InterServiceAuthService {
     private String interServiceSecret;
 
     public Map<String, Object> validateTokenForService(String token) {
+        log.info("Validating token: {}", token);
         try {
             String username = jwtService.extractUsername(token);
             User user = userService.findByUsername(username)
