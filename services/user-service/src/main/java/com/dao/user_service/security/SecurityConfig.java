@@ -25,10 +25,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasAuthority("USER_READ")
-                .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasAuthority("USER_WRITE")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/users/**").hasAuthority("USER_WRITE")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasAuthority("USER_DELETE")
+                .requestMatchers("/api/v1/users/**").authenticated()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
