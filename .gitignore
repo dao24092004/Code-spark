@@ -105,3 +105,8 @@ node_modules/
 # Coverage reports
 coverage/
 *.lcov
+
+# Python
+**/__pycache__/
+*.pyc
+/services/proctoring-service/ai-service/venv/

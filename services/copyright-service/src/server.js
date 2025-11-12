@@ -24,6 +24,16 @@ class MicroservicesServer {
      * Initialize middleware stack
      */
     initializeMiddleware() {
+        this.app.use((req, res, next) => {
+            console.log('Incoming Headers:', req.headers);
+            next();
+        });
+
+        this.app.use((req, res, next) => {
+            res.removeHeader('Access-Control-Allow-Credentials');
+            next();
+        });
+
         // Security middleware
         this.app.use(helmet({
             contentSecurityPolicy: {
@@ -35,14 +45,6 @@ class MicroservicesServer {
                 }
             },
             crossOriginEmbedderPolicy: false
-        }));
-
-        // CORS configuration
-        this.app.use(cors({
-            origin: config.security.corsOrigins,
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Service-Name']
         }));
 
         // Rate limiting
@@ -63,9 +65,9 @@ class MicroservicesServer {
             skip: (req, res) => res.statusCode < 400
         }));
 
-        // Request parsing
-        this.app.use(express.json({ limit: '10mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+        // Request parsing - increased to 100MB for file uploads
+        this.app.use(express.json({ limit: '100mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
         // Request ID middleware
         this.app.use((req, res, next) => {

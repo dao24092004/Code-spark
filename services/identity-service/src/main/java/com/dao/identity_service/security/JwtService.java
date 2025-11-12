@@ -153,7 +153,7 @@ public class JwtService {
                 .parseClaimsJws(authToken);
             return true;
         } catch (Exception e) {
-            log.error("Invalid JWT: {}", e.getMessage());
+            log.error("Invalid JWT: {}. Token: {}", e.getMessage(), authToken);
             return false;
         }
     }
