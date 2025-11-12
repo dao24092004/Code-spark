@@ -1,15 +1,24 @@
 // src/config/websocket.js
 const { Server } = require('socket.io');
+const config = require('./index');
 const proctoringService = require('../services/proctoring.service');
 
 let io;
 
 function initializeWebSocket(httpServer) {
+  const corsOptions = Array.isArray(config.websocket.cors.origin) || config.websocket.cors.origin === '*'
+    ? {
+        origin: config.websocket.cors.origin,
+        methods: config.websocket.cors.methods || ['GET', 'POST']
+      }
+    : {
+        origin: [config.websocket.cors.origin],
+        methods: config.websocket.cors.methods || ['GET', 'POST']
+      };
+
   io = new Server(httpServer, {
-    cors: {
-      origin: "*", // << Sau này thay bằng domain frontend của bạn
-      methods: ["GET", "POST"]
-    }
+    path: config.websocket.path,
+    cors: corsOptions
   });
 
   // Lắng nghe kết nối
@@ -113,7 +122,6 @@ function initializeWebSocket(httpServer) {
 
 module.exports = {
   initializeWebSocket,
-  // Export IO instance để các service khác có thể dùng
   getIO: () => {
     if (!io) {
       throw new Error('Socket.io not initialized!');

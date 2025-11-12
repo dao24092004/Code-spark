@@ -50,18 +50,24 @@ spring:
             - Path=/api/tokens/**
           filters:
             - StripPrefix=1
-        - id: proctoring-service
+        - id: proctoring-ws
+          uri: lb:ws://proctoring-service
+          predicates:
+            - Path=/ws/**
+          filters:
+            - StripPrefix=0
+        - id: proctoring-http
           uri: lb://proctoring-service
           predicates:
             - Path=/api/proctoring/**
           filters:
             - StripPrefix=1
         - id: online-exam-service
-          uri: lb://online-exam-service
+          uri: http://localhost:3000
           predicates:
             - Path=/api/exam/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=21 
         - id: multisig-service
           uri: http://127.0.0.1:3001
           predicates:
