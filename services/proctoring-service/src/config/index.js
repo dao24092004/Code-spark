@@ -17,11 +17,17 @@ const config = {
   },
   ai: {
     url: process.env.AI_SERVICE_URL,
+    timeout: parseInt(process.env.AI_SERVICE_TIMEOUT) || 30000, // Default 30 seconds
   },
   blockchain: {
     providerUrl: process.env.WEB3_PROVIDER_URL,
     privateKey: process.env.ACCOUNT_PRIVATE_KEY,
     contractAddress: process.env.CONTRACT_ADDRESS,
+  },
+  security: {
+    jwt: {
+      secret: process.env.JWT_SECRET,
+    },
   },
 };
 

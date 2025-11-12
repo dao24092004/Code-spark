@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     score: { type: DataTypes.DECIMAL(5, 2) },
     instructorComment: { type: DataTypes.TEXT, field: 'instructor_comment' }
   }, {
-    tableName: 'cm_answers', // <-- Đặt tên bảng theo chuẩn
+    tableName: 'answers', // CHANGED: Align with migration
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',

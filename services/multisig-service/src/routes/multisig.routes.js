@@ -1,27 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/multisig.controller');
-// const authMiddleware = require('../middlewares/auth.js'); // Sẽ thêm sau
+const { authenticateToken, checkPermission, optionalAuth } = require('../middleware/auth');
 
 // --- Quản lý Ví (Wallet) ---
-// (Giả sử đã có authMiddleware)
-router.post('/', controller.createNewWallet);
-router.post('/link', controller.linkExistingWallet);
-router.get('/:id', controller.getWallet);
+// Tạo ví mới - yêu cầu authentication
+router.post('/', authenticateToken, controller.createNewWallet);
+// Liên kết ví hiện có - yêu cầu authentication
+router.post('/link', authenticateToken, controller.linkExistingWallet);
+// Lấy thông tin ví - yêu cầu authentication
+router.get('/:id', authenticateToken, controller.getWallet);
 
 // --- Quản lý Giao dịch (Transaction) ---
 
-// Lấy danh sách giao dịch của 1 ví
-router.get('/:walletId/transactions', controller.getTransactions);
+// Lấy danh sách giao dịch của 1 ví - yêu cầu authentication
+router.get('/:walletId/transactions', authenticateToken, controller.getTransactions);
 
-// Tạo (Submit) 1 giao dịch mới cho ví
-router.post('/:walletId/transactions', controller.submitTransaction);
+// Tạo (Submit) 1 giao dịch mới cho ví - yêu cầu authentication
+router.post('/:walletId/transactions', authenticateToken, controller.submitTransaction);
 
-// Xác nhận 1 giao dịch (txId là UUID của DB)
-router.post('/transactions/:txId/confirm', controller.confirmTransaction);
+// Lấy thông tin 1 giao dịch (txId là UUID của DB) - yêu cầu authentication
+router.get('/transactions/:txId', authenticateToken, controller.getTransaction);
 
-// Thực thi 1 giao dịch (txId là UUID của DB)
-router.post('/transactions/:txId/execute', controller.executeTransaction);
+// Xác nhận 1 giao dịch (txId là UUID của DB) - yêu cầu authentication
+router.post('/transactions/:txId/confirm', authenticateToken, controller.confirmTransaction);
+
+// Thực thi 1 giao dịch (txId là UUID của DB) - yêu cầu authentication
+router.post('/transactions/:txId/execute', authenticateToken, controller.executeTransaction);
 
 
 module.exports = router;

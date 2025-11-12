@@ -1,20 +1,21 @@
 # Script chuyển ETH vào một owner account để confirm transaction
-# Usage: .\scripts\fund-owner.ps1 -OwnerAddress "0x..." [-AmountInEth 0.1]
+# Usage: .\scripts\fund-owner.ps1 -OwnerAddress "0x..." [-AmountInEth 0.1] [-RpcUrl "http://localhost:8545"]
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$OwnerAddress,
     
-    [decimal]$AmountInEth = 0.1
+    [decimal]$AmountInEth = 0.1,
+    
+    [string]$RpcUrl = "http://localhost:8545"  # Mặc định port 8545 (Ganache CLI)
 )
-
-$rpcUrl = "http://localhost:7545"
 
 Write-Host "💰 Chuyển ETH vào Owner Account" -ForegroundColor Cyan
 Write-Host "=" * 60 -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Owner Address: $OwnerAddress" -ForegroundColor Yellow
 Write-Host "Amount: $AmountInEth ETH" -ForegroundColor Yellow
+Write-Host "RPC URL: $RpcUrl" -ForegroundColor Yellow
 Write-Host ""
 
 try {
@@ -26,7 +27,7 @@ try {
         id = 1
     } | ConvertTo-Json
     
-    $accountsResp = Invoke-RestMethod -Uri $rpcUrl `
+    $accountsResp = Invoke-RestMethod -Uri $RpcUrl `
         -Method POST `
         -ContentType "application/json" `
         -Body $accountsBody
@@ -56,7 +57,7 @@ try {
         id = 2
     } | ConvertTo-Json
     
-    $txResp = Invoke-RestMethod -Uri $rpcUrl `
+    $txResp = Invoke-RestMethod -Uri $RpcUrl `
         -Method POST `
         -ContentType "application/json" `
         -Body $txBody
@@ -75,7 +76,7 @@ try {
         id = 1
     } | ConvertTo-Json
     
-    $balanceResp = Invoke-RestMethod -Uri $rpcUrl `
+    $balanceResp = Invoke-RestMethod -Uri $RpcUrl `
         -Method POST `
         -ContentType "application/json" `
         -Body $balanceBody
@@ -96,7 +97,7 @@ try {
     Write-Host "❌ Lỗi: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
     Write-Host "Kiểm tra:" -ForegroundColor Yellow
-    Write-Host "   1. Ganache đang chạy tại http://localhost:7545" -ForegroundColor White
+    Write-Host "   1. Ganache đang chạy tại $RpcUrl" -ForegroundColor White
     Write-Host "   2. Owner address đúng format (0x...)" -ForegroundColor White
 }
 

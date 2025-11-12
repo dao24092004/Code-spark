@@ -60,15 +60,19 @@ const tokenController = {
     getBalanceHandler: async (req, res) => {
         try {
             const { studentId } = req.params; // Lấy từ URL
+            console.log('🔍 getBalanceHandler called with studentId:', studentId);
             const balance = await tokenService.getBalance(Number(studentId));
-            res.status(200).json(balance);
+            console.log('✅ Balance found:', balance);
+            return res.status(200).json(balance);
 
         } catch (error) {
-            console.error('Error getting balance:', error);
+            console.error('❌ Error getting balance:', error);
             if (error.message === 'User not found.') {
+                console.log('📤 Sending 404 response for User not found');
                 return res.status(404).json({ message: error.message });
             }
-            res.status(500).json({ message: 'An internal server error occurred.' });
+            console.log('📤 Sending 500 response for internal error');
+            return res.status(500).json({ message: 'An internal server error occurred.' });
         }
     },
 

@@ -12,6 +12,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Middleware logging để debug
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+});
+
 // Middleware cơ bản
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -25,7 +31,7 @@ app.get('/', (req, res) => {
 // Ví dụ: const tokenRoutes = require('./src/routes/tokenRoutes');
 // app.use('/api/tokens', tokenRoutes);
 const tokenRoutes = require('./src/routes/tokenRoutes');
-app.use('/tokens', tokenRoutes);
+app.use('/api/tokens', tokenRoutes);
 
 // Xuất ra app để file server.js có thể sử dụng
 module.exports = app;

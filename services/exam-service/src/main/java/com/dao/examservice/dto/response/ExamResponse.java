@@ -1,6 +1,7 @@
 package com.dao.examservice.dto.response;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 public class ExamResponse {
@@ -13,8 +14,13 @@ public class ExamResponse {
     public Integer durationMinutes;
     public Integer passScore;
     public Integer maxAttempts;
-    public Long createdBy;
+
+    public Integer totalQuestions;
+    public Integer assignedQuestionCount;
+    public UUID createdBy;
+
     public String status;
     public Instant createdAt;
+    public Set<String> tags;
 }
 

@@ -1,0 +1,8 @@
+package-lock.json
+package.json
+uploads/
+venv/
+ai-service/venv/
+.env
+hardhat.config.js
+
