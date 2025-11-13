@@ -1,12 +1,13 @@
 // file: server.js
 
 const express = require('express');
-
+const http = require('http'); // THÊM: HTTP module cho WebSocket
 const cors = require('cors');
 const config = require('./src/config');
 
 const db = require('./src/models');
 const mainRouter = require('./src/routes'); // <-- 1. IMPORT ROUTER CHÍNH
+const { initializeWebSocket } = require('./src/config/websocket'); // THÊM: WebSocket config
 
 const app = express();
 const PORT = config.serverPort;
@@ -44,9 +45,15 @@ app.use(express.json());
 // Dòng này nói với Express: "Mọi request đến '/api' hãy đưa cho mainRouter xử lý"
 app.use('/api', mainRouter);
 
+// Tạo HTTP server để hỗ trợ WebSocket
+const httpServer = http.createServer(app);
+
+// Khởi tạo WebSocket
+initializeWebSocket(httpServer);
+
 // Khởi động server
-const server = app.listen(PORT, async () => {
-  console.log(`🚀 Exam Service đang chạy trên cổng ${PORT}`);
+httpServer.listen(PORT, async () => {
+  console.log(`🚀 Exam Service (HTTP + WebSocket) đang chạy trên cổng ${PORT}`);
   
   try {
     await db.sequelize.authenticate();
@@ -62,7 +69,7 @@ const server = app.listen(PORT, async () => {
 });
 
 // Xử lý lỗi khi server không thể khởi động
-server.on('error', (error) => {
+httpServer.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} đã được sử dụng!`);
   } else {
@@ -73,14 +80,14 @@ server.on('error', (error) => {
 // Giữ process alive
 process.on('SIGTERM', () => {
   console.log('👋 SIGTERM signal received: closing HTTP server');
-  server.close(() => {
+  httpServer.close(() => {
     console.log('✅ HTTP server closed');
   });
 });
 
 process.on('SIGINT', () => {
   console.log('\n👋 SIGINT signal received: closing HTTP server');
-  server.close(() => {
+  httpServer.close(() => {
     console.log('✅ HTTP server closed');
     process.exit(0);
   });

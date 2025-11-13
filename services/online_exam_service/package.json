@@ -27,6 +27,7 @@
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
+    "socket.io": "^4.7.5",
     "web3": "^4.16.0"
   },
   "devDependencies": {

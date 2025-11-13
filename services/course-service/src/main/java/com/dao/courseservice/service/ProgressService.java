@@ -121,10 +121,27 @@ class ProgressServiceImpl implements ProgressService {
     public ProgressResponse getStudentProgressInCourse(Long studentId, UUID courseId) {
         log.info("Fetching progress for student {} in course {}", studentId, courseId);
 
-        Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Progress", "student & course", studentId + " & " + courseId));
+        try {
+            // Kiểm tra course có tồn tại không
+            Course course = courseRepository.findById(courseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+            log.debug("Found course: {}", course.getTitle());
 
-        return progressMapper.toProgressResponse(progress);
+            // Tìm progress, nếu không có thì tạo progress mặc định (0%)
+            Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
+                    .orElse(new Progress(null, studentId, course, 0, null, null));
+            
+            if (progress.getId() == null) {
+                log.info("No existing progress found for student {} in course {}. Creating default progress (0%)", studentId, courseId);
+            } else {
+                log.debug("Found existing progress: {}% complete", progress.getPercentComplete());
+            }
+
+            return progressMapper.toProgressResponse(progress);
+        } catch (Exception e) {
+            log.error("Error fetching progress for student {} in course {}: {}", studentId, courseId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     //--------------------------------------------------------------------------
