@@ -53,6 +53,9 @@ public class DataInitializer implements CommandLineRunner {
         createPermissionIfNotExists("MULTISIG_READ", "Read course multisig wallet", "MULTISIG", "READ");
         createPermissionIfNotExists("MULTISIG_CREATE", "Create multisig wallet", "MULTISIG", "CREATE");
         createPermissionIfNotExists("MULTISIG_WRITE", "Update multisig wallet", "MULTISIG", "WRITE");
+        createPermissionIfNotExists("MULTISIG_DELETE", "Delete multisig wallet", "MULTISIG", "DELETE");
+        createPermissionIfNotExists("AI_CHAT", "Chat with AI", "AI", "CHAT");
+        
     }
 
     private void initializeRoles() {
@@ -80,7 +83,9 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MATERIAL_DELETE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_READ").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_CREATE").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow()
+                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
+                    permissionRepository.findByName("AI_CHAT").orElseThrow()
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
