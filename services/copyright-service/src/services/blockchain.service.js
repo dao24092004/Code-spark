@@ -22,12 +22,25 @@ const getDocumentInfoFromChain = async (hash) => {
         
         return null;
     } catch (error) {
-        // If the error is a decoding error, it likely means the hash was not found
-        // and the contract returned an empty value, which is not valid ABI-encoded data.
+        let revertReason = '';
+        // Extract the specific revert reason from the nested error object
+        if (error.cause && error.cause.cause && typeof error.cause.cause === 'string') {
+            revertReason = error.cause.cause;
+        } else if (error.cause && error.cause.message) { // Fallback for other error structures
+            revertReason = error.cause.message;
+        }
+
+        if (revertReason.includes("Document hash not found")) {
+            console.log(`Hash ${hash} not found on the blockchain (handled).`);
+            return null; // Treat as "not found"
+        }
+
+        // Also check for the old error message just in case
         if (error.message.includes("Returned values aren't valid")) {
             console.log(`Hash ${hash} not found on the blockchain (decoding error).`);
             return null; // Treat as "not found"
         }
+
         console.error('Detailed error fetching document info from blockchain:', error);
         throw new Error(`Failed to query blockchain. Reason: ${error.message}`);
     }
@@ -43,10 +56,15 @@ const registerDocumentOnChain = async (hash) => {
         }
 
         console.log(`Attempting to register hash ${hash} on the blockchain...`);
+        
+        // Force legacy transaction type for older Ganache versions by setting gasPrice
+        const gasPrice = await web3.eth.getGasPrice();
         const gasEstimate = await copyrightContract.methods.registerDocument(hash).estimateGas({ from: account.address });
+
         const tx = await copyrightContract.methods.registerDocument(hash).send({
             from: account.address,
             gas: gasEstimate,
+            gasPrice: gasPrice
         });
         console.log(`Successfully registered hash on blockchain. Transaction hash: ${tx.transactionHash}`);
         return tx.transactionHash;
