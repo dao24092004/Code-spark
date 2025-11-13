@@ -58,7 +58,8 @@ public class SecurityConfig {
             "http://localhost:4173",  // Vite preview
             "http://localhost:5173",  // Vite dev
             "http://localhost:3000",  // React dev (if used)
-            "http://localhost:8080"   // Gateway (if needed)
+            "http://localhost:8080",  // Gateway (if needed)
+            "http://localhost:9003"
         ));
         
         // Allow all HTTP methods
