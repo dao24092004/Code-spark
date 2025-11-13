@@ -10,12 +10,12 @@ module.exports = (sequelize) => {
             field: 'id' 
         },
         studentId: {
-            type: DataTypes.INTEGER, // Đổi thành BIGINT/int8 nếu studentId của bạn là int8
+            type: DataTypes.BIGINT,
             allowNull: false,
             field: 'student_id'
         },
         tokensAwarded: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.BIGINT,
             allowNull: false,
             field: 'tokens_awarded'
         },
@@ -24,7 +24,7 @@ module.exports = (sequelize) => {
             field: 'reason_code'
         },
         relatedId: {
-            type: DataTypes.UUID,
+            type: DataTypes.STRING(255),
             field: 'related_id'
         },
         awardedAt: {

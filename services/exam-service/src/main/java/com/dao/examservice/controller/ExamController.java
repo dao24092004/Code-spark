@@ -9,9 +9,7 @@ import com.dao.examservice.dto.response.EnumOptionResponse;
 import com.dao.examservice.dto.response.ExamResponse;
 import com.dao.examservice.dto.response.GeneratedQuestionsResponse;
 import com.dao.examservice.dto.response.QuestionResponse;
-import com.dao.examservice.dto.request.QuestionSearchRequest;
 import com.dao.examservice.entity.Exam;
-import com.dao.examservice.entity.ExamRegistration;
 import com.dao.examservice.service.ExamService;
 import com.dao.examservice.service.QuestionService;
 import com.dao.examservice.repository.ExamQuestionRepository;
@@ -169,7 +167,8 @@ public class ExamController {
     private ExamResponse toResponse(Exam e) {
         ExamResponse r = new ExamResponse();
         r.id = e.getId();
-        r.courseId = e.getCourseId();
+        r.courseId = e.getOrgId();
+        r.orgId = e.getOrgId();
         r.title = e.getTitle();
         r.description = e.getDescription();
         r.startAt = e.getStartAt();

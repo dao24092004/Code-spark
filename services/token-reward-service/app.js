@@ -12,9 +12,13 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+const isDebugEnabled = process.env.LOG_LEVEL === 'debug';
+
 // Middleware logging để debug
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    if (isDebugEnabled) {
+        console.debug(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    }
     next();
 });
 

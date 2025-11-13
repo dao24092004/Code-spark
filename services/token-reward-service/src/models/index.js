@@ -22,11 +22,7 @@ Object.keys(db).forEach(modelName => {
   }
 });
 
-// Ví dụ thiết lập mối quan hệ: Một User có nhiều Reward
-db.User.hasMany(db.Reward, { foreignKey: 'studentId' });
-db.Reward.belongsTo(db.User, { foreignKey: 'studentId' });
-
-
+// Associations
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 

@@ -266,6 +266,45 @@
       "artifacts": [
         "IERC20"
       ]
+    },
+    "D:\\code\\nckh\\Code-spark\\services\\token-reward-service\\contracts\\RewardEscrow.sol": {
+      "lastModificationDate": 1762871664996,
+      "contentHash": "c9e7e573035cd2821aaad837de8dba1b",
+      "sourceName": "contracts/RewardEscrow.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "RewardEscrow"
+      ]
     }
   }
 }

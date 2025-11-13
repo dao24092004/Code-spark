@@ -4,6 +4,54 @@
 const db = require('../models');
 const blockchainService = require('./blockchainService');
 
+const ensureUserRecord = async (studentId, { transaction = null, lockForUpdate = false } = {}) => {
+    const findOptions = {};
+    if (transaction) {
+        findOptions.transaction = transaction;
+        if (lockForUpdate && transaction.LOCK && transaction.LOCK.UPDATE) {
+            findOptions.lock = transaction.LOCK.UPDATE;
+        }
+    }
+
+    let user = await db.User.findByPk(studentId, findOptions);
+
+    if (!user) {
+        const createOptions = {};
+        if (transaction) {
+            createOptions.transaction = transaction;
+        }
+        user = await db.User.create({ id: studentId }, createOptions);
+    }
+
+    return user;
+};
+
+const toNumber = (value, fallback = 0) => {
+    if (value === null || value === undefined) {
+        return fallback;
+    }
+
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : fallback;
+    }
+
+    if (typeof value === 'bigint') {
+        try {
+            return Number(value);
+        } catch (error) {
+            console.warn('Unable to convert bigint to number safely, falling back to fallback value.', { value, error });
+            return fallback;
+        }
+    }
+
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? fallback : parsed;
+    }
+
+    return fallback;
+};
+
 const tokenService = {
     /**
      * Hàm cấp token cho một student.
@@ -20,12 +68,8 @@ const tokenService = {
         }
 
         const result = await db.sequelize.transaction(async (t) => {
-            // 1. TÌM USER (Dòng bị thiếu)
-            const user = await db.User.findByPk(studentId, { transaction: t });
-
-            if (!user) {
-                throw new Error('User not found.');
-            }
+            // 1. Đảm bảo user tồn tại (tạo mới nếu cần)
+            const user = await ensureUserRecord(studentId, { transaction: t, lockForUpdate: true });
 
             // 2. CỘNG TIỀN (Dòng bị thiếu)
             await user.increment('tokenBalance', { by: amount, transaction: t });
@@ -42,7 +86,29 @@ const tokenService = {
             return newReward;
         });
 
-        return result;
+        const rewardData = typeof result?.toJSON === 'function'
+            ? result.toJSON()
+            : typeof result?.get === 'function'
+                ? result.get({ plain: true })
+                : result;
+
+        const normalizedReward = {
+            ...rewardData,
+            tokensAwarded: rewardData?.tokensAwarded ?? amount,
+            amount: rewardData?.amount ?? rewardData?.tokensAwarded ?? amount,
+            transaction_type: rewardData?.transaction_type ?? 'EARN'
+        };
+
+        console.log('✅ Token reward granted', {
+            rewardId: normalizedReward.id,
+            studentId,
+            amount: normalizedReward.tokensAwarded,
+            reasonCode: normalizedReward.reasonCode ?? null,
+            relatedId: normalizedReward.relatedId ?? null,
+            transactionType: normalizedReward.transaction_type
+        });
+
+        return normalizedReward;
     },
 
     spendTokens: async ({ studentId, amount, reasonCode, relatedId }) => {
@@ -51,14 +117,7 @@ const tokenService = {
         }
 
         const result = await db.sequelize.transaction(async (t) => {
-            const user = await db.User.findByPk(studentId, { 
-                transaction: t,
-                lock: t.LOCK.UPDATE 
-            });
-
-            if (!user) {
-                throw new Error('User not found.');
-            }
+            const user = await ensureUserRecord(studentId, { transaction: t, lockForUpdate: true });
             if (user.tokenBalance < amount) {
                 throw new Error('Insufficient funds.');
             }
@@ -87,13 +146,36 @@ const tokenService = {
      * UC28a: Lấy số dư token hiện tại.
      */
     getBalance: async (studentId) => {
-        const user = await db.User.findByPk(studentId);
-        
-        if (!user) {
-            throw new Error('User not found.');
-        }
+        const user = await ensureUserRecord(studentId);
 
-        return { tokenBalance: user.tokenBalance };
+        const [totalEarnedRaw, totalSpentRaw, lastTransactionAt] = await Promise.all([
+            db.Reward.sum('tokensAwarded', {
+                where: { studentId, transaction_type: 'EARN' }
+            }),
+            db.Reward.sum('tokensAwarded', {
+                where: { studentId, transaction_type: 'SPEND' }
+            }),
+            db.Reward.max('awardedAt', {
+                where: { studentId }
+            })
+        ]);
+
+        const totalEarned = toNumber(totalEarnedRaw, 0);
+        const totalSpent = toNumber(totalSpentRaw, 0);
+        const balanceValue = toNumber(user.tokenBalance, 0);
+        const netEarned = totalEarned - totalSpent;
+
+        return {
+            balance: balanceValue,
+            tokenBalance: balanceValue,
+            availableBalance: balanceValue,
+            totalEarned,
+            lifetimeEarned: totalEarned,
+            totalSpent,
+            lifetimeSpent: totalSpent,
+            netEarned,
+            lastTransactionAt: lastTransactionAt || (user.updatedAt ?? null)
+        };
     },
 
     /**
@@ -121,67 +203,103 @@ const tokenService = {
             throw new Error('Amount must be positive.');
         }
 
-        // Bước 1: Trừ tiền Off-chain (trong DB)
-        // Chúng ta phải đảm bảo người dùng có đủ tiền TRƯỚC KHI chuyển on-chain
+        let withdrawalRecord = null;
+
         try {
             await db.sequelize.transaction(async (t) => {
-                const user = await db.User.findByPk(studentId, { 
-                    transaction: t,
-                    lock: t.LOCK.UPDATE 
-                });
+                const user = await ensureUserRecord(studentId, { transaction: t, lockForUpdate: true });
 
-                if (!user) {
-                    throw new Error('User not found.');
-                }
                 if (user.tokenBalance < amount) {
-                    throw new Error('Insufficient funds.'); // Không đủ tiền
+                    throw new Error('Insufficient funds.');
                 }
 
-                // Trừ tiền trong DB
+                withdrawalRecord = await db.TokenWithdrawal.create({
+                    userId: studentId,
+                    walletAddress: toAddress,
+                    amount,
+                    status: 'processing',
+                    tokenAddress: process.env.CONTRACT_ADDRESS || null,
+                    metadata: null
+                }, { transaction: t });
+
                 await user.decrement('tokenBalance', { by: amount, transaction: t });
 
-                // Ghi log rút tiền (có thể thêm transaction_type 'WITHDRAW')
                 await db.Reward.create({
                     studentId,
-                    tokensAwarded: amount, // Ghi số dương
+                    tokensAwarded: amount,
                     reasonCode: 'WITHDRAW',
-                    relatedId: toAddress, // Lưu địa chỉ ví rút tiền
-                    transaction_type: 'SPEND' // Hoặc 'WITHDRAW' nếu bạn thêm vào DB
+                    relatedId: withdrawalRecord.id,
+                    transaction_type: 'SPEND'
                 }, { transaction: t });
             });
         } catch (dbError) {
-            // Nếu có lỗi ở bước này (vd: không đủ tiền), dừng lại ngay
-            console.error("Lỗi khi trừ tiền off-chain:", dbError.message);
-            throw dbError; 
+            console.error('Lỗi khi tạo yêu cầu rút tiền:', dbError.message);
+            throw dbError;
         }
 
-        // Bước 2: Chuyển tiền On-chain (trên Ganache)
-        // Chỉ thực hiện khi Bước 1 đã thành công
-        const onChainResult = await blockchainService.transferTokens(toAddress, amount);
+        let onChainResult;
 
-        if (onChainResult.success) {
-            // Cả 2 bước thành công!
-            return { 
-                message: 'Withdrawal successful!', 
-                txHash: onChainResult.txHash 
-            };
-        } else {
-            // LỖI: Bước 2 (On-chain) thất bại
-            // Chúng ta phải "hoàn tiền" lại cho người dùng vào DB
-            console.error('Lỗi On-chain, đang hoàn tiền (refund) cho người dùng...');
-            const user = await db.User.findByPk(studentId);
-            await user.increment('tokenBalance', { by: amount });
-            
-            // Ghi log hoàn tiền
-            await db.Reward.create({
-                studentId,
-                tokensAwarded: amount,
-                reasonCode: 'WITHDRAW_FAILED_REFUND',
-                relatedId: toAddress,
-                transaction_type: 'EARN' // Trả lại tiền
+        try {
+            onChainResult = await blockchainService.disburseTokens(toAddress, amount, {
+                requestId: withdrawalRecord ? withdrawalRecord.id : undefined
             });
-            throw new Error('Giao dịch on-chain thất bại. Tiền đã được hoàn lại vào ví off-chain.');
+        } catch (chainError) {
+            console.error('Blockchain disburse error:', chainError);
+            onChainResult = { success: false, error: chainError.message };
         }
+
+        if (onChainResult && onChainResult.success) {
+            await withdrawalRecord.update({
+                status: 'completed',
+                txHash: onChainResult.txHash,
+                completedAt: new Date(),
+                metadata: {
+                    ...(withdrawalRecord.metadata || {}),
+                    viaEscrow: onChainResult.viaEscrow || false
+                }
+            });
+
+            console.log('✅ On-chain withdrawal completed', {
+                userId: studentId,
+                amount,
+                toAddress,
+                txHash: onChainResult.txHash,
+                requestId: withdrawalRecord.id,
+                viaEscrow: onChainResult.viaEscrow || false
+            });
+
+            return {
+                message: 'Withdrawal successful!',
+                transactionHash: onChainResult.txHash,
+                success: true
+            };
+        }
+
+        // Re-credit user and mark withdrawal as failed
+        await db.User.increment('tokenBalance', {
+            by: amount,
+            where: { id: studentId }
+        });
+
+        if (withdrawalRecord) {
+            await withdrawalRecord.update({
+                status: 'failed',
+                metadata: {
+                    ...(withdrawalRecord.metadata || {}),
+                    error: onChainResult?.error || 'Unknown blockchain error'
+                }
+            });
+        }
+
+        await db.Reward.create({
+            studentId,
+            tokensAwarded: amount,
+            reasonCode: 'WITHDRAW_FAILED_REFUND',
+            relatedId: withdrawalRecord ? withdrawalRecord.id : toAddress,
+            transaction_type: 'EARN'
+        });
+
+        throw new Error(onChainResult?.error || 'Giao dịch on-chain thất bại. Tiền đã được hoàn lại vào ví off-chain.');
     }
 };
 

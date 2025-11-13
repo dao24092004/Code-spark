@@ -3,7 +3,7 @@
 
 const config = {
     server: {
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || 3333,
         host: process.env.HOST || 'localhost',
         env: process.env.NODE_ENV || 'development',
     },
@@ -70,7 +70,7 @@ const config = {
             secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
             expiresIn: process.env.JWT_EXPIRES_IN || '24h'
         },
-        corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8080'],
+        corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3333', 'http://localhost:8080'],
         rateLimit: {
             windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
             max: parseInt(process.env.RATE_LIMIT_MAX) || 100

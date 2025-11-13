@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const tokenController = require('../controllers/tokenController');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
+const walletController = require('../controllers/walletController');
 const db = require('../models');
 
 // Định nghĩa một route: Khi có request POST tới /grant,
@@ -11,6 +12,11 @@ router.post('/grant', authenticateToken, tokenController.grantTokenHandler);
 
 // UC27: Tiêu token (mới)
 router.post('/spend', authenticateToken, tokenController.spendTokenHandler);
+
+// Wallet linking & status
+router.get('/wallets/me', authenticateToken, walletController.getLinkedWallet);
+router.post('/wallets/link', authenticateToken, walletController.linkWallet);
+router.delete('/wallets/me', authenticateToken, walletController.unlinkWallet);
 
 // Test route để debug
 router.get('/test', (req, res) => {

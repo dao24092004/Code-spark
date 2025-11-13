@@ -2,8 +2,8 @@ const { Web3 } = require('web3');
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from the root .env file
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+// Load environment variables from the service-level .env file
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const WEB3_PROVIDER_URL = process.env.WEB3_PROVIDER_URL || 'http://127.0.0.1:7545';
 const web3 = new Web3(new Web3.providers.HttpProvider(WEB3_PROVIDER_URL));

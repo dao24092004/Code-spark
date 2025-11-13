@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cm_quizzes")
+@Table(name = "exams")
 public class Exam {
 
     public enum ExamStatus { DRAFT, SCHEDULED, PUBLISHED, ACTIVE, COMPLETED, CANCELLED }
@@ -17,8 +17,8 @@ public class Exam {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "course_id", nullable = false, columnDefinition = "uuid")
-    private UUID courseId;
+    @Column(name = "org_id", nullable = false, columnDefinition = "uuid")
+    private UUID orgId;
 
     @Column(nullable = false)
     private String title;
@@ -32,7 +32,7 @@ public class Exam {
     @Column(name = "end_at")
     private Instant endAt;
 
-    @Column(name = "time_limit_minutes")
+    @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
     @Column(name = "pass_score")
@@ -61,8 +61,15 @@ public class Exam {
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public UUID getCourseId() { return courseId; }
-    public void setCourseId(UUID courseId) { this.courseId = courseId; }
+
+    public UUID getOrgId() { return orgId; }
+    public void setOrgId(UUID orgId) { this.orgId = orgId; }
+
+    /**
+     * Legacy accessor kept for backward compatibility with older DTOs
+     */
+    public UUID getCourseId() { return orgId; }
+    public void setCourseId(UUID courseId) { this.orgId = courseId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }

@@ -10,7 +10,9 @@
     "seed": "node scripts/seed.js",
     "migrate": "node scripts/run-migration.js",
     "test:db": "node scripts/test-shared-db.js",
-    "test:sync": "node scripts/test-e2e-sync.js"
+    "test:sync": "node scripts/test-e2e-sync.js",
+    "check:proctoring": "node scripts/check-active-sessions.js",
+    "env:template": "node scripts/generate-env-template.js"
   },
   "keywords": [],
   "author": "",
