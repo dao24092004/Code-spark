@@ -86,6 +86,9 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
+                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
+                    permissionRepository.findByName("AI_CHAT").orElseThrow()
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
@@ -101,7 +104,8 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("PROFILE_USER").orElseThrow(),
                     permissionRepository.findByName("NOTIFICATION_STREAM").orElseThrow(),
                     permissionRepository.findByName("COURSE_READ").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_READ").orElseThrow()
+                    permissionRepository.findByName("MULTISIG_READ").orElseThrow(),
+                    permissionRepository.findByName("AI_CHAT").orElseThrow()
             );
             userRole.setPermissions(userPermissions);
             roleRepository.save(userRole);
