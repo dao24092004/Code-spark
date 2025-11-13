@@ -68,6 +68,13 @@ spring:
             - Path=/api/v1/multisig/**
           filters:
             - StripPrefix=0
+        
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/user/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost
