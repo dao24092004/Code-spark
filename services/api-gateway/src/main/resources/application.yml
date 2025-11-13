@@ -74,6 +74,13 @@ spring:
             - Path=/api/v1/multisig/**
           filters:
             - StripPrefix=0
+        
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/user/**
+          filters:
+            - StripPrefix=1
         - id: organization-service
           uri: http://localhost:8008  
           predicates:
