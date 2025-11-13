@@ -86,9 +86,7 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
-                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
-                    permissionRepository.findByName("AI_CHAT").orElseThrow()
+                    
             );
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
