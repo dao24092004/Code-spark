@@ -88,4 +88,20 @@ router.get(
   recruitmentController.getTests
 );
 
+// API 10: DELETE /api/v1/organization/:orgId/members/:userId
+router.delete(
+  '/:orgId/members/:userId',
+  authenticateToken,
+  validateId,
+  organizationController.deleteMember
+);
+
+// API 11: PATCH /api/v1/organization/:orgId/members/:userId
+router.patch(
+  '/:orgId/members/:userId',
+  authenticateToken,
+  validateId,
+  organizationController.updateMember
+);
+
 module.exports = router;
