@@ -111,14 +111,17 @@ class RewardServiceImpl implements RewardService {
     private void dispatchToTokenRewardService(TokenGrantRequest requestPayload) {
         String targetUrl = tokenRewardBaseUrl + "/api/tokens/grant";
         try {
-            WebClient.RequestBodySpec requestSpec = webClientBuilder.build().post()
+            var webClient = webClientBuilder.build();
+            var request = webClient.post()
                     .uri(targetUrl)
-                    .bodyValue(requestPayload)
                     .header("Content-Type", "application/json");
+            
             if (StringUtils.hasText(tokenRewardApiKey)) {
-                requestSpec = requestSpec.header("Authorization", "Bearer " + tokenRewardApiKey);
+                request = request.header("Authorization", "Bearer " + tokenRewardApiKey);
             }
-            requestSpec.retrieve()
+            
+            request.bodyValue(requestPayload)
+                    .retrieve()
                     .toBodilessEntity()
                     .timeout(Duration.ofSeconds(5))
                     .block();
