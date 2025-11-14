@@ -6,37 +6,32 @@ import com.dao.courseservice.request.UpdateCourseRequest;
 import com.dao.courseservice.response.CourseResponse;
 import org.springframework.stereotype.Component;
 
-/**
- * Lớp này chịu trách nhiệm chuyển đổi dữ liệu giữa các lớp DTO và Entity.
- * Nó giúp tách biệt các tầng của ứng dụng một cách rõ ràng.
- */
-@Component // Đánh dấu là một Spring Bean để có thể inject vào các lớp khác
+@Component
 public class CourseMapper {
 
     /**
-     * Chuyển từ CreateCourseRequest (dữ liệu đầu vào) sang Course (entity để lưu vào DB).
+     * Chuyển từ CreateCourseRequest sang Course entity
      */
     public Course toEntity(CreateCourseRequest request) {
-        // Dùng builder của Lombok để tạo đối tượng một cách an toàn và sạch sẽ
         return Course.builder()
                 .id(request.getId())
                 .instructorId(request.getInstructorId())
+                .organizationId(request.getOrganizationId())        // ⭐ NEW
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .thumbnailUrl(request.getThumbnailUrl())
-                // Đặt giá trị mặc định nếu client không cung cấp
                 .visibility(request.getVisibility() != null ? request.getVisibility() : "private")
                 .build();
     }
 
     /**
-     * Chuyển từ Course (entity từ DB) sang CourseResponse (dữ liệu trả về cho client).
+     * Chuyển từ Course entity sang CourseResponse
      */
     public CourseResponse toCourseResponse(Course course) {
-        // Dùng builder để tạo đối tượng response
         return CourseResponse.builder()
                 .id(course.getId())
                 .instructorId(course.getInstructorId())
+                .organizationId(course.getOrganizationId())        // ⭐ NEW
                 .title(course.getTitle())
                 .slug(course.getSlug())
                 .description(course.getDescription())
@@ -48,8 +43,7 @@ public class CourseMapper {
     }
 
     /**
-     * Cập nhật một entity 'Course' đã có từ dữ liệu trong 'UpdateCourseRequest'.
-     * Phương thức này chỉ cập nhật những trường có giá trị, tránh ghi đè dữ liệu bằng null.
+     * Cập nhật Course entity từ UpdateCourseRequest
      */
     public void updateEntityFromRequest(Course course, UpdateCourseRequest request) {
         if (request.getTitle() != null) {
@@ -63,6 +57,9 @@ public class CourseMapper {
         }
         if (request.getVisibility() != null) {
             course.setVisibility(request.getVisibility());
+        }
+        if (request.getOrganizationId() != null) {                 // ⭐ NEW
+            course.setOrganizationId(request.getOrganizationId());
         }
     }
 }
