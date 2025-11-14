@@ -3,6 +3,7 @@ package com.dao.courseservice.controller;
 import com.dao.common.dto.ApiResponse; // Import ApiResponse từ common library
 import com.dao.courseservice.request.CreateCourseRequest;
 import com.dao.courseservice.request.UpdateCourseRequest;
+import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseMemberDto; // Thêm import
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.service.CourseService;
@@ -20,8 +21,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List; // Thêm import
 import java.util.UUID;
+
+import org.springframework.http.HttpStatusCode;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller chịu trách nhiệm xử lý các request liên quan đến Khóa học (UC29).
@@ -73,10 +79,39 @@ public class CourseController {
     @GetMapping
     @PreAuthorize("hasAuthority('COURSE_READ')")
     public ResponseEntity<ApiResponse<Page<CourseResponse>>> getAllCourses(
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        
-        Page<CourseResponse> courses = courseService.getAllCourses(pageable);
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String organizationId,
+            @RequestParam(required = false) Long instructorId,
+            @RequestParam(required = false) Long createdBy,
+            @RequestParam(required = false) String visibility,
+            @RequestParam(required = false) String createdFrom,
+            @RequestParam(required = false) String createdTo) {
+
+        CourseFilterCriteria filterCriteria = CourseFilterCriteria.builder()
+                .keyword(keyword)
+                .organizationId(organizationId)
+                .instructorId(instructorId)
+                .createdBy(createdBy)
+                .visibility(visibility)
+                .createdFrom(parseDateTime(createdFrom))
+                .createdTo(parseDateTime(createdTo))
+                .build();
+
+        Page<CourseResponse> courses = courseService.getAllCourses(pageable, filterCriteria);
         return ResponseEntity.ok(ApiResponse.success(courses));
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw new ResponseStatusException(HttpStatusCode.valueOf(400),
+                    "createdFrom/createdTo phải đúng định dạng ISO-8601 (vd: 2025-01-01T00:00:00)", ex);
+        }
     }
     
     /**

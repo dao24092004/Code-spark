@@ -2,6 +2,7 @@ package com.dao.courseservice.repository;
 
 import com.dao.courseservice.entity.Course;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +17,7 @@ import java.util.UUID;
  * Repository để truy vấn dữ liệu cho bảng cm_courses (UC29).
  */
 @Repository
-public interface CourseRepository extends JpaRepository<Course, UUID> {
+public interface CourseRepository extends JpaRepository<Course, UUID>, JpaSpecificationExecutor<Course> {
 
     /**
      * Tìm kiếm một khóa học dựa trên 'slug' (chuỗi định danh trên URL).
