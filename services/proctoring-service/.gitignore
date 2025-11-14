@@ -1,8 +1,26 @@
-package-lock.json
-package.json
-uploads/
+# Dependencies
+node_modules/
+
+# Python cache
+__pycache__/
+ai-service/__pycache__/
+
+# AI Models
+ai-service/yolov8n.pt
+ai-service/violation_model.pkl
+
+# Logs
+artifacts/
+
+# Environment variables
+.env
+
+# Virtual environments
 venv/
 ai-service/venv/
-.env
+
+# Hardhat config
 hardhat.config.js
 
+# Uploads
+uploads/

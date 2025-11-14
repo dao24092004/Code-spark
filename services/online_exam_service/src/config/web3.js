@@ -2,6 +2,5 @@
 const { Web3 } = require('web3');
 const config = require('./index');
 
-const web3 = new Web3(new Web3.providers.HttpProvider(config.blockchain.providerUrl));
-
+const web3 = new Web3(new Web3.providers.HttpProvider(config.web3.providerUrl));
 module.exports = web3;

@@ -1,5 +1,8 @@
+# Dependencies
+node_modules/
+
+# Environment variables
 .env
-.env.*
-secrets/
-*.local
- 
+
+# Build artifacts
+src/contracts/build/

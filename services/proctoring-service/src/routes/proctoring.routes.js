@@ -60,4 +60,11 @@ router.post('/analyze-frame', (req, res, next) => {
   next();
 }, proctoringController.analyzeFrame);
 
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Proctoring service is working through API Gateway!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = router;
