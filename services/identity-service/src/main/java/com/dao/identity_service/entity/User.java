@@ -38,7 +38,7 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Column(name = "first_name")
@@ -52,6 +52,11 @@ public class User implements UserDetails {
 
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false,name = "provider")
+    @Builder.Default
+    private AuthProvider provider = AuthProvider.LOCAL;
 
     @Column(name = "is_enabled")
     @Builder.Default

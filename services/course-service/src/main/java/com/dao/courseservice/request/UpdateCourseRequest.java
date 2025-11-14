@@ -24,4 +24,7 @@ public class UpdateCourseRequest {
 
     private String thumbnailUrl;
     private String visibility;
+    private String organizationId; 
+
+// Thêm getter và setter
 }

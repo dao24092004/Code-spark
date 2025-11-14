@@ -8,7 +8,7 @@ const { Organization, OrganizationMember } = db;
 
 // SỬA LỖI 3: Import kết nối DB khác và QueryTypes
 const { identityDbSequelize } = require('../config/db'); 
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 
 const organizationService = {
 
@@ -37,9 +37,35 @@ const organizationService = {
   /**
    * API 2: GET /api/v1/organizations
    */
-  async getAllOrganizations() {
+  async getAllOrganizations(filters = {}) {
     try {
+      const where = {};
+
+      if (filters.keyword) {
+        where.name = { [Op.iLike]: `%${filters.keyword.trim()}%` };
+      }
+      if (filters.ownerId) {
+        where.ownerId = filters.ownerId;
+      }
+      if (filters.status) {
+        where.status = filters.status;
+      }
+      if (filters.industry) {
+        where.industry = filters.industry;
+      }
+      if (filters.orgType) {
+        where.orgType = filters.orgType;
+      }
+      if (filters.isVerified !== undefined) {
+        const boolVal =
+          typeof filters.isVerified === 'string'
+            ? filters.isVerified.toLowerCase() === 'true'
+            : Boolean(filters.isVerified);
+        where.isVerified = boolVal;
+      }
+
       const organizations = await Organization.findAll({
+        where,
         order: [['created_at', 'DESC']]
       });
       return organizations;
@@ -99,7 +125,7 @@ const organizationService = {
   /**
    * API 6: POST /api/v1/organizations/:orgId/members
    */
-  async addMemberToOrganization(orgId, userId, orgRole) {
+  async addMemberToOrganization(orgId, userId, role) {
     try {
       const organization = await Organization.findByPk(orgId);
       if (!organization) throw new Error('OrganizationNotFound');
@@ -111,7 +137,9 @@ const organizationService = {
       if (!user || user.length === 0) throw new Error('UserNotFound');
 
       const newMember = await OrganizationMember.create({
-        organizationId: orgId, userId: userId, orgRole: orgRole
+        organizationId: orgId,
+        userId: userId,
+        role: role
       });
       return newMember;
     } catch (error) {
@@ -154,7 +182,8 @@ const organizationService = {
         const userDetails = userMap.get(member.userId);
         const profileDetails = profileMap.get(member.userId);
         return {
-          memberId: member.id, orgRole: member.orgRole, joinedAt: member.joined_at,
+          memberId: member.id, role: member.role, joinedAt: member.joined_at,
+
           user: {
             userId: member.userId,
             email: userDetails ? userDetails.email : null,
@@ -169,6 +198,54 @@ const organizationService = {
     } catch (error) {
       console.error('Lỗi Service [getOrganizationMembers]:', error.message);
       throw new Error('Không thể lấy danh sách thành viên.');
+    }
+  },
+
+  /**
+   * API: PATCH /api/v1/organizations/:orgId/members/:userId
+   * Cập nhật vai trò/trạng thái của thành viên trong tổ chức
+   */
+  async updateMember(orgId, userId, update) {
+    try {
+      const member = await OrganizationMember.findOne({
+        where: { organizationId: orgId, userId: userId }
+      });
+      if (!member) throw new Error('MemberNotFound');
+
+      const payload = {};
+      // support external field name 'role' and map to column 'role'
+      if (update.role) payload.role = update.role;
+
+      if (update.status) payload.status = update.status;
+
+      if (Object.keys(payload).length === 0) {
+        return member; // nothing to update
+      }
+      await member.update(payload);
+      return member.get({ plain: true });
+    } catch (error) {
+      console.error('Lỗi Service [updateMember]:', error.message);
+      if (error.message === 'MemberNotFound') throw error;
+      throw new Error('Không thể cập nhật thành viên.');
+    }
+  },
+
+  /**
+   * API: DELETE /api/v1/organizations/:orgId/members/:userId
+   * Xóa thành viên khỏi tổ chức
+   */
+  async deleteMember(orgId, userId) {
+    try {
+      const member = await OrganizationMember.findOne({
+        where: { organizationId: orgId, userId: userId }
+      });
+      if (!member) throw new Error('MemberNotFound');
+      await member.destroy();
+      return;
+    } catch (error) {
+      console.error('Lỗi Service [deleteMember]:', error.message);
+      if (error.message === 'MemberNotFound') throw error;
+      throw new Error('Không thể xóa thành viên.');
     }
   }
 };
