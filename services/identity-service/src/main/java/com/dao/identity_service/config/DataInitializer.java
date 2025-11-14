@@ -6,17 +6,21 @@ import com.dao.identity_service.entity.User;
 import com.dao.identity_service.repository.PermissionRepository;
 import com.dao.identity_service.repository.RoleRepository;
 import com.dao.identity_service.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@DependsOn("entityManagerFactory")
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -25,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
         initializePermissions();
         initializeRoles();
@@ -62,7 +67,7 @@ public class DataInitializer implements CommandLineRunner {
         // Admin role with all permissions
         Role adminRole = createRoleIfNotExists("ADMIN", "System administrator with full access");
         if (adminRole != null) {
-            Set<Permission> allPermissions = Set.of(
+            Set<Permission> allPermissions = new HashSet<>(Set.of(
                     permissionRepository.findByName("USER_READ").orElseThrow(),
                     permissionRepository.findByName("USER_WRITE").orElseThrow(),
                     permissionRepository.findByName("USER_DELETE").orElseThrow(),
@@ -85,9 +90,11 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MULTISIG_CREATE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
+                    permissionRepository.findByName("AI_CHAT").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
+                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
-                    
-            );
+            ));
             adminRole.setPermissions(allPermissions);
             roleRepository.save(adminRole);
         }
@@ -95,7 +102,7 @@ public class DataInitializer implements CommandLineRunner {
         // User role with basic permissions
         Role userRole = createRoleIfNotExists("USER", "Regular user with basic permissions");
         if (userRole != null) {
-            Set<Permission> userPermissions = Set.of(
+            Set<Permission> userPermissions = new HashSet<>(Set.of(
                     permissionRepository.findByName("USER_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_WRITE").orElseThrow(),
@@ -104,7 +111,7 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("COURSE_READ").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_READ").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
-            );
+            ));
             userRole.setPermissions(userPermissions);
             roleRepository.save(userRole);
         }
@@ -112,14 +119,14 @@ public class DataInitializer implements CommandLineRunner {
         // Manager role with moderate permissions
         Role managerRole = createRoleIfNotExists("MANAGER", "Manager with user management permissions");
         if (managerRole != null) {
-            Set<Permission> managerPermissions = Set.of(
+            Set<Permission> managerPermissions = new HashSet<>(Set.of(
                     permissionRepository.findByName("USER_READ").orElseThrow(),
                     permissionRepository.findByName("USER_WRITE").orElseThrow(),
                     permissionRepository.findByName("ROLE_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_READ").orElseThrow(),
                     permissionRepository.findByName("FILE_WRITE").orElseThrow(),
                     permissionRepository.findByName("FILE_DELETE").orElseThrow()
-            );
+            ));
             managerRole.setPermissions(managerPermissions);
             roleRepository.save(managerRole);
         }
@@ -135,7 +142,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("admin123"))
                     .firstName("System")
                     .lastName("Administrator")
-                    .roles(Set.of(adminRole))
+                    .roles(new HashSet<>(Set.of(adminRole)))
                     .build();
             userRepository.save(admin);
             log.info("Created default admin user: admin@codespark.com / admin123");
@@ -150,7 +157,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("user123"))
                     .firstName("Regular")
                     .lastName("User")
-                    .roles(Set.of(userRole))
+                    .roles(new HashSet<>(Set.of(userRole)))
                     .build();
             userRepository.save(user);
             log.info("Created default user: user@codespark.com / user123");

@@ -198,6 +198,33 @@ public class UserService implements UserDetailsService {
         return userMapper.toDto(savedUser);
     }
 
+    public User processOAuth2User(String email, String name, String avatarUrl) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            return userOptional.get();
+        } else {
+            return createOAuth2User(email, name, avatarUrl);
+        }
+    }
+
+    private User createOAuth2User(String email, String name, String avatarUrl) {
+        log.info("Creating new user from OAuth2: {}", email);
+        
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(email); // Or generate a unique username
+        user.setFirstName(name);
+        user.setAvatarUrl(avatarUrl);
+        user.setEnabled(true);
+        user.setCreatedAt(LocalDateTime.now());
+
+        Role defaultRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", "USER"));
+        user.getRoles().add(defaultRole);
+        
+        return userRepository.save(user);
+    }
+
     public void changePassword(String username, String oldPassword, String newPassword) {
         log.info("Changing password for user: {}", username);
         
