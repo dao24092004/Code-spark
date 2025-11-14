@@ -1,114 +1,107 @@
 // db/init-data.js
-
+const { profileDbSequelize } = require('../src/config/db');
 const db = require('../src/models');
 
-const createInitialData = async () => {
+/**
+ * Đồng bộ hóa tất cả các model với cơ sở dữ liệu.
+ * - alter: true: Tự động thêm cột mới, thay đổi kiểu dữ liệu nếu cần.
+ *              Không xóa cột cũ để tránh mất dữ liệu.
+ */
+const syncDatabase = async () => {
   try {
-    // --- Create Organization ---
-    const org1 = await db.Organization.create({
-      name: 'CodeSpark',
-      ownerId: 1, // Giả sử có user với id = 1
-      orgType: 'Technology',
-      orgSize: '10-50 employees',
-      industry: 'Software Development',
-      package: 'premium',
-      status: 'active',
-      isVerified: true,
-    });
-
-    const org2 = await db.Organization.create({
-      name: 'DesignPro',
-      ownerId: 2, // Giả sử có user với id = 2
-      orgType: 'Design',
-      orgSize: '1-10 employees',
-      industry: 'Creative Agency',
-      package: 'free',
-      status: 'active',
-      isVerified: false,
-    });
-
-    console.log('Organizations created:', org1.toJSON(), org2.toJSON());
-
-    // --- Create Organization Members ---
-    const member1 = await db.OrganizationMember.create({
-      organizationId: org1.id,
-      userId: 1,
-      orgRole: 'admin',
-    });
-
-    const member2 = await db.OrganizationMember.create({
-      organizationId: org1.id,
-      userId: 3, // Giả sử có user với id = 3
-      orgRole: 'member',
-    });
-
-    const member3 = await db.OrganizationMember.create({
-      organizationId: org2.id,
-      userId: 2,
-      orgRole: 'admin',
-    });
+    console.log('Bắt đầu đồng bộ hóa cơ sở dữ liệu (profileDb)...');
     
-    console.log('Organization members created:', member1.toJSON(), member2.toJSON(), member3.toJSON());
+    // Chỉ đồng bộ các model thuộc profileDbSequelize
+    await profileDbSequelize.sync({ alter: true });
 
+    console.log('✅ Đồng bộ hóa cơ sở dữ liệu thành công.');
 
-    // --- Create Recruitment Test for CodeSpark ---
-    const test1 = await db.RecruitmentTest.create({
-      organizationId: org1.id,
-      title: 'Node.js Developer Skill Test',
-      description: 'A test to assess skills in Node.js, Express, and Sequelize.',
-      durationMinutes: 60,
-    });
-
-    console.log('Recruitment test created:', test1.toJSON());
-
-    // --- Create Questions for the Test ---
-    const q1 = await db.RecruitmentQuestion.create({
-      testId: test1.id,
-      content: 'What is the event loop in Node.js?',
-      questionType: 'multiple_choice',
-    });
-
-    const q2 = await db.RecruitmentQuestion.create({
-      testId: test1.id,
-      content: 'Explain the difference between `let`, `const`, and `var`.',
-      questionType: 'short_answer',
-    });
-    
-    const q3 = await db.RecruitmentQuestion.create({
-      testId: test1.id,
-      content: 'Which of the following is NOT a core module in Node.js?',
-      questionType: 'multiple_choice',
-    });
-
-    console.log('Questions created:', q1.toJSON(), q2.toJSON(), q3.toJSON());
-
-    // --- Create Answers for Question 1 ---
-    await db.RecruitmentAnswer.bulkCreate([
-      { questionId: q1.id, content: 'A mechanism that allows Node.js to perform non-blocking I/O operations.', isCorrect: true },
-      { questionId: q1.id, content: 'A loop that iterates over arrays.', isCorrect: false },
-      { questionId: q1.id, content: 'A special syntax for creating custom events.', isCorrect: false },
-    ]);
-    
-    // --- Create Answers for Question 3 ---
-    await db.RecruitmentAnswer.bulkCreate([
-      { questionId: q3.id, content: 'http', isCorrect: false },
-      { questionId: q3.id, content: 'fs', isCorrect: false },
-      { questionId: q3.id, content: 'express', isCorrect: true },
-      { questionId: q3.id, content: 'path', isCorrect: false },
-    ]);
-
-    console.log('Answers created for questions.');
-
-    console.log('--- Initial data created successfully! ---');
+    // Tùy chọn: Thêm dữ liệu mẫu sau khi đồng bộ
+    await addSampleData();
 
   } catch (error) {
-    console.error('Error creating initial data:', error);
-  } finally {
-    // Đóng kết nối DB
-    await db.Organization.sequelize.close();
-    // Nếu các model dùng các kết nối khác nhau, hãy đóng tất cả
-    // await db.Course.sequelize.close(); 
+    console.error('❌ Lỗi đồng bộ hóa cơ sở dữ liệu:', error);
+    process.exit(1); // Thoát tiến trình nếu có lỗi nghiêm trọng
   }
 };
 
-createInitialData();
+/**
+ * Thêm dữ liệu mẫu vào cơ sở dữ liệu nếu chưa có.
+ */
+const addSampleData = async () => {
+  try {
+    console.log('Kiểm tra và thêm dữ liệu mẫu...');
+
+    // 1. Thêm Organization mẫu
+    const [organization, orgCreated] = await db.Organization.findOrCreate({
+      where: { name: 'CodeSpark Community' },
+      defaults: {
+        ownerId: 1, // Giả sử user có ID=1 là owner
+        orgType: 'Community',
+        orgSize: '100-500',
+        industry: 'Education Technology',
+        package: 'premium',
+        isVerified: true,
+        status: 'active'
+      }
+    });
+
+    if (orgCreated) {
+      console.log('-> Đã tạo Organization mẫu.');
+    }
+
+    // 2. Thêm Thành viên cho Organization
+    const [member, memberCreated] = await db.OrganizationMember.findOrCreate({
+        where: { organizationId: organization.id, userId: 1 },
+        defaults: {
+            orgRole: 'owner'
+        }
+    });
+
+    if (memberCreated) {
+        console.log('-> Đã thêm Owner vào Organization.');
+    }
+
+    // 3. Thêm một bài Test tuyển dụng mẫu
+    const [test, testCreated] = await db.RecruitmentTest.findOrCreate({
+        where: { title: 'Bài Test Lập Trình Viên Frontend (ReactJS)' },
+        defaults: {
+            organizationId: organization.id,
+            description: 'Bài test đánh giá kiến thức cơ bản và nâng cao về ReactJS, HTML, CSS và JavaScript.',
+            durationMinutes: 60
+        }
+    });
+
+    if (testCreated) {
+        console.log('-> Đã tạo Recruitment Test mẫu.');
+
+        // 4. Thêm câu hỏi cho Test
+        const question1 = await db.RecruitmentQuestion.create({
+            testId: test.id,
+            content: '`useEffect` hook trong React dùng để làm gì?',
+            questionType: 'multiple-choice'
+        });
+        console.log('--> Đã thêm câu hỏi 1.');
+
+        // 5. Thêm các câu trả lời cho câu hỏi
+        await db.RecruitmentAnswer.bulkCreate([
+            { questionId: question1.id, content: 'Quản lý state của component', isCorrect: false },
+            { questionId: question1.id, content: 'Thực hiện các side effect (ví dụ: fetch data, subscriptions)', isCorrect: true },
+            { questionId: question1.id, content: 'Render các component con', isCorrect: false },
+            { questionId: question1.id, content: 'Tạo context cho ứng dụng', isCorrect: false }
+        ]);
+        console.log('---> Đã thêm các câu trả lời.');
+    }
+
+
+    console.log('✅ Hoàn tất việc thêm dữ liệu mẫu.');
+  } catch (error) {
+    console.error('❌ Lỗi khi thêm dữ liệu mẫu:', error);
+  }
+}
+
+
+// Chạy hàm đồng bộ
+// syncDatabase();
+
+module.exports = syncDatabase;

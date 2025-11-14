@@ -7,6 +7,7 @@ const {
   courseDbSequelize
 } = require('./src/config/db');
 const config = require('./src/config');
+const syncDatabase = require('./db/init-data.js');
 
 // --- HÀM KIỂM TRA KẾT NỐI DATABASE ---
 async function checkDatabaseConnections() {
@@ -76,12 +77,17 @@ app.use((err, req, res, next) => {
 // --- KHỞI ĐỘNG SERVER ---
 async function startServer() {
   try {
+    // 1. Kiểm tra kết nối DB
     const allDatabasesConnected = await checkDatabaseConnections();
     if (!allDatabasesConnected) {
       console.error('❌ Không thể khởi động server do lỗi kết nối DB');
       process.exit(1);
     }
 
+    // 2. Đồng bộ hóa schema
+    await syncDatabase();
+
+    // 3. Khởi động server
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Organization Service đang chạy trên http://localhost:${PORT}`);
       console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
