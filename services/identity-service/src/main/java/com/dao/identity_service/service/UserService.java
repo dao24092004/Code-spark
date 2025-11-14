@@ -156,6 +156,9 @@ public class UserService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public final List<UserDto> findAllUsers() {
+        if (userRepository == null) {
+            throw new IllegalStateException("UserRepository is not initialized");
+        }
         return userRepository.findAll().stream()
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());
@@ -163,6 +166,9 @@ public class UserService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public Page<UserDto> findAllUsers(Pageable pageable) {
+        if (userRepository == null) {
+            throw new IllegalStateException("UserRepository is not initialized");
+        }
         return userRepository.findAll(pageable)
                 .map(userMapper::toDto);
     }

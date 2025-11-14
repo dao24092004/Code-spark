@@ -2,7 +2,7 @@ require('dotenv').config();
 
 module.exports = {
   server: {
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || 3003,
     env: process.env.NODE_ENV || 'development',
     // JWT secret phải giống với identity-service để verify token
     jwtSecret: process.env.JWT_SECRET || 'mySecretKey12345678901234567890123456789012345678901234567890'

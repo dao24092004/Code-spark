@@ -18,11 +18,11 @@ class AIService {
     // Security
     this.app.use(helmet());
     
-    // CORS
-    this.app.use(cors({
-      origin: config.cors.origins,
-      credentials: true
-    }));
+    // CORS is handled by API Gateway - Disabled to prevent duplicate headers
+    // this.app.use(cors({
+    //   origin: config.cors.origins,
+    //   credentials: true
+    // }));
 
     // Logging
     if (config.env !== 'test') {

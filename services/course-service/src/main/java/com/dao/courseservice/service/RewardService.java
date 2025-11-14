@@ -113,15 +113,18 @@ class RewardServiceImpl implements RewardService {
         try {
             WebClient.RequestBodySpec requestSpec = webClientBuilder.build().post()
                     .uri(targetUrl)
-                    .bodyValue(requestPayload)
                     .header("Content-Type", "application/json");
+            
             if (StringUtils.hasText(tokenRewardApiKey)) {
-                requestSpec = requestSpec.header("Authorization", "Bearer " + tokenRewardApiKey);
+                requestSpec.header("Authorization", "Bearer " + tokenRewardApiKey);
             }
-            requestSpec.retrieve()
+            
+            requestSpec.bodyValue(requestPayload)
+                    .retrieve()
                     .toBodilessEntity()
                     .timeout(Duration.ofSeconds(5))
                     .block();
+            
             log.info("Dispatched token reward to {} for student {}", targetUrl, requestPayload.getStudentId());
         } catch (WebClientResponseException ex) {
             log.warn("Token reward service rejected request (status {}): {}", ex.getStatusCode(), ex.getResponseBodyAsString());

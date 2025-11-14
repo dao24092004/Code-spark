@@ -94,7 +94,7 @@ router.get('/gifts/:id', async (req, res) => {
 // ==================== Admin Endpoints ====================
 
 // GET /api/tokens/admin/transactions - Get all transactions (admin only)
-router.get('/admin/transactions', async (req, res) => {
+router.get('/admin/transactions', authenticateToken, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
@@ -129,25 +129,43 @@ router.get('/admin/transactions', async (req, res) => {
 });
 
 // GET /api/tokens/admin/stats - Get overall statistics (admin only)
-router.get('/admin/stats', async (req, res) => {
+router.get('/admin/stats', authenticateToken, async (req, res) => {
     try {
+        console.log('[ADMIN STATS] Request received');
+        
+        // Check if db.Reward exists
+        if (!db.Reward) {
+            console.error('[ADMIN STATS] db.Reward is not defined. Available models:', Object.keys(db));
+            return res.status(500).json({ 
+                error: 'Database model not initialized',
+                details: 'Reward model not found',
+                availableModels: Object.keys(db)
+            });
+        }
+
+        console.log('[ADMIN STATS] Querying database...');
         const allRewards = await db.Reward.findAll();
+        console.log('[ADMIN STATS] Found', allRewards.length, 'rewards');
 
         const earnRecords = allRewards.filter(r => r.transaction_type === 'EARN');
         const spendRecords = allRewards.filter(r => r.transaction_type === 'SPEND');
 
-        const totalEarned = earnRecords.reduce((sum, r) => sum + Number(r.tokensAwarded), 0);
-        const totalSpent = spendRecords.reduce((sum, r) => sum + Number(r.tokensAwarded), 0);
+        const totalEarned = earnRecords.reduce((sum, r) => sum + Number(r.tokensAwarded || 0), 0);
+        const totalSpent = spendRecords.reduce((sum, r) => sum + Number(r.tokensAwarded || 0), 0);
         const currentBalance = totalEarned - totalSpent;
 
         // Get unique users
-        const uniqueUsers = new Set(allRewards.map(r => r.studentId));
+        const uniqueUsers = new Set(allRewards.map(r => r.studentId).filter(Boolean));
 
         // Get today's transactions
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayRewards = allRewards.filter(r => new Date(r.awardedAt) >= today);
-        const todayTokens = todayRewards.reduce((sum, r) => sum + Number(r.tokensAwarded), 0);
+        const todayRewards = allRewards.filter(r => {
+            if (!r.awardedAt) return false;
+            const awardedDate = new Date(r.awardedAt);
+            return awardedDate >= today;
+        });
+        const todayTokens = todayRewards.reduce((sum, r) => sum + Number(r.tokensAwarded || 0), 0);
 
         res.json({
             totalTokensIssued: totalEarned,
@@ -161,13 +179,27 @@ router.get('/admin/stats', async (req, res) => {
             todayTokensDistributed: todayTokens
         });
     } catch (error) {
-        console.error('Error getting stats:', error);
-        res.status(500).json({ error: 'Failed to get stats' });
+        console.error('[ADMIN STATS] Error getting stats:', error);
+        console.error('[ADMIN STATS] Error stack:', error.stack);
+        console.error('[ADMIN STATS] Error name:', error.name);
+        
+        // Return detailed error in development, generic in production
+        const errorResponse = {
+            error: 'Failed to get stats',
+            message: error.message || 'Internal server error',
+        };
+        
+        if (process.env.NODE_ENV === 'development') {
+            errorResponse.details = error.stack;
+            errorResponse.errorName = error.name;
+        }
+        
+        res.status(500).json(errorResponse);
     }
 });
 
 // GET /api/tokens/admin/top-users - Get top users by token balance (admin only)
-router.get('/admin/top-users', async (req, res) => {
+router.get('/admin/top-users', authenticateToken, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
         
@@ -210,7 +242,7 @@ router.get('/admin/top-users', async (req, res) => {
 });
 
 // GET /api/tokens/admin/rule-performance - Get reward rule performance stats
-router.get('/admin/rule-performance', async (req, res) => {
+router.get('/admin/rule-performance', authenticateToken, async (req, res) => {
     try {
         // Get all rewards grouped by reason code
         const allRewards = await db.Reward.findAll({

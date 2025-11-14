@@ -91,9 +91,6 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
                     permissionRepository.findByName("PROCTORING_SESSION_TERMINATE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
-                    permissionRepository.findByName("AI_CHAT").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
             ));
             adminRole.setPermissions(allPermissions);
@@ -140,7 +137,7 @@ public class DataInitializer implements CommandLineRunner {
             User admin = User.builder()
                     .username("admin")
                     .email("admin@codespark.com")
-                    .password(passwordEncoder.encode("admin123"))
+                    .password(passwordEncoder.encode("@Admin123@"))
                     .firstName("System")
                     .lastName("Administrator")
                     .roles(new HashSet<>(Set.of(adminRole)))
@@ -155,7 +152,7 @@ public class DataInitializer implements CommandLineRunner {
             User user = User.builder()
                     .username("user")
                     .email("user@codespark.com")
-                    .password(passwordEncoder.encode("user123"))
+                    .password(passwordEncoder.encode("@User123@"))
                     .firstName("Regular")
                     .lastName("User")
                     .roles(new HashSet<>(Set.of(userRole)))

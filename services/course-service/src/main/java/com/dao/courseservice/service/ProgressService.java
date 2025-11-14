@@ -178,7 +178,13 @@ class ProgressServiceImpl implements ProgressService {
 
             // Tìm progress, nếu không có thì tạo progress mặc định (0%)
             Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
-                    .orElse(new Progress(null, studentId, course, 0, null, null));
+                    .orElse(Progress.builder()
+                            .studentId(studentId)
+                            .course(course)
+                            .percentComplete(0)
+                            .passedFinalExam(false)
+                            .courseCompleted(false)
+                            .build());
             
             if (progress.getId() == null) {
                 log.info("No existing progress found for student {} in course {}. Creating default progress (0%)", studentId, courseId);

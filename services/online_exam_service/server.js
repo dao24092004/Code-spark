@@ -31,18 +31,18 @@ process.on('warning', (warning) => {
 });
 
 
-// CORS middleware - cho phép API Gateway và frontend truy cập
-app.use(cors({
-  origin: [
-    'http://localhost:8080',  // API Gateway
-    'http://localhost:4173',  // Frontend
-    'http://localhost:5173',  // Frontend dev
-    'http://localhost:8083'   // Other services
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Service-Name']
-}));
+// CORS is handled by API Gateway - Disabled to prevent duplicate headers
+// app.use(cors({
+//   origin: [
+//     'http://localhost:8080',  // API Gateway
+//     'http://localhost:4173',  // Frontend
+//     'http://localhost:5173',  // Frontend dev
+//     'http://localhost:8083'   // Other services
+//   ],
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Service-Name']
+// }));
 
 app.get('/', (req, res) => {
   res.json({
