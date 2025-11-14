@@ -1,0 +1,96 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Environment variables
+.env
+*.env
+!.env.example
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# VS Code
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Application properties with sensitive data
+**/application-*.properties
+!**/application.properties
+
+# Local development overrides
+**/application-local*.properties
+**/bootstrap-local*.properties
+
+# Spring Boot specific
+spring-boot-devtools/
+
+# H2 database files (if used)
+*.h2.db
+*.lock.db
+
+# Executable files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs
+hs_err_pid*
+
+# Ignore all .md files except README.md
+*.md
+!README.md
+
+# Ignore all .txt files
+*.txt
+
+# Ignore all .csv files
+*.csv
+
+# Ignore all .xlsx files
+*.xlsx
+
+# Ignore all .pdf files
+*.pdf
+
+# Ignore all .docx files
+*.docx
+
+# Maven wrapper
+dependency-reduced-pom.xml
+mvnw
+mvnw.cmd
+
+# Local configuration files
+*.properties
+!application.properties
+
+# Log files
+*.log.*
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~

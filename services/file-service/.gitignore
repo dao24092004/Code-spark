@@ -1,0 +1,124 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.idea_modules/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build files
+build/
+dist/
+
+# Local configuration files
+*.properties
+!application.properties
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Maven Wrapper
+.mvn/
+
+# Dependency directories
+lib/
+
+# Logs directory
+logs/
+
+# Local development files
+*.log
+
+# Application specific
+uploads/
+temp/
+
+# Spring Boot specific
+spring-boot-devtools/
+
+# H2 database files (if used)
+*.h2.db
+*.lock.db
+
+# Executable files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs
+hs_err_pid*
+
+# Ignore all .md files except README.md
+*.md
+!README.md
+
+# Ignore all .txt files
+*.txt
+
+# Ignore all .csv files
+*.csv
+
+# Ignore all .xlsx files
+*.xlsx
+
+# Ignore all .pdf files
+*.pdf
+
+# Ignore all .docx files
+*.docx

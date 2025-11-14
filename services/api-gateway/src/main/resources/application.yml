@@ -44,10 +44,15 @@ spring:
             - Path=/course/**
           filters:
             - StripPrefix=1
-        - id: token-reward--service 
+        - id: token-reward-service 
           uri: lb://token-reward-service 
           predicates:
             - Path=/api/tokens/**
+            
+        - id: ai-service
+          uri: http://localhost:3002
+          predicates:
+            - Path=/ai/**
           filters:
             - StripPrefix=1
         - id: proctoring-service
