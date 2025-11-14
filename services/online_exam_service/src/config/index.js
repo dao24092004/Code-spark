@@ -1,4 +1,4 @@
- // file: src/config/index.js
+// file: src/config/index.js
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -19,27 +19,74 @@ const portValue = process.env.PORT;
 console.log(`🔍 Debug - process.env.PORT = ${portValue} (type: ${typeof portValue})`);
 
 const config = {
-  serverPort: portValue ? parseInt(portValue, 10) : 3000, // Mặc định port 3000 nếu không có trong .env
+  // === MỤC SERVER (Cấu trúc lại từ serverPort) ===
+  server: {
+    port: portValue ? parseInt(portValue, 10) : 3000, // Lấy từ logic cũ của bạn
+    host: process.env.HOST || 'localhost',
+    env: process.env.NODE_ENV || 'development',
+  },
+
+  // === MỤC DATABASE (Giữ nguyên logic của bạn, thêm fallback) ===
+  db: {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'password',
+    database: process.env.DB_NAME || 'default_db',
+    dialect: 'postgres', // Giữ nguyên từ file cũ
+  },
+
+  // === MỤC DISCOVERY (MỚI - Thêm từ ví dụ) ===
+  discovery: {
+    enabled: process.env.SERVICE_DISCOVERY_ENABLED !== 'false', // Mặc định là true
+    eureka: {
+      host: process.env.EUREKA_HOST || 'localhost',
+      port: parseInt(process.env.EUREKA_PORT, 10) || 9999,
+      servicePath: process.env.EUREKA_SERVICE_PATH || '/eureka/apps/',
+      heartbeatInterval: parseInt(process.env.EUREKA_HEARTBEAT_INTERVAL, 10) || 30000,
+      registryFetchInterval: parseInt(process.env.EUREKA_REGISTRY_FETCH_INTERVAL, 10) || 30000,
+      preferIpAddress: true, // Thường là lựa chọn tốt với Node.js
+      useLocalMetadata: true,
+    }
+  },
+
+  // === MỤC GATEWAY (MỚI - Thêm từ ví dụ) ===
+  gateway: {
+    enabled: process.env.API_GATEWAY_ENABLED !== 'false', // Mặc định là true
+    baseUrl: process.env.API_GATEWAY_BASE_URL || 'http://localhost:8080',
+    timeout: parseInt(process.env.API_GATEWAY_TIMEOUT, 10) || 30000,
+    retries: parseInt(process.env.API_GATEWAY_RETRIES, 10) || 3,
+  },
+
+  // === MỤC SECURITY (Mở rộng từ file cũ) ===
   security: {
     jwt: {
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET || 'your-fallback-secret-key-change-it', // Giữ biến của bạn
+      expiresIn: process.env.JWT_EXPIRES_IN || '24h' // Thêm từ ví dụ
     },
+    corsOrigins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8080'],
+    rateLimit: {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000, // 15 phút
+      max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100 // 100 requests
+    }
   },
-  db: {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    dialect: 'postgres',
+
+  // === MỤC WEB3 (Đổi tên từ blockchain, giữ biến của bạn) ===
+  web3: {
+    providerUrl: process.env.WEB3_PROVIDER_URL, // Giữ biến của bạn
+    contractAddress: process.env.GRADE_LEDGER_CONTRACT_ADDRESS, // Giữ biến của bạn
+    privateKey: process.env.OWNER_ACCOUNT_PRIVATE_KEY, // Giữ biến của bạn
+    chainId: parseInt(process.env.BLOCKCHAIN_CHAIN_ID, 10) || 1337 // Thêm từ ví dụ
   },
-  blockchain: {
-    providerUrl: process.env.WEB3_PROVIDER_URL,
-    contractAddress: process.env.GRADE_LEDGER_CONTRACT_ADDRESS,
-    privateKey: process.env.OWNER_ACCOUNT_PRIVATE_KEY,
-  },
-  proctoringServiceUrl: process.env.PROCTORING_SERVICE_URL,
-  proctoringServiceToken: process.env.PROCTORING_SERVICE_TOKEN,
+
+  // === MỤC SERVICES (Tổ chức lại từ file cũ) ===
+  services: {
+    proctoring: {
+      url: process.env.PROCTORING_SERVICE_URL, // Giữ biến của bạn
+      token: process.env.PROCTORING_SERVICE_TOKEN, // Giữ biến của bạn
+    }
+    // Thêm các service khác nếu cần
+  }
 };
 
 module.exports = config;

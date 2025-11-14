@@ -26,6 +26,12 @@ public class Course {
     @Column(nullable = false)
     private Long instructorId;
 
+    @Column
+    private Long createdBy;
+
+    @Column(nullable = false)
+    private String organizationId;
+
     @Column(nullable = false)
     private String title;
 

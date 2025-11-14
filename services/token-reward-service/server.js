@@ -1,29 +1,29 @@
-// server.js
+// Cấu hình môi trường
 require('dotenv').config();
+const express = require('express');
+const app = express();
 
-// Import app từ file app.js
-const app = require('./app'); 
-const db = require('./src/models');
+// Middleware
+app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+// Định tuyến
+const router = express.Router();
 
-// Hàm chính để kết nối DB và khởi động server
-const start = async () => {
-    try {
-        // Kiểm tra kết nối database
-        await db.sequelize.authenticate();
-        console.log('✅ Connection to the database has been established successfully.');
+// API kiểm tra hoạt động
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'token-reward-service',
+    port: process.env.PORT || 3001
+  });
+});
 
-        // Khởi động server lắng nghe trên port đã định
-        app.listen(PORT, () => {
-            console.log(`✅ Server is running on port ${PORT}.`);
-        });
+// Sử dụng router với tiền tố /api/tokens
+app.use('/api/tokens', router);
 
-    } catch (error) {
-        console.error('❌ Unable to connect to the database:', error);
-        process.exit(1);
-    }
-};
-
-// Gọi hàm chính để bắt đầu mọi thứ
-start();
+// Khởi động server
+const PORT = process.env.PORT || 3001; // Sửa cổng mặc định thành 3001
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Dịch vụ Token Reward đang chạy trên cổng ${PORT}`);
+  console.log(`Truy cập API: http://localhost:${PORT}/api/tokens/health`);
+});

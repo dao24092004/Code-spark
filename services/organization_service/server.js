@@ -1,60 +1,118 @@
 require('dotenv').config();
 const express = require('express');
-
-// Import các kết nối Sequelize
+const routes = require('./src/routes');
 const { 
-  profileDbSequelize, 
-  identityDbSequelize, 
-  courseDbSequelize 
+  profileDbSequelize,
+  identityDbSequelize,
+  courseDbSequelize
 } = require('./src/config/db');
-
-// Import config (để lấy port)
 const config = require('./src/config');
+const syncDatabase = require('./db/init-data.js');
 
-// Import router chính (sẽ được điền code ở bước sau)
-const mainRouter = require('./src/routes'); 
-
-// --- HÀM KIỂM TRA KẾT NỐI DB (DÙNG SEQUELIZE) ---
+// --- HÀM KIỂM TRA KẾT NỐI DATABASE ---
 async function checkDatabaseConnections() {
-  console.log('Đang kiểm tra kết nối Database (dùng Sequelize)...');
   try {
+    console.log('🔍 Đang kiểm tra kết nối database...');
+    
+    // Kiểm tra kết nối tới từng database
     await profileDbSequelize.authenticate();
-    console.log('✅ Kết nối thành công đến [profile_db]');
+    console.log('✅ Kết nối thành công tới profile_db');
     
     await identityDbSequelize.authenticate();
-    console.log('✅ Kết nối thành công đến [identity_db]');
+    console.log('✅ Kết nối thành công tới identity_db');
     
     await courseDbSequelize.authenticate();
-    console.log('✅ Kết nối thành công đến [course_db]');
+    console.log('✅ Kết nối thành công tới course_db');
     
     return true;
   } catch (error) {
-    console.error('❌ LỖI kết nối DB:', error.message);
+    console.error('❌ Lỗi kết nối database:', error.message);
     return false;
   }
 }
-// --- KẾT THÚC HÀM KIỂM TRA ---
 
+// --- KHỞI TẠO ỨNG DỤNG ---
 const app = express();
-const PORT = config.port; // Lấy port từ file config
+const PORT = config.port || 8008;
 
-app.use(express.json()); // Middleware để đọc JSON body
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// --- SỬ DỤNG ROUTER CHÍNH ---
-// Tất cả API sẽ có dạng /api/v1/...
-app.use('/api/v1', mainRouter);
+// CORS configuration
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+});
 
-// --- HÀM CHẠY SERVER ---
+// Routes
+app.use('/api/v1', routes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', service: 'organization-service' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false,
+    message: 'Không tìm thấy tài nguyên',
+    path: req.originalUrl
+  });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('🔥 Lỗi server:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Đã xảy ra lỗi hệ thống',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// --- KHỞI ĐỘNG SERVER ---
 async function startServer() {
-  const allDatabasesConnected = await checkDatabaseConnections();
-  if (allDatabasesConnected) {
-    app.listen(PORT, () => {
-      console.log(`🚀 Service 8 (Organization) đang chạy trên port ${PORT}`);
+  try {
+    // 1. Kiểm tra kết nối DB
+    const allDatabasesConnected = await checkDatabaseConnections();
+    if (!allDatabasesConnected) {
+      console.error('❌ Không thể khởi động server do lỗi kết nối DB');
+      process.exit(1);
+    }
+
+    // 2. Đồng bộ hóa schema
+    await syncDatabase();
+
+    // 3. Khởi động server
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Organization Service đang chạy trên http://localhost:${PORT}`);
+      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
     });
-  } else {
-    console.error('❌ Không thể khởi động server do lỗi kết nối DB.');
+  } catch (error) {
+    console.error('❌ Lỗi khởi động server:', error);
     process.exit(1);
   }
 }
 
+// Khởi động server
 startServer();
+
+// Xử lý tín hiệu dừng
+process.on('SIGTERM', () => {
+  console.log('🛑 Nhận được tín hiệu dừng. Đang đóng kết nối...');
+  // Đóng kết nối database
+  Promise.all([
+    profileDbSequelize.close(),
+    identityDbSequelize.close(),
+    courseDbSequelize.close()
+  ]).then(() => {
+    console.log('✅ Đã đóng tất cả kết nối database');
+    process.exit(0);
+  });
+});
+
+module.exports = app;
