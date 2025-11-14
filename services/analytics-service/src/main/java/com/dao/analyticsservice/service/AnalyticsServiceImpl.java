@@ -107,22 +107,52 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     public AnalyticsOverviewResponse getAnalyticsOverview() {
-        long totalExamSubmissions = examResultRepository.count();
-        long distinctExams = examResultRepository.countDistinctByExamIdIsNotNull();
-        long activeLearners = examResultRepository.countDistinctByUserIdIsNotNull();
-        Double averageScore = Optional.ofNullable(examResultRepository.findAverageScore()).orElse(0.0);
+        try {
+            long totalExamSubmissions = examResultRepository.count();
+            long distinctExams = examResultRepository.countDistinctByExamIdIsNotNull();
+            long activeLearners = examResultRepository.countDistinctByUserIdIsNotNull();
+            Double averageScore = Optional.ofNullable(examResultRepository.findAverageScore()).orElse(0.0);
 
-        long totalUsers = fetchUsers().size();
-        long totalCourses = fetchTotalCourses();
+            long totalUsers = 0;
+            long totalCourses = 0;
+            
+            try {
+                totalUsers = fetchUsers().size();
+            } catch (Exception e) {
+                // Log error but continue with default value
+                System.err.println("Error fetching users: " + e.getMessage());
+            }
+            
+            try {
+                totalCourses = fetchTotalCourses();
+            } catch (Exception e) {
+                // Log error but continue with default value
+                System.err.println("Error fetching courses: " + e.getMessage());
+            }
 
-        return AnalyticsOverviewResponse.builder()
-                .totalUsers(totalUsers)
-                .activeUsers(activeLearners)
-                .totalCourses(totalCourses)
-                .totalExams(distinctExams)
-                .totalExamSubmissions(totalExamSubmissions)
-                .averageScore(round(averageScore))
-                .build();
+            return AnalyticsOverviewResponse.builder()
+                    .totalUsers(totalUsers)
+                    .activeUsers(activeLearners)
+                    .totalCourses(totalCourses)
+                    .totalExams(distinctExams)
+                    .totalExamSubmissions(totalExamSubmissions)
+                    .averageScore(round(averageScore))
+                    .build();
+        } catch (Exception e) {
+            // Log the full error for debugging
+            System.err.println("Error in getAnalyticsOverview: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Return default values if there's any error
+            return AnalyticsOverviewResponse.builder()
+                    .totalUsers(0)
+                    .activeUsers(0)
+                    .totalCourses(0)
+                    .totalExams(0)
+                    .totalExamSubmissions(0)
+                    .averageScore(0.0)
+                    .build();
+        }
     }
 
     @Override
