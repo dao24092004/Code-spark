@@ -51,14 +51,13 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-// Đảm bảo dòng này tồn tại
-app.use('/api/exam', mainRouter);  // Không có 's' sau exam
+
 // Middleware để đọc JSON từ body của request
 app.use(express.json());
 
-// <-- 2. SỬ DỤNG ROUTER VỚI PREFIX '/api'
+// SỬ DỤNG ROUTER VỚI PREFIX '/api'
 // Dòng này nói với Express: "Mọi request đến '/api' hãy đưa cho mainRouter xử lý"
-app.use('/api/exam', mainRouter);
+app.use('/api', mainRouter);
 
 // Tạo HTTP server để hỗ trợ WebSocket
 const httpServer = http.createServer(app);

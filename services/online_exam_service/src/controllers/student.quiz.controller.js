@@ -82,9 +82,10 @@ async function submitQuiz(req, res) {
     const { submissionId } = req.params;
     // Lấy mảng câu trả lời từ body của request
     const answers = req.body.answers;
+    const authHeader = req.headers['authorization'] || '';
 
     // Gọi đến service để xử lý logic
-    const result = await quizService.submitQuiz(submissionId, answers);
+    const result = await quizService.submitQuiz(submissionId, answers, authHeader);
 
     // Trả về kết quả thành công
     res.status(200).json({

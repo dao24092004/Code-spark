@@ -10,7 +10,11 @@ module.exports = {
   blockchain: {
     rpcUrl: process.env.RPC_URL,
     deployerKey: process.env.DEPLOYER_PRIVATE_KEY,
-    serviceAccountKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY
+    serviceAccountKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY,
+    ownerKeys: (process.env.OWNER_PRIVATE_KEYS || '')
+      .split(/[\n,]/)
+      .map((key) => key.trim())
+      .filter((key) => key.length > 0)
   },
   database: {
     host: process.env.DB_HOST,
@@ -18,6 +22,14 @@ module.exports = {
     user: process.env.DB_USER,
     pass: process.env.DB_PASS,
     name: process.env.DB_NAME
+  },
+  identity: {
+    baseUrl: process.env.IDENTITY_SERVICE_URL || null,
+    serviceName: process.env.IDENTITY_SERVICE_NAME || 'IDENTITY-SERVICE',
+    timeout: process.env.IDENTITY_SERVICE_TIMEOUT
+      ? parseInt(process.env.IDENTITY_SERVICE_TIMEOUT, 10)
+      : 5000,
+    serviceToken: process.env.IDENTITY_SERVICE_TOKEN || null
   },
   discovery: {
     enabled: process.env.EUREKA_ENABLED === 'true',

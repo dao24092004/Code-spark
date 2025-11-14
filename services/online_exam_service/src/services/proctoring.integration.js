@@ -114,7 +114,40 @@ async function getActiveSessions(authHeader) {
   }
 }
 
+async function completeMonitoringSession(sessionId, authHeader) {
+  if (!sessionId) {
+    console.warn('[PROCTORING INTEGRATION] Thiếu sessionId khi gọi completeMonitoringSession');
+    return;
+  }
+
+  try {
+    const proctoringUrl = buildEndpoint(`/api/proctoring/sessions/${sessionId}/complete`);
+    const resolvedAuthHeader = resolveAuthHeader(authHeader);
+
+    console.log('[PROCTORING INTEGRATION] Gọi complete session:', { proctoringUrl, sessionId });
+
+    await axios.post(
+      proctoringUrl,
+      {},
+      {
+        httpAgent,
+        httpsAgent,
+        timeout: 10000,
+        headers: resolvedAuthHeader ? { Authorization: resolvedAuthHeader } : undefined,
+      }
+    );
+  } catch (error) {
+    console.error('❌ Lỗi khi hoàn tất phiên giám sát:', error?.message || error);
+    if (error?.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+    // Không throw để tránh làm fail quy trình nộp bài
+  }
+}
+
 module.exports = {
   startMonitoringSession,
   getActiveSessions,
-}; 
+  completeMonitoringSession,
+};

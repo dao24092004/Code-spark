@@ -153,7 +153,7 @@ async function submitQuiz(submissionId, answers) {
     throw new Error('Bài thi này đã được nộp trước đó.');
   }
 
-  // 2. Cập nhật câu trả lời, thời gian và trạng thái
+  // 2. Cập nhật câu trả lời, thởi gian và trạng thái
   submission.answers = JSON.stringify(answers);
   const submittedAt = new Date();
   submission.submittedAt = submittedAt;
@@ -165,6 +165,11 @@ async function submitQuiz(submissionId, answers) {
   }
   
   await submission.save();
+
+  // Lấy session proctoring để hoàn tất (nếu có)
+  const proctoringSessionId = submission.proctoringSessionId || submission.sessionId || submission.monitoringSessionId;
+  const studentId = submission.studentId;
+  const examId = submission.quizId;
 
   // ✨ NEW: Save individual answers to Answer table for detailed review
   // First, delete any existing answers for this submission (in case of resubmit)
@@ -209,7 +214,25 @@ async function submitQuiz(submissionId, answers) {
     console.error('Error recording to blockchain (non-critical):', error.message);
     // Continue execution - blockchain is not critical for submission success
   }
-  
+
+  // Hoàn tất phiên giám sát (không chặn luồng nếu lỗi)
+  if (proctoringSessionId) {
+    try {
+      await proctoringIntegrationService.completeMonitoringSession(
+        proctoringSessionId,
+        submission.authToken || undefined
+      );
+    } catch (error) {
+      console.warn('Không thể hoàn tất phiên giám sát (non-critical):', error.message || error);
+    }
+  } else {
+    console.warn('Không tìm thấy proctoring session id để hoàn tất.', {
+      submissionId,
+      studentId,
+      examId,
+    });
+  }
+
   return {
     submissionId: submissionId,
     score: finalScore,

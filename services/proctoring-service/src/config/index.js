@@ -70,7 +70,7 @@ const config = {
     enabled: process.env.API_GATEWAY_ENABLED !== 'false'
   },
   websocket: {
-    path: process.env.WS_PATH || '/ws',
+    path: process.env.WS_PATH || '/socket.io',
     cors: {
       origin: process.env.WS_CORS_ORIGINS
         ? process.env.WS_CORS_ORIGINS.split(',').map(origin => origin.trim())
