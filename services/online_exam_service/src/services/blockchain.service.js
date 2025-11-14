@@ -13,8 +13,8 @@ if (!fs.existsSync(abiPath)) {
 const abi = JSON.parse(fs.readFileSync(abiPath, 'utf8'));
 
 // 2. Lấy địa chỉ contract và private key từ file .env qua config
-const contractAddress = config.blockchain.contractAddress;
-const privateKey = config.blockchain.privateKey;
+const contractAddress = config.web3.contractAddress;
+const privateKey = config.web3.privateKey;
 
 if (!contractAddress || !privateKey) {
     throw new Error("Vui lòng cung cấp contractAddress và privateKey trong file .env");

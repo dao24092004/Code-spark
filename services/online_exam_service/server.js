@@ -9,7 +9,7 @@ const db = require('./src/models');
 const mainRouter = require('./src/routes'); // <-- 1. IMPORT ROUTER CHÍNH
 
 const app = express();
-const PORT = config.serverPort;
+const PORT = process.env.PORT || config.server.port || 3000;
 
 // ===== ERROR HANDLERS TOÀN CỤC =====
 // Xử lý unhandled promise rejections
@@ -29,20 +29,35 @@ process.on('warning', (warning) => {
   console.warn('⚠️ Warning:', warning.name, warning.message);
 });
 
-// CORS middleware - cho phép frontend truy cập
+
+// CORS middleware - cho phép API Gateway và frontend truy cập
 app.use(cors({
-  origin: ['http://localhost:4173', 'http://localhost:5173', 'http://localhost:8083'],
+  origin: [
+    'http://localhost:8080',  // API Gateway
+    'http://localhost:4173',  // Frontend
+    'http://localhost:5173',  // Frontend dev
+    'http://localhost:8083'   // Other services
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Service-Name']
 }));
 
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Online Exam Service',
+    status: 'running',
+    timestamp: new Date().toISOString()
+  });
+});
+// Đảm bảo dòng này tồn tại
+app.use('/api/exam', mainRouter);  // Không có 's' sau exam
 // Middleware để đọc JSON từ body của request
 app.use(express.json());
 
 // <-- 2. SỬ DỤNG ROUTER VỚI PREFIX '/api'
 // Dòng này nói với Express: "Mọi request đến '/api' hãy đưa cho mainRouter xử lý"
-app.use('/api', mainRouter);
+app.use('/api/exam', mainRouter);
 
 // Khởi động server
 const server = app.listen(PORT, async () => {

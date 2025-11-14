@@ -1,12 +1,16 @@
-// src/models/index.js
 const { Sequelize, DataTypes } = require('sequelize');
-// Import kết nối DB chính của bạn (nơi chứa 11 bảng)
-const { profileDbSequelize } = require('../config/db'); 
+const { 
+  profileDbSequelize,
+  identityDbSequelize,
+  courseDbSequelize
+} = require('../config/db');
 
+// Initialize db object first
 const db = {};
+
+// Assign Sequelize and DataTypes to db
 db.Sequelize = Sequelize;
-// Gán kết nối chính (profile_db) vào db.sequelize
-db.sequelize = profileDbSequelize; 
+db.DataTypes = DataTypes;
 
 // === Import các model (từ các file riêng lẻ) ===
 

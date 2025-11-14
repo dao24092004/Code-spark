@@ -25,4 +25,5 @@ public class CourseResponse {
     private String visibility;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String organizationId;
 }

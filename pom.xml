@@ -30,6 +30,10 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                  <groupId>org.springframework.boot</groupId>
+                  <artifactId>spring-boot-starter-webflux</artifactId>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -45,6 +49,7 @@
         <module>services/exam-service</module>
         <module>services/analytics-service</module>
         <module>services/course-service</module>
+        <module>services/user-service</module>
     </modules>
 
 </project>

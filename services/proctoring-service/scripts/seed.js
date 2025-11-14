@@ -1,5 +1,6 @@
 // file: scripts/seed.js
-const { sequelize, ExamSession, ProctoringEvent } = require('../src/models');
+const createSampleData = require('../src/models/initdata');
+const db = require('../src/models');
 
 /**
  * This script is for seeding the database with sample data for testing purposes.
@@ -93,6 +94,10 @@ const seedDatabase = async () => {
     await ProctoringEvent.bulkCreate(eventsData);
 
     console.log(`${eventsData.length} proctoring events created.`);
+    
+    // Gọi hàm tạo dữ liệu mẫu từ initdata.js
+    await createSampleData(db);
+
     console.log('Database seeding completed successfully!');
 
   } catch (error) {

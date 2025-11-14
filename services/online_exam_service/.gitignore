@@ -1,1 +1,8 @@
- 
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Build artifacts
+src/contracts/build/
