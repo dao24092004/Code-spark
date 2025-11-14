@@ -8,7 +8,7 @@ const { Organization, OrganizationMember } = db;
 
 // SỬA LỖI 3: Import kết nối DB khác và QueryTypes
 const { identityDbSequelize } = require('../config/db'); 
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 
 const organizationService = {
 
@@ -37,9 +37,35 @@ const organizationService = {
   /**
    * API 2: GET /api/v1/organizations
    */
-  async getAllOrganizations() {
+  async getAllOrganizations(filters = {}) {
     try {
+      const where = {};
+
+      if (filters.keyword) {
+        where.name = { [Op.iLike]: `%${filters.keyword.trim()}%` };
+      }
+      if (filters.ownerId) {
+        where.ownerId = filters.ownerId;
+      }
+      if (filters.status) {
+        where.status = filters.status;
+      }
+      if (filters.industry) {
+        where.industry = filters.industry;
+      }
+      if (filters.orgType) {
+        where.orgType = filters.orgType;
+      }
+      if (filters.isVerified !== undefined) {
+        const boolVal =
+          typeof filters.isVerified === 'string'
+            ? filters.isVerified.toLowerCase() === 'true'
+            : Boolean(filters.isVerified);
+        where.isVerified = boolVal;
+      }
+
       const organizations = await Organization.findAll({
+        where,
         order: [['created_at', 'DESC']]
       });
       return organizations;
@@ -113,7 +139,7 @@ const organizationService = {
       const newMember = await OrganizationMember.create({
         organizationId: orgId,
         userId: userId,
-        orgRole: role // map 'role' -> column 'org_role'
+        role: role
       });
       return newMember;
     } catch (error) {
@@ -156,7 +182,8 @@ const organizationService = {
         const userDetails = userMap.get(member.userId);
         const profileDetails = profileMap.get(member.userId);
         return {
-          memberId: member.id, orgRole: member.orgRole, joinedAt: member.joined_at,
+          memberId: member.id, role: member.role, joinedAt: member.joined_at,
+
           user: {
             userId: member.userId,
             email: userDetails ? userDetails.email : null,
@@ -186,8 +213,8 @@ const organizationService = {
       if (!member) throw new Error('MemberNotFound');
 
       const payload = {};
-      // support external field name 'role' and map to 'orgRole'
-      if (update.role) payload.orgRole = update.role;
+      // support external field name 'role' and map to column 'role'
+      if (update.role) payload.role = update.role;
 
       if (update.status) payload.status = update.status;
 

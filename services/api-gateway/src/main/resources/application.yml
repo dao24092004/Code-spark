@@ -85,9 +85,15 @@ spring:
         - id: organization-service
           uri: http://localhost:8008  
           predicates:
-            - Path=/api/organization/**
+            - Path=/api/organization,/api/organization/**
           filters:
-            - RewritePath=/api/organization/(?<path>.*), /api/v1/organization/$\{path}
+            - RewritePath=/api/organization(?<path>/?.*), /api/v1/organization/$\{path}
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/files/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost

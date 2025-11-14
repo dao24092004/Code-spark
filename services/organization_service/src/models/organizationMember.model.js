@@ -18,10 +18,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false, 
       field: 'user_id' 
     },
-    orgRole: { 
-      type: DataTypes.STRING(50), 
-      allowNull: false, 
-      field: 'org_role' 
+    role: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: 'USER',
+      field: 'role_id'
     }
   }, {
     tableName: 'organization_members',

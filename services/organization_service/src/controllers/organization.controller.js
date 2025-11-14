@@ -42,8 +42,16 @@ const organizationController = {
    */
   async getAllOrganizations(req, res) {
     try {
-      // 1. Gọi Service
-      const organizations = await organizationService.getAllOrganizations();
+      const filters = {
+        keyword: req.query.keyword || req.query.q || req.query.name || null,
+        ownerId: req.query.ownerId,
+        status: req.query.status,
+        industry: req.query.industry,
+        orgType: req.query.orgType,
+        isVerified: req.query.isVerified,
+      };
+
+      const organizations = await organizationService.getAllOrganizations(filters);
 
       // 2. Trả về thành công
       res.status(200).json({
