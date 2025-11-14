@@ -42,8 +42,16 @@ const organizationController = {
    */
   async getAllOrganizations(req, res) {
     try {
-      // 1. Gọi Service
-      const organizations = await organizationService.getAllOrganizations();
+      const filters = {
+        keyword: req.query.keyword || req.query.q || req.query.name || null,
+        ownerId: req.query.ownerId,
+        status: req.query.status,
+        industry: req.query.industry,
+        orgType: req.query.orgType,
+        isVerified: req.query.isVerified,
+      };
+
+      const organizations = await organizationService.getAllOrganizations(filters);
 
       // 2. Trả về thành công
       res.status(200).json({
@@ -162,17 +170,23 @@ const organizationController = {
       const { orgId } = req.params;
       
       // 2. Lấy thông tin user và vai trò từ body
-      const { userId, orgRole } = req.body;
+      const { userId, role } = req.body;
 
       // 3. Validation
-      if (!userId || !orgRole) {
+      if (!userId || !role) {
         return res.status(400).json({
-          message: 'userId (ID của user) và orgRole (vai trò) là bắt buộc.'
+          message: 'userId (ID của user) và role (vai trò) là bắt buộc.'
         });
       }
 
+      const allowed = ['ADMIN','USER','MANAGER'];
+      const normRole = String(role).toUpperCase();
+      if (!allowed.includes(normRole)) {
+        return res.status(400).json({ message: `role không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}` });
+      }
+
       // 4. Gọi Service
-      const newMember = await organizationService.addMemberToOrganization(orgId, userId, orgRole);
+      const newMember = await organizationService.addMemberToOrganization(orgId, userId, normRole);
 
       // 5. Trả về thành công
       res.status(201).json({
@@ -224,6 +238,56 @@ const organizationController = {
         message: 'Lỗi máy chủ nội bộ.',
         error: error.message 
       });
+    }
+  },
+  /**
+   * API: PATCH /api/v1/organization/:orgId/members/:userId
+   * Cập nhật vai trò/trạng thái thành viên
+   */
+  async updateMember(req, res) {
+    try {
+      const { orgId, userId } = req.params;
+      const { role, status } = req.body || {};
+
+      const update = {};
+      if (role !== undefined) {
+        const allowed = ['ADMIN','USER','MANAGER'];
+        const normRole = String(role).toUpperCase();
+        if (!allowed.includes(normRole)) {
+          return res.status(400).json({ message: `role không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}` });
+        }
+        update.role = normRole;
+      }
+      if (status !== undefined) update.status = status;
+
+      const updated = await organizationService.updateMember(orgId, userId, update);
+      return res.status(200).json({
+        message: 'Cập nhật thành viên thành công!',
+        data: updated
+      });
+    } catch (error) {
+      console.error('Lỗi Controller [updateMember]:', error.message);
+      if (error.message === 'MemberNotFound') {
+        return res.status(404).json({ message: 'Không tìm thấy thành viên trong tổ chức.' });
+      }
+      return res.status(500).json({ message: 'Lỗi máy chủ nội bộ.', error: error.message });
+    }
+  },
+  /**
+   * API: DELETE /api/v1/organization/:orgId/members/:userId
+   * Xóa thành viên khỏi tổ chức
+   */
+  async deleteMember(req, res) {
+    try {
+      const { orgId, userId } = req.params;
+      await organizationService.deleteMember(orgId, userId);
+      return res.status(204).send();
+    } catch (error) {
+      console.error('Lỗi Controller [deleteMember]:', error.message);
+      if (error.message === 'MemberNotFound') {
+        return res.status(404).json({ message: 'Không tìm thấy thành viên trong tổ chức.' });
+      }
+      return res.status(500).json({ message: 'Lỗi máy chủ nội bộ.', error: error.message });
     }
   }
 };

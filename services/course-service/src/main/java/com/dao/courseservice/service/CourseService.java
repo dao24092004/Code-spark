@@ -11,6 +11,7 @@ import com.dao.courseservice.repository.ProgressRepository;
 import com.dao.courseservice.request.CreateCourseRequest;
 import com.dao.courseservice.request.UpdateCourseRequest;
 import com.dao.courseservice.request.BatchUserRequest;
+import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.response.CourseMemberDto;
 import com.dao.courseservice.response.ExamDto;
@@ -25,15 +26,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import jakarta.persistence.criteria.Predicate;
 
 /**
  * Interface định nghĩa và triển khai các chức năng CourseService.
@@ -52,7 +57,7 @@ public interface CourseService {
 
     CourseResponse getCourseById(UUID courseId);
 
-    Page<CourseResponse> getAllCourses(Pageable pageable);
+    Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria);
 
     /**
      * Lấy danh sách khóa học theo organizationId
@@ -223,9 +228,14 @@ class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CourseResponse> getAllCourses(Pageable pageable) {
-        return courseRepository.findAll(pageable)
-                .map(courseMapper::toCourseResponse);
+    public Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria) {
+        Specification<Course> specification = buildCourseSpecification(filterCriteria);
+
+        Page<Course> coursePage = specification == null
+                ? courseRepository.findAll(pageable)
+                : courseRepository.findAll(specification, pageable);
+
+        return coursePage.map(courseMapper::toCourseResponse);
     }
 
     @Override
@@ -270,5 +280,49 @@ class CourseServiceImpl implements CourseService {
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
         return slug.toLowerCase(Locale.ENGLISH);
+    }
+
+    private Specification<Course> buildCourseSpecification(CourseFilterCriteria criteria) {
+        if (criteria == null) {
+            return null;
+        }
+
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (StringUtils.hasText(criteria.getKeyword())) {
+                String likeKeyword = "%" + criteria.getKeyword().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), likeKeyword),
+                        cb.like(cb.lower(root.get("description")), likeKeyword)
+                ));
+            }
+
+            if (StringUtils.hasText(criteria.getOrganizationId())) {
+                predicates.add(cb.equal(root.get("organizationId"), criteria.getOrganizationId()));
+            }
+
+            if (criteria.getInstructorId() != null) {
+                predicates.add(cb.equal(root.get("instructorId"), criteria.getInstructorId()));
+            }
+
+            if (criteria.getCreatedBy() != null) {
+                predicates.add(cb.equal(root.get("createdBy"), criteria.getCreatedBy()));
+            }
+
+            if (StringUtils.hasText(criteria.getVisibility())) {
+                predicates.add(cb.equal(cb.lower(root.get("visibility")), criteria.getVisibility().toLowerCase()));
+            }
+
+            if (criteria.getCreatedFrom() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), criteria.getCreatedFrom()));
+            }
+
+            if (criteria.getCreatedTo() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), criteria.getCreatedTo()));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 }
