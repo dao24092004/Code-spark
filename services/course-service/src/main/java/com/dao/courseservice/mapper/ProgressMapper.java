@@ -20,6 +20,8 @@ public class ProgressMapper {
                 .courseId(progress.getCourse().getId())
                 .percentComplete(progress.getPercentComplete())
                 .lastMaterialId(progress.getLastMaterial() != null ? progress.getLastMaterial().getId() : null)
+                .passedFinalExam(progress.isPassedFinalExam())
+                .courseCompleted(progress.isCourseCompleted())
                 .updatedAt(progress.getUpdatedAt())
                 .build();
     }
