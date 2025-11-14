@@ -40,9 +40,14 @@ spring:
             - StripPrefix=1
         - id: course-service
           uri: http://localhost:9001
+          uri: http://localhost:9001
           predicates:
             - Path=/api/v1/courses/**,/api/progress/**,/api/rewards/**
+            - Path=/api/v1/courses/**,/api/progress/**,/api/rewards/**
           filters:
+            - RewritePath=/api/v1/courses/(?<segment>.*), /api/v1/courses/$\{segment}
+        - id: token-reward-service
+          uri: http://localhost:3001  # Update this port if your service runs on a different port
             - RewritePath=/api/v1/courses/(?<segment>.*), /api/v1/courses/$\{segment}
         - id: token-reward-service
           uri: http://localhost:3001  # Update this port if your service runs on a different port
@@ -55,7 +60,7 @@ spring:
         - id: ai-service
           uri: http://localhost:3002
           predicates:
-            - Path=/ai/**
+            - Path=/ws/**
           filters:
             - StripPrefix=1
         - id: proctoring-ws
@@ -72,9 +77,11 @@ spring:
             - StripPrefix=1
         - id: online-exam-service
           uri: http://localhost:3000
+          uri: http://localhost:3000
           predicates:
             - Path=/api/exam/**
           filters:
+            - StripPrefix=21 
             - StripPrefix=21 
         - id: multisig-service
           uri: http://127.0.0.1:3001
@@ -82,6 +89,25 @@ spring:
             - Path=/api/v1/multisig/**
           filters:
             - StripPrefix=0
+        
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/user/**
+          filters:
+            - StripPrefix=1
+        - id: organization-service
+          uri: http://localhost:8008  
+          predicates:
+            - Path=/api/organization,/api/organization/**
+          filters:
+            - RewritePath=/api/organization(?<path>/?.*), /api/v1/organization/$\{path}
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/files/**
+          filters:
+            - StripPrefix=1
         
         - id: user-service
           uri: lb://user-service
