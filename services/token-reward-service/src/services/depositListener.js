@@ -1,6 +1,28 @@
+// Hàm helper để retry database queries với connection mới
+async function retryDbQuery(queryFn, maxRetries = 3) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await queryFn();
+        } catch (error) {
+            if (error.message.includes('ConnectionManager.getConnection was called after the connection manager was closed')) {
+                console.warn(`depositListener: Connection closed, retrying... (${i + 1}/${maxRetries})`);
+                // Re-establish database connection
+                const db = require('../models');
+                if (db.sequelize) {
+                    await db.sequelize.authenticate();
+                }
+                // Wait a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw new Error('Failed after maximum retries');
+}
+
 const { ethers } = require('ethers');
 const db = require('../models');
-
 const tokenArtifact = require('../../artifacts/contracts/Token.sol/Token.json');
 
 const REQUIRED_ENV = ['WEB3_PROVIDER_URL', 'CONTRACT_ADDRESS', 'REWARD_DEPOSIT_ADDRESS'];
@@ -98,7 +120,7 @@ async function replayHistorical(fromBlock, toBlock) {
 }
 
 function subscribeLive() {
-    tokenContract.on(transferFilter, async (from, to, value, event) => {
+    tokenContract.on(transferFilter, async (from, to, event) => {
         try {
             await upsertDepositFromEvent(event);
         } catch (error) {
@@ -126,7 +148,7 @@ async function initialize() {
 
         const latestBlock = await provider.getBlockNumber();
 
-        const rawLastProcessedBlock = await db.TokenDeposit.max('blockNumber');
+        const rawLastProcessedBlock = await retryDbQuery(() => db.TokenDeposit.max('blockNumber'));
         const defaultStartBlock = process.env.REWARD_LISTENER_START_BLOCK
             ? Number(process.env.REWARD_LISTENER_START_BLOCK)
             : latestBlock;

@@ -9,15 +9,6 @@ module.exports = {
     },
   },
 
-  db: {
-    postgres: {
-      user: process.env.POSTGRES_USER || 'postgres',
-      password: process.env.POSTGRES_PASSWORD || 'password',
-      port: process.env.POSTGRES_PORT || 5432,
-      name: process.env.DB_NAME_IDENTITY || 'identity_db',
-    },
-  },
-
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: process.env.REDIS_PORT || 6379,
