@@ -118,33 +118,6 @@ class ServiceCommunication {
     }
 
     /**
-     * Send analytics data to Java analytics service
-     */
-    async sendAnalytics(eventType, data) {
-        try {
-            const analyticsClient = await this.getServiceClient('analytics');
-            const analyticsData = {
-                serviceName: 'copyright-service',
-                eventType,
-                data: {
-                    ...data,
-                    timestamp: new Date().toISOString(),
-                    source: 'nodejs-copyright-service'
-                },
-                metadata: {
-                    version: require('../../package.json').version,
-                    environment: config.server.env
-                }
-            };
-
-            await analyticsClient.post(config.services.analytics.endpoints.sendEvent, analyticsData);
-        } catch (error) {
-            // Don't throw error for analytics - it's not critical
-            console.warn('Java Analytics service unavailable:', error.message);
-        }
-    }
-
-    /**
      * Send notification to Java notification service
      */
     async sendNotification(recipient, type, message, data = {}) {
@@ -176,13 +149,6 @@ class ServiceCommunication {
      */
     async syncCopyrightData(copyrightData) {
         const syncPromises = [];
-
-        // Sync with analytics service
-        syncPromises.push(this.sendAnalytics('copyright_registered', {
-            copyrightId: copyrightData.id,
-            hash: copyrightData.hash,
-            ownerAddress: copyrightData.ownerAddress
-        }));
 
         // Send notification to owner
         syncPromises.push(this.sendNotification(

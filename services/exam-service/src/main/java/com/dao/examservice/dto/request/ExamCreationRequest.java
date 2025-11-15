@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public class ExamCreationRequest {
     public UUID courseId;
+    public UUID orgId;
     public String title;
     public String description;
     public Instant startAt;

@@ -54,4 +54,22 @@ public class AuthController {
         // If we reach here, the token is valid. The filter itself will throw an exception if invalid.
         return ResponseEntity.ok(ApiResponse.success("Token is valid"));
     }
+
+    /**
+     * Gửi email xác thực
+     */
+    @PostMapping("/send-verification-email")
+    public ResponseEntity<ApiResponse<String>> sendVerificationEmail(@RequestParam String email) {
+        authService.sendVerificationEmail(email);
+        return ResponseEntity.ok(ApiResponse.success("Verification email sent successfully"));
+    }
+
+    /**
+     * Xác thực email
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(@RequestParam String code) {
+        AuthResponse response = authService.verifyEmail(code);
+        return ResponseEntity.ok(ApiResponse.success("Email verified successfully", response));
+    }
 }

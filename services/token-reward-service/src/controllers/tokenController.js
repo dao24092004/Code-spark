@@ -1,6 +1,8 @@
  // src/controllers/tokenController.js
 const tokenService = require('../services/tokenService');
 
+const isDebugEnabled = process.env.LOG_LEVEL === 'debug';
+
 const tokenController = {
     grantTokenHandler: async (req, res) => {
         try {
@@ -60,18 +62,17 @@ const tokenController = {
     getBalanceHandler: async (req, res) => {
         try {
             const { studentId } = req.params; // Lấy từ URL
-            console.log('🔍 getBalanceHandler called with studentId:', studentId);
+            if (isDebugEnabled) {
+                console.debug('getBalanceHandler → studentId:', studentId);
+            }
             const balance = await tokenService.getBalance(Number(studentId));
-            console.log('✅ Balance found:', balance);
             return res.status(200).json(balance);
 
         } catch (error) {
             console.error('❌ Error getting balance:', error);
             if (error.message === 'User not found.') {
-                console.log('📤 Sending 404 response for User not found');
                 return res.status(404).json({ message: error.message });
             }
-            console.log('📤 Sending 500 response for internal error');
             return res.status(500).json({ message: 'An internal server error occurred.' });
         }
     },

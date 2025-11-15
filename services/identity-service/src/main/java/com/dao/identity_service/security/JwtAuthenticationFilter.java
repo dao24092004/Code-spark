@@ -109,8 +109,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader(AUTH_HEADER);
+        
         if (StringUtils.hasText(headerAuth) && headerAuth.startsWith(BEARER_PREFIX)) {
-            return headerAuth.substring(BEARER_PREFIX.length());
+            String token = headerAuth.substring(BEARER_PREFIX.length()).trim();
+            
+            // Bỏ qua nếu token bắt đầu bằng "Error:" hoặc chứa thông báo lỗi kết nối
+            if (token.startsWith("Error:") || token.contains("ECONNREFUSED")) {
+                log.warn("Received error message instead of JWT token: {}", token);
+                return null;
+            }
+            
+            return token;
         }
         return null;
     }

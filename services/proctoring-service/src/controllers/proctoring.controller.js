@@ -105,6 +105,9 @@ async function analyzeFrame(req, res) {
       return res.status(400).json({ message: 'Image is required.' });
     }
 
+    // Cập nhật heartbeat để đánh dấu phiên đang hoạt động ngay cả khi không có vi phạm
+    await proctoringService.recordSessionActivity({ sessionId, examId, studentId });
+
     // Gọi AI service để phân tích frame
     const aiEvents = await aiService.analyzeFrame(image);
 
@@ -118,6 +121,20 @@ async function analyzeFrame(req, res) {
       });
     } catch (persistError) {
       console.error('[CONTROLLER] Không thể lưu sự kiện proctoring', persistError);
+    }
+
+    // Emit status update even if no detections (camera is working, face detected)
+    if (!aiEvents || aiEvents.length === 0) {
+      try {
+        await proctoringService.emitSessionStatusUpdate(sessionId, examId, {
+          cameraEnabled: true,
+          faceDetected: true,
+          faceCount: 1,
+          connectionStatus: 'online'
+        });
+      } catch (statusError) {
+        console.warn('[CONTROLLER] Không thể emit status update', statusError);
+      }
     }
     
     // Map AI service response sang format mà frontend mong đợi
@@ -173,6 +190,92 @@ async function analyzeFrame(req, res) {
   }
 }
 
+async function terminateSession(req, res) {
+  try {
+    const { sessionId } = req.params;
+    const { reason } = req.body || {};
+
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Session ID is required.' });
+    }
+
+    const terminatedBy =
+      req.user?.id ?? req.user?.userId ?? req.user?.user_id ?? null;
+
+    const session = await proctoringService.terminateSession(sessionId, {
+      terminatedBy,
+      reason,
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên giám sát.' });
+    }
+
+    res.status(200).json({
+      message: 'Phiên giám sát đã được dừng thành công.',
+      session,
+    });
+  } catch (error) {
+    console.error('Error in terminateSession controller:', error);
+    res.status(500).json({ message: 'Lỗi khi dừng phiên giám sát.' });
+  }
+}
+
+async function completeSession(req, res) {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Session ID is required.' });
+    }
+
+    const session = await proctoringService.completeSession(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên giám sát.' });
+    }
+
+    res.status(200).json({
+      message: 'Phiên giám sát đã được đánh dấu hoàn thành.',
+      session,
+    });
+  } catch (error) {
+    console.error('Error in completeSession controller:', error);
+    res.status(500).json({ message: 'Lỗi khi hoàn thành phiên giám sát.' });
+  }
+}
+
+async function sendWarning(req, res) {
+  try {
+    const { sessionId } = req.params;
+    const { message } = req.body || {};
+
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Session ID is required.' });
+    }
+
+    const sentBy =
+      req.user?.id ?? req.user?.userId ?? req.user?.user_id ?? null;
+
+    const warningEvent = await proctoringService.sendWarning(sessionId, {
+      sentBy,
+      message: message || 'Bạn đã nhận được cảnh báo từ giám thị',
+    });
+
+    if (!warningEvent) {
+      return res.status(404).json({ message: 'Không tìm thấy phiên giám sát.' });
+    }
+
+    res.status(200).json({
+      message: 'Cảnh báo đã được gửi thành công.',
+      event: warningEvent,
+    });
+  } catch (error) {
+    console.error('Error in sendWarning controller:', error);
+    res.status(500).json({ message: 'Lỗi khi gửi cảnh báo.' });
+  }
+}
+
 // Debug: Kiểm tra các function có được define đúng không
 console.log('[CONTROLLER DEBUG] startProctoringSession type:', typeof startProctoringSession);
 console.log('[CONTROLLER DEBUG] getEventsBySession type:', typeof getEventsBySession);
@@ -183,6 +286,8 @@ console.log('[CONTROLLER DEBUG] Exports keys:', Object.keys({
   getActiveSessions,
   getStudentsInExam,
   analyzeFrame,
+  terminateSession,
+  sendWarning,
 }));
 
 module.exports = {
@@ -191,4 +296,7 @@ module.exports = {
   getActiveSessions,
   getStudentsInExam,
   analyzeFrame,
+  terminateSession,
+  completeSession,
+  sendWarning,
 };

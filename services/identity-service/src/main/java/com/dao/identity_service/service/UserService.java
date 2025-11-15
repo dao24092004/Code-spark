@@ -156,6 +156,9 @@ public class UserService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public final List<UserDto> findAllUsers() {
+        if (userRepository == null) {
+            throw new IllegalStateException("UserRepository is not initialized");
+        }
         return userRepository.findAll().stream()
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());
@@ -163,6 +166,9 @@ public class UserService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public Page<UserDto> findAllUsers(Pageable pageable) {
+        if (userRepository == null) {
+            throw new IllegalStateException("UserRepository is not initialized");
+        }
         return userRepository.findAll(pageable)
                 .map(userMapper::toDto);
     }
@@ -196,6 +202,33 @@ public class UserService implements UserDetailsService {
         
         log.info("Successfully disabled user with id: {}", id);
         return userMapper.toDto(savedUser);
+    }
+
+    public User processOAuth2User(String email, String name, String avatarUrl) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            return userOptional.get();
+        } else {
+            return createOAuth2User(email, name, avatarUrl);
+        }
+    }
+
+    private User createOAuth2User(String email, String name, String avatarUrl) {
+        log.info("Creating new user from OAuth2: {}", email);
+        
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(email); // Or generate a unique username
+        user.setFirstName(name);
+        user.setAvatarUrl(avatarUrl);
+        user.setEnabled(true);
+        user.setCreatedAt(LocalDateTime.now());
+
+        Role defaultRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", "USER"));
+        user.getRoles().add(defaultRole);
+        
+        return userRepository.save(user);
     }
 
     public void changePassword(String username, String oldPassword, String newPassword) {

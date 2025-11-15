@@ -6,6 +6,7 @@ import com.dao.identity_service.dto.LoginRequest;
 import com.dao.identity_service.dto.RegisterRequest;
 import com.dao.identity_service.dto.UserDto;
 import com.dao.identity_service.entity.User;
+import com.dao.identity_service.entity.VerificationCode;
 import com.dao.identity_service.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +27,8 @@ public class AuthService {
     private final UserService userService;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final VerificationCodeService verificationCodeService;
+    private final EmailService emailService;
   
 
     public AuthResponse register(RegisterRequest request) {
@@ -45,6 +49,13 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        User user = userService.findByUsernameOrEmail(request.getUsernameOrEmail())
+                .orElseThrow(() -> new AppException("Invalid username or password", HttpStatus.UNAUTHORIZED));
+
+        if (user.getProvider() != com.dao.identity_service.entity.AuthProvider.LOCAL) {
+            throw new AppException("You have registered using " + user.getProvider() + ". Please log in with your " + user.getProvider() + " account.", HttpStatus.BAD_REQUEST);
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -55,9 +66,6 @@ public class AuthService {
         } catch (AuthenticationException e) {
             throw new AppException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
-
-        User user = userService.findByUsernameOrEmail(request.getUsernameOrEmail())
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
         userService.updateLastLogin(user.getUsername());
         
@@ -101,6 +109,25 @@ public class AuthService {
                 .refreshToken(refreshToken)
                 .user(mapToUserDto(user))
                 .build();
+    }
+
+    public void sendVerificationEmail(String email) {
+        User user = userService.findByEmail(email)
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+        String code = verificationCodeService.createVerificationCode(user);
+        emailService.sendEmail(email, "Email Verification", "Your verification code is: " + code);
+    }
+
+    public AuthResponse verifyEmail(String code) {
+        VerificationCode verificationCode = verificationCodeService.getVerificationCode(code);
+        if (verificationCode == null || verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException("Invalid or expired verification code", HttpStatus.BAD_REQUEST);
+        }
+        User user = verificationCode.getUser();
+        user.setEnabled(true);
+        userService.updateUser(user.getId(), null);
+        verificationCodeService.deleteVerificationCode(verificationCode.getId());
+        return generateAuthResponseForUser(user);
     }
 
     private AuthResponse.UserDto mapToUserDto(User user) {

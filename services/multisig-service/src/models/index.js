@@ -1,7 +1,9 @@
 const sequelize = require('../config/database');
 
-const MultisigWallet = require('./multisigWallet.model')(sequelize, require('sequelize').DataTypes);
-const MultisigTransaction = require('./multisigTransaction.model')(sequelize, require('sequelize').DataTypes);
+const DataTypes = require('sequelize').DataTypes;
+const MultisigWallet = require('./multisigWallet.model')(sequelize, DataTypes);
+const MultisigTransaction = require('./multisigTransaction.model')(sequelize, DataTypes);
+const UserWallet = require('./userWallet.model')(sequelize, DataTypes);
 
 // Định nghĩa associations
 MultisigWallet.hasMany(MultisigTransaction, {
@@ -14,11 +16,22 @@ MultisigTransaction.belongsTo(MultisigWallet, {
     as: 'wallet'
 });
 
+MultisigWallet.hasMany(UserWallet, {
+    foreignKey: 'walletId',
+    as: 'ownerMappings'
+});
+
+UserWallet.belongsTo(MultisigWallet, {
+    foreignKey: 'walletId',
+    as: 'wallet'
+});
+
 const db = {
     sequelize,
     Sequelize: require('sequelize'),
     MultisigWallet,
-    MultisigTransaction
+    MultisigTransaction,
+    UserWallet
 };
 
 module.exports = db;

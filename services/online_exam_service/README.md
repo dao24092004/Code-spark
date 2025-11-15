@@ -705,6 +705,10 @@ DB_NAME=exam_db  # ← MUST be same as exam-service
 
     # Services
     PROCTORING_SERVICE_URL=http://localhost:3001
+    PROCTORING_SERVICE_TOKEN="Bearer your-proctoring-service-token"
+    # or provide one of the fallbacks below instead of PROCTORING_SERVICE_TOKEN:
+    # PROCTORING_SERVICE_TOKEN_FILE=secrets/proctoring.token
+    # PROCTORING_SERVICE_TOKEN_B64=YmVhcmVyIHlvdXItcHJvY3RvcmVyLXRva2Vu  # base64 của chuỗi KHÔNG kèm tiền tố "Bearer "
 
 # JWT (SHARED with identity-service)
 JWT_SECRET=mySecretKey12345678901234567890123456789012345678901234567890
@@ -738,6 +742,51 @@ const sequelize = new Sequelize(
 module.exports = sequelize;
 ```
 
+> 💡 **Tip:** `.env` files are ignored by Git. Run `npm run env:template -- --output=.env.local` inside this service to generate a starter file quickly. Add `--force=true` to overwrite an existing file.
+
+---
+
+## Proctoring Bridge Verification
+
+- Run `npm run check:proctoring -- --url=https://your-host --token="Bearer <jwt>"` to confirm `/api/proctoring/active-sessions` is returning live data.
+- Omit `--token` if the environment injects `AUTH_TOKEN` or `ADMIN_JWT` variables.
+- The script prints the HTTP status, success flag, total sessions, and the first session payload for quick inspection.
+
+---
+
+## Proctoring Token Provisioning
+
+| Environment | Recommended approach | Generation command | Notes |
+|-------------|----------------------|--------------------|-------|
+| Local dev   | Direct value (`PROCTORING_SERVICE_TOKEN`) | `npm run env:template -- --output=.env.local --token="Bearer <jwt>"` | Human-readable, per-developer |
+| CI / Docker | Secret file (`PROCTORING_SERVICE_TOKEN_FILE`) | `npm run env:template -- --output=.env --tokenFile=/run/secrets/proctoring.token` | Mount secret file into the container/pod |
+| Production  | Base64 payload (`PROCTORING_SERVICE_TOKEN_B64`) | `npm run env:template -- --output=.env --tokenB64=$(echo -n 'Bearer <jwt>' | base64)` | Fits vaults that only support string env vars |
+
+### Rotation Checklist
+
+1. Regenerate your `.env` (force overwrite when updating secrets):
+   ```bash
+   npm run env:template -- --output=.env --force=true --token="Bearer <new_token>"
+   ```
+   Swap `--token` for `--tokenFile` or `--tokenB64` to match your deployment model.
+2. When storing tokens on disk, let the script write the secret file for you:
+   ```bash
+   npm run env:template -- \
+     --writeTokenFile=secrets/proctoring.token \
+     --token="Bearer <new_token>" \
+     --tokenFile=secrets/proctoring.token
+   ```
+   The script creates missing directories and overwrites the file atomically.
+3. Restart the service or redeploy to ensure the new token is loaded.
+4. Run the smoke-test after rollout:
+   ```bash
+   npm run check:proctoring -- --url=https://your-host --token="Bearer <new_token>"
+   ```
+   Expect `success=true` and at least one active session when proctoring is live.
+5. Scrub shell history or temporary files that may contain the raw JWT.
+
+> 🔒 `.env*` files and the `secrets/` directory are ignored by Git to prevent accidental commits of sensitive material.
+
 ---
 
 ## Installation
@@ -758,9 +807,20 @@ npm install
 
 2. **Configure environment:**
 ```bash
-cp .env.example .env
+npm run env:template -- --output=.env
 # Edit .env with your settings
 ```
+> 📌 Có thể truyền thêm flag để prefill giá trị:
+> ```bash
+> npm run env:template -- \
+>   --output=.env.local \
+>   --token="Bearer ey..." \
+>   --tokenFile=secrets/proctoring.token \
+>   --writeTokenFile=secrets/proctoring.token
+> ```
+> - `--token`: điền trực tiếp vào `PROCTORING_SERVICE_TOKEN`.
+> - `--tokenFile`: bỏ comment và trỏ đến file bí mật.
+> - `--writeTokenFile`: (kèm `--token`) tạo/ghi file bí mật ở đường dẫn chỉ định.
 
 3. **Run migrations:**
 ```bash
@@ -978,7 +1038,6 @@ DROP TABLE IF EXISTS quiz_rankings CASCADE;
 node scripts/run-migration.js
 ```
 
-<<<<<<< HEAD
 ---
 
 ## Project Structure
@@ -1108,22 +1167,3 @@ online_exam_service/
 **✅ Status:** Production Ready  
 **🔧 Build:** SUCCESS  
 **📅 Last Updated:** 2025-11-05
-=======
--   `POST /api/quizzes/{quizId}/start`: Sinh viên bắt đầu một bài thi.
--   `POST /api/submissions/{submissionId}/submit`: Sinh viên nộp bài.
--   `POST /api/instructor/quizzes/answers/{answerId}/grade`: Giảng viên chấm điểm một câu trả lời tự luận.
-
-## Authorization
-
-Các routes sau đây được bảo vệ và yêu cầu quyền cụ thể:
-
-| Method | Route                                                 | Permission Required |
-|--------|-------------------------------------------------------|---------------------|
-| POST   | `/api/quizzes/:quizId/start`                          | `quiz:start`        |
-| POST   | `/api/submissions/:submissionId/submit`               | `quiz:submit`       |
-<<<<<<< HEAD
-| POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |
->>>>>>> 20e9e81ef80f7593901af50b4effdad04e76df65
-=======
-| POST   | `/api/instructor/quizzes/answers/:answerId/grade`     | `grading:manual`    |
->>>>>>> 20e9e81ef80f7593901af50b4effdad04e76df65

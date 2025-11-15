@@ -32,13 +32,7 @@ class APIGateway {
             }
         }));
 
-        // CORS configuration
-        this.app.use(cors({
-            origin: config.security.corsOrigins,
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-        }));
+
 
         // Rate limiting
         const limiter = rateLimit({
@@ -55,8 +49,9 @@ class APIGateway {
         this.app.use(morgan(config.logging.format));
 
         // Body parsing
-        this.app.use(express.json({ limit: '10mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+        // Request parsing - increased to 100MB for file uploads
+        this.app.use(express.json({ limit: '100mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '100mb' }));
     }
 
     /**
@@ -125,7 +120,6 @@ class APIGateway {
 
         // Proxy to other services through Java Gateway
         router.use('/identity', this.createJavaGatewayProxy('/api/v1/identity'));
-        router.use('/analytics', this.createJavaGatewayProxy('/api/v1/analytics'));
         router.use('/notifications', this.createJavaGatewayProxy('/api/v1/notifications'));
 
         return router;

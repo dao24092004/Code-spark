@@ -1,9 +1,1 @@
-require('dotenv').config();
-
-module.exports = {
-    security: {
-        jwt: {
-            secret: process.env.JWT_SECRET
-        }
-    }
-};
+module.exports = require('./config/index.js');

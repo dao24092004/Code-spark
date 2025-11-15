@@ -4,8 +4,8 @@
   "description": "Copyright Registration Service with Microservices Support",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node -r dotenv/config src/server.js",
+    "dev": "nodemon -r dotenv/config src/server.js",
     "test": "jest",
     "register": "node src/discovery/register.js",
     "gateway": "node src/gateway/proxy.js"
@@ -28,10 +28,13 @@
     "helmet": "^7.1.0",
     "http-proxy-middleware": "^2.0.6",
     "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^11.2.2",
     "mammoth": "^1.11.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
-    "pdf-parse": "^1.1.1",
+    "natural": "^8.1.0",
+    "p-limit": "^7.2.0",
+    "pdf-parse": "^1.1.4",
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
     "web3": "^4.16.0"

@@ -37,6 +37,15 @@ public interface ProgressService {
     ProgressResponse updateStudentProgress(Long studentId, UUID courseId, UUID materialId);
 
     /**
+     * Đánh dấu trạng thái vượt qua bài thi cuối kỳ của học sinh.
+     * @param studentId ID học sinh
+     * @param courseId ID khóa học
+     * @param passed   Đã vượt qua hay chưa
+     * @return Dữ liệu tiến độ sau khi cập nhật
+     */
+    ProgressResponse markFinalExamResult(Long studentId, UUID courseId, boolean passed);
+
+    /**
      * Lấy thông tin tiến độ của một học sinh trong một khóa học.
      * @param studentId ID của học sinh.
      * @param courseId ID của khóa học.
@@ -85,14 +94,26 @@ class ProgressServiceImpl implements ProgressService {
 
         // 2️⃣ Tìm hoặc tạo tiến độ mới
         Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
-                .orElse(new Progress(null, studentId, course, 0, null, null));
+                .orElse(Progress.builder()
+                        .studentId(studentId)
+                        .course(course)
+                        .percentComplete(0)
+                        .passedFinalExam(false)
+                        .courseCompleted(false)
+                        .build());
 
         // 3️⃣ Cập nhật học liệu cuối cùng đã hoàn thành
         progress.setLastMaterial(material);
 
         // 4️⃣ Tính toán phần trăm hoàn thành
         List<Material> allMaterials = materialRepository.findByCourseIdOrderByDisplayOrderAsc(courseId);
-        int materialIndex = allMaterials.indexOf(material);
+        int materialIndex = -1;
+        for (int i = 0; i < allMaterials.size(); i++) {
+            if (allMaterials.get(i).getId().equals(material.getId())) {
+                materialIndex = i;
+                break;
+            }
+        }
         if (materialIndex != -1 && !allMaterials.isEmpty()) {
             int newPercent = (int) Math.round(((double) (materialIndex + 1) / allMaterials.size()) * 100);
             if (newPercent > progress.getPercentComplete()) {
@@ -100,15 +121,43 @@ class ProgressServiceImpl implements ProgressService {
             }
         }
 
+        boolean completedBefore = progress.isCourseCompleted();
+        updateCompletionStatus(progress);
+
         // 5️⃣ Lưu tiến độ vào DB
         Progress savedProgress = progressRepository.save(progress);
 
-        // 6️⃣ (UC32) Trao thưởng nếu hoàn thành khóa học
-        if (savedProgress.getPercentComplete() == 100) {
-            rewardService.grantReward(studentId, 100, "COMPLETE_COURSE", course.getId());
-        }
+        // 6️⃣ (UC32) Trao thưởng nếu hoàn thành khóa học sau cập nhật
+        maybeGrantCompletionReward(course, savedProgress, completedBefore);
 
         // 7️⃣ Trả về DTO
+        return progressMapper.toProgressResponse(savedProgress);
+    }
+
+    @Override
+    public ProgressResponse markFinalExamResult(Long studentId, UUID courseId, boolean passed) {
+        log.info("Updating final exam flag for student {} in course {} -> passed? {}", studentId, courseId, passed);
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
+                .orElse(Progress.builder()
+                        .studentId(studentId)
+                        .course(course)
+                        .percentComplete(0)
+                        .passedFinalExam(false)
+                        .courseCompleted(false)
+                        .build());
+
+        boolean completedBefore = progress.isCourseCompleted();
+
+        progress.setPassedFinalExam(passed);
+        updateCompletionStatus(progress);
+
+        Progress savedProgress = progressRepository.save(progress);
+        maybeGrantCompletionReward(course, savedProgress, completedBefore);
+
         return progressMapper.toProgressResponse(savedProgress);
     }
 
@@ -121,10 +170,33 @@ class ProgressServiceImpl implements ProgressService {
     public ProgressResponse getStudentProgressInCourse(Long studentId, UUID courseId) {
         log.info("Fetching progress for student {} in course {}", studentId, courseId);
 
-        Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Progress", "student & course", studentId + " & " + courseId));
+        try {
+            // Kiểm tra course có tồn tại không
+            Course course = courseRepository.findById(courseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+            log.debug("Found course: {}", course.getTitle());
 
-        return progressMapper.toProgressResponse(progress);
+            // Tìm progress, nếu không có thì tạo progress mặc định (0%)
+            Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
+                    .orElse(Progress.builder()
+                            .studentId(studentId)
+                            .course(course)
+                            .percentComplete(0)
+                            .passedFinalExam(false)
+                            .courseCompleted(false)
+                            .build());
+            
+            if (progress.getId() == null) {
+                log.info("No existing progress found for student {} in course {}. Creating default progress (0%)", studentId, courseId);
+            } else {
+                log.debug("Found existing progress: {}% complete", progress.getPercentComplete());
+            }
+
+            return progressMapper.toProgressResponse(progress);
+        } catch (Exception e) {
+            log.error("Error fetching progress for student {} in course {}: {}", studentId, courseId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -139,5 +211,16 @@ class ProgressServiceImpl implements ProgressService {
         return progressRepository.findByCourseId(courseId).stream()
                 .map(progressMapper::toProgressResponse)
                 .collect(Collectors.toList());
+    }
+
+    private void updateCompletionStatus(Progress progress) {
+        boolean shouldComplete = progress.getPercentComplete() == 100 && progress.isPassedFinalExam();
+        progress.setCourseCompleted(shouldComplete);
+    }
+
+    private void maybeGrantCompletionReward(Course course, Progress progress, boolean completedBefore) {
+        if (!completedBefore && progress.isCourseCompleted()) {
+            rewardService.grantReward(progress.getStudentId(), 100, "COMPLETE_COURSE", course.getId());
+        }
     }
 }

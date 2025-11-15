@@ -22,5 +22,7 @@ public class ProgressResponse {
     private UUID courseId;
     private Integer percentComplete;
     private UUID lastMaterialId;
+    private boolean passedFinalExam;
+    private boolean courseCompleted;
     private LocalDateTime updatedAt;
 }

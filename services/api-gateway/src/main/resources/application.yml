@@ -38,48 +38,106 @@ spring:
             - Path=/exam/**
           filters:
             - StripPrefix=1
-        - id: course-service
-          uri: lb://course-service
+        # Route cho materials (MaterialController không có v1)
+        - id: course-service-materials
+          uri: http://localhost:9001
           predicates:
-            - Path=/course/**
+            - Path=/api/v1/courses/*/materials
           filters:
-            - StripPrefix=1
-        - id: token-reward--service 
-          uri: lb://token-reward-service 
+            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/materials, /api/courses/$\{courseId}/materials
+        # Route cho progress (ProgressController không có v1)
+        - id: course-service-progress
+          uri: http://localhost:9001
+          predicates:
+            - Path=/api/v1/progress/**
+          filters:
+            - RewritePath=/api/v1/progress(?<segment>/?.*), /api/progress$\{segment}
+        # Route cho courses và các endpoint khác (CourseController có v1)
+        - id: course-service
+          uri: http://localhost:9001
+          predicates:
+            - Path=/api/v1/courses,/api/v1/courses/**,/api/progress/**,/api/rewards/**
+          filters:
+            - StripPrefix=0        
+        - id: token-reward-service
+          uri: http://localhost:9009
           predicates:
             - Path=/api/tokens/**
           filters:
-            - StripPrefix=1
-        - id: proctoring-service
+            - StripPrefix=0
+        - id: proctoring-ws
+          uri: ws://localhost:8082
+          predicates:
+            - Path=/ws/**
+          filters:
+            - StripPrefix=0
+        - id: proctoring-socketio
+          uri: ws://localhost:8082
+          predicates:
+            - Path=/socket.io/**
+          filters:
+            - StripPrefix=0
+        - id: proctoring-http
           uri: lb://proctoring-service
           predicates:
             - Path=/api/proctoring/**
           filters:
             - StripPrefix=1
         - id: online-exam-service
-          uri: lb://online-exam-service
+          uri: http://localhost:9003
           predicates:
             - Path=/api/exam/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/exam(?<segment>/?.*), /api$\{segment}  # Rewrite "/api/exam/..." → "/api/..." 
         - id: multisig-service
-          uri: http://127.0.0.1:3001
+          uri: http://localhost:3003
           predicates:
             - Path=/api/v1/multisig/**
           filters:
             - StripPrefix=0
+        
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/user/**
+          filters:
+            - StripPrefix=1
+        - id: organization-service
+          uri: http://localhost:8008  
+          predicates:
+            - Path=/api/organization,/api/organization/**
+          filters:
+            - RewritePath=/api/organization(?<path>/?.*), /api/v1/organization/$\{path}
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/analytics/**
+          filters:
+            - StripPrefix=0
+        - id: ai-service
+          uri: http://localhost:3002
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - StripPrefix=0
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/files/**
+          filters:
+            - StripPrefix=1
   data:
     redis:
       host: localhost
       port: 6379
   main:
     web-application-type: reactive
-  webflux:
-    cors:
-      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:3000}
-      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-      allowed-headers: '*'
-      allow-credentials: true
 
 server:
   port: 8080

@@ -19,8 +19,10 @@ public interface ExamResultRepository extends JpaRepository<ExamResult, Long> {
 
     List<ExamResult> findByUserId(UUID userId);
 
+    @Query("SELECT COUNT(DISTINCT er.examId) FROM ExamResult er WHERE er.examId IS NOT NULL")
     long countDistinctByExamIdIsNotNull();
 
+    @Query("SELECT COUNT(DISTINCT er.userId) FROM ExamResult er WHERE er.userId IS NOT NULL")
     long countDistinctByUserIdIsNotNull();
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

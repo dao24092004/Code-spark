@@ -32,12 +32,18 @@ public class Progress {
     private Course course;
 
     @Column(nullable = false)
-    private Integer percentComplete;
+    private Integer percentComplete = 0;
 
     // Mối quan hệ: Tiến độ đang ở Material nào
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_material_id")
     private Material lastMaterial;
+
+    @Column(name = "passed_final_exam", nullable = false)
+    private boolean passedFinalExam = false;
+
+    @Column(name = "course_completed", nullable = false)
+    private boolean courseCompleted = false;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;

@@ -17,7 +17,8 @@ class MicroservicesServer {
 
     initializeMiddleware() {
         this.app.use(helmet());
-        this.app.use(cors());
+        // CORS is handled by API Gateway - Disabled to prevent duplicate headers
+        // this.app.use(cors());
         this.app.use(morgan('dev'));
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
