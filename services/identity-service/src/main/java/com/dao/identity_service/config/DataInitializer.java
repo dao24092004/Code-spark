@@ -58,9 +58,9 @@ public class DataInitializer implements CommandLineRunner {
         createPermissionIfNotExists("MULTISIG_READ", "Read course multisig wallet", "MULTISIG", "READ");
         createPermissionIfNotExists("MULTISIG_CREATE", "Create multisig wallet", "MULTISIG", "CREATE");
         createPermissionIfNotExists("MULTISIG_WRITE", "Update multisig wallet", "MULTISIG", "WRITE");
+        createPermissionIfNotExists("PROCTORING_SESSION_TERMINATE", "Terminate proctoring sessions", "PROCTORING", "TERMINATE");
         createPermissionIfNotExists("MULTISIG_DELETE", "Delete multisig wallet", "MULTISIG", "DELETE");
         createPermissionIfNotExists("AI_CHAT", "Chat with AI", "AI", "CHAT");
-        
     }
 
     private void initializeRoles() {
@@ -89,9 +89,7 @@ public class DataInitializer implements CommandLineRunner {
                     permissionRepository.findByName("MULTISIG_READ").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_CREATE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
-                    permissionRepository.findByName("AI_CHAT").orElseThrow(),
-                    permissionRepository.findByName("MULTISIG_WRITE").orElseThrow(),
+                    permissionRepository.findByName("PROCTORING_SESSION_TERMINATE").orElseThrow(),
                     permissionRepository.findByName("MULTISIG_DELETE").orElseThrow(),
                     permissionRepository.findByName("AI_CHAT").orElseThrow()
             ));
@@ -139,7 +137,7 @@ public class DataInitializer implements CommandLineRunner {
             User admin = User.builder()
                     .username("admin")
                     .email("admin@codespark.com")
-                    .password(passwordEncoder.encode("admin123"))
+                    .password(passwordEncoder.encode("@Admin123@"))
                     .firstName("System")
                     .lastName("Administrator")
                     .roles(new HashSet<>(Set.of(adminRole)))
@@ -154,7 +152,7 @@ public class DataInitializer implements CommandLineRunner {
             User user = User.builder()
                     .username("user")
                     .email("user@codespark.com")
-                    .password(passwordEncoder.encode("user123"))
+                    .password(passwordEncoder.encode("@User123@"))
                     .firstName("Regular")
                     .lastName("User")
                     .roles(new HashSet<>(Set.of(userRole)))

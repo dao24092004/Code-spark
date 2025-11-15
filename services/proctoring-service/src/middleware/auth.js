@@ -28,13 +28,36 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+const normalizePermission = (permission = '') =>
+  permission
+    .toString()
+    .trim()
+    .toLowerCase();
+
 const checkPermission = (permission) => {
   return (req, res, next) => {
-    if (!req.user || !req.user.permissions || !req.user.permissions.includes(permission)) {
+    const user = req.user || {};
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+    const normalizedRequired = normalizePermission(permission);
+    const hasExplicitPermission = permissions.some(
+      (perm) => normalizePermission(perm) === normalizedRequired
+    );
+
+    const hasAdminRole = roles.some(
+      (role) => role === 'ADMIN' || role === 'ROLE_ADMIN'
+    );
+
+    if (!hasExplicitPermission && !hasAdminRole) {
       console.warn(`[AUTH] ⚠️ Permission denied. Required: ${permission}`);
-      console.warn('[AUTH] User permissions:', req.user?.permissions);
-      return res.status(403).json({ message: `Forbidden: Requires ${permission} permission` });
+      console.warn('[AUTH] User roles:', roles);
+      console.warn('[AUTH] User permissions:', permissions);
+      return res
+        .status(403)
+        .json({ message: `Forbidden: Requires ${permission} permission` });
     }
+
     console.log(`[AUTH] ✅ Permission granted: ${permission}`);
     next();
   };

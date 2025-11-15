@@ -1,0 +1,17 @@
+const Token = await ethers.getContractAt("Token", "0x6a7870595A0978825E5984D36Db31aa68f490B23");
+(await Token.balanceOf("0xb21e3Ce8E0f1F6F9497816cA2678D0CE7538Db82")).toString()
+const Token = await ethers.getContractAt("Token", "0xb21e3Ce8E0f1F6F9497816cA2678D0CE7538Db82");
+await token.balanceOf("0xb21e3Ce8E0f1F6F9497816cA2678D0CE7538Db82")
+balanceOf(0xb21e3Ce8E0f1F6F9497816cA2678D0CE7538Db82)
+escrow.target
+await escrow.deploymentTransaction().wait();
+const escrow = await RewardEscrow.deploy("0x7f0786ADB3484Ecc50e6768BaaB9B56389881626");
+const RewardEscrow = await ethers.getContractFactory("RewardEscrow");
+que
+escrow.target
+await escrow.deploymentTransaction().wait();
+const escrow = await RewardEscrow.deploy("0x7f0786ADB3484Ecc50e6768BaaB9B56389881626");
+const RewardEscrow = await ethers.getContractFactory
+que
+const escrow = await RewardEscrow.deploy("0x7f0786ADB3484Ecc50e6768BaaB9B56389881626");
+const RewardEscrow = await ethers.getContractFactory

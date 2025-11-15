@@ -8,6 +8,21 @@ const config = require('../config'); // Import file config chung
 const DEFAULT_PROCTORING_URL = 'http://127.0.0.1:8082';
 let configuredProctoringUrl = config.proctoringServiceUrl || DEFAULT_PROCTORING_URL;
 
+const resolveAuthHeader = (forwardedAuthHeader) => {
+  if (forwardedAuthHeader) {
+    return forwardedAuthHeader;
+  }
+
+  if (config.proctoringServiceToken) {
+    const token = config.proctoringServiceToken.startsWith('Bearer ')
+      ? config.proctoringServiceToken
+      : `Bearer ${config.proctoringServiceToken}`;
+    return token;
+  }
+
+  return undefined;
+};
+
 if (configuredProctoringUrl.includes('localhost')) {
   const ipv4Url = configuredProctoringUrl.replace('localhost', '127.0.0.1');
   console.warn(`[PROCTORING INTEGRATION] ⚠️ URL chứa 'localhost'. Sử dụng ${ipv4Url} để tránh IPv6 (::1).`);
@@ -53,6 +68,8 @@ async function startMonitoringSession(userId, examId, authHeader) {
     });
 
     // Gửi request POST với thông tin cần thiết
+    const resolvedAuthHeader = resolveAuthHeader(authHeader);
+
     const response = await axios.post(
       proctoringUrl,
       {
@@ -63,7 +80,7 @@ async function startMonitoringSession(userId, examId, authHeader) {
         httpAgent,
         httpsAgent,
         timeout: 10000,
-        headers: authHeader ? { Authorization: authHeader } : undefined,
+        headers: resolvedAuthHeader ? { Authorization: resolvedAuthHeader } : undefined,
       }
     );
 
@@ -74,6 +91,63 @@ async function startMonitoringSession(userId, examId, authHeader) {
   }
 }
 
+async function getActiveSessions(authHeader) {
+  try {
+    const proctoringUrl = buildEndpoint('/api/proctoring/sessions');
+    const resolvedAuthHeader = resolveAuthHeader(authHeader);
+
+    const response = await axios.get(proctoringUrl, {
+      httpAgent,
+      httpsAgent,
+      timeout: 10000,
+      headers: resolvedAuthHeader ? { Authorization: resolvedAuthHeader } : undefined,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('❌ Lỗi khi lấy danh sách phiên giám sát đang hoạt động từ Proctoring Service:', error?.message);
+    if (error?.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+    throw new Error('Không thể lấy danh sách phiên giám sát đang hoạt động.');
+  }
+}
+
+async function completeMonitoringSession(sessionId, authHeader) {
+  if (!sessionId) {
+    console.warn('[PROCTORING INTEGRATION] Thiếu sessionId khi gọi completeMonitoringSession');
+    return;
+  }
+
+  try {
+    const proctoringUrl = buildEndpoint(`/api/proctoring/sessions/${sessionId}/complete`);
+    const resolvedAuthHeader = resolveAuthHeader(authHeader);
+
+    console.log('[PROCTORING INTEGRATION] Gọi complete session:', { proctoringUrl, sessionId });
+
+    await axios.post(
+      proctoringUrl,
+      {},
+      {
+        httpAgent,
+        httpsAgent,
+        timeout: 10000,
+        headers: resolvedAuthHeader ? { Authorization: resolvedAuthHeader } : undefined,
+      }
+    );
+  } catch (error) {
+    console.error('❌ Lỗi khi hoàn tất phiên giám sát:', error?.message || error);
+    if (error?.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
+    // Không throw để tránh làm fail quy trình nộp bài
+  }
+}
+
 module.exports = {
   startMonitoringSession,
-}; 
+  getActiveSessions,
+  completeMonitoringSession,
+};

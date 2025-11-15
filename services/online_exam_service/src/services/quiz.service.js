@@ -141,7 +141,7 @@ async function startQuiz(userId, quizId, authToken) {
 /**
  * Xử lý logic khi sinh viên nộp bài.
  */
-async function submitQuiz(submissionId, answers) {
+async function submitQuiz(submissionId, answers, authHeader) {
   // 1. Tìm bài làm và kiểm tra trạng thái
   const submission = await db.QuizSubmission.findByPk(submissionId);
 
@@ -153,7 +153,7 @@ async function submitQuiz(submissionId, answers) {
     throw new Error('Bài thi này đã được nộp trước đó.');
   }
 
-  // 2. Cập nhật câu trả lời, thời gian và trạng thái
+  // 2. Cập nhật câu trả lời, thởi gian và trạng thái
   submission.answers = JSON.stringify(answers);
   const submittedAt = new Date();
   submission.submittedAt = submittedAt;
@@ -165,6 +165,55 @@ async function submitQuiz(submissionId, answers) {
   }
   
   await submission.save();
+
+  // Lấy thông tin để tìm proctoring session
+  const studentId = submission.studentId;
+  const examId = submission.quizId;
+  
+  // Tìm proctoring session bằng examId và userId (vì submission không lưu sessionId)
+  let proctoringSessionId = null;
+  try {
+    const activeSessions = await proctoringIntegrationService.getActiveSessions(authHeader || undefined);
+    // getActiveSessions trả về mảng trực tiếp
+    const sessions = Array.isArray(activeSessions) ? activeSessions : (activeSessions?.data || []);
+    
+    // Tìm session đang in_progress cho examId và userId này
+    // Đảm bảo so sánh examId và userId đúng kiểu (cả hai đều convert sang string)
+    const matchingSession = sessions.find(s => {
+      const sessionExamId = String(s.examId || s.exam_id || '');
+      const sessionUserId = String(s.userId || s.user_id || '');
+      const examIdStr = String(examId || '');
+      const studentIdStr = String(studentId || '');
+      
+      return sessionExamId === examIdStr && 
+             sessionUserId === studentIdStr && 
+             (s.status === 'in_progress' || s.status === 'IN_PROGRESS');
+    });
+    
+    if (matchingSession) {
+      proctoringSessionId = matchingSession.id || matchingSession.sessionId;
+      console.log('[QUIZ SERVICE] Tìm thấy proctoring session để complete:', {
+        sessionId: proctoringSessionId,
+        examId,
+        studentId,
+        sessionStatus: matchingSession.status
+      });
+    } else {
+      console.log('[QUIZ SERVICE] Không tìm thấy proctoring session phù hợp:', {
+        examId,
+        studentId,
+        totalSessions: sessions.length,
+        sessions: sessions.map(s => ({
+          id: s.id,
+          examId: s.examId || s.exam_id,
+          userId: s.userId || s.user_id,
+          status: s.status
+        }))
+      });
+    }
+  } catch (error) {
+    console.warn('[QUIZ SERVICE] Không thể lấy danh sách proctoring sessions (non-critical):', error.message || error);
+  }
 
   // ✨ NEW: Save individual answers to Answer table for detailed review
   // First, delete any existing answers for this submission (in case of resubmit)
@@ -209,7 +258,25 @@ async function submitQuiz(submissionId, answers) {
     console.error('Error recording to blockchain (non-critical):', error.message);
     // Continue execution - blockchain is not critical for submission success
   }
-  
+
+  // Hoàn tất phiên giám sát (không chặn luồng nếu lỗi)
+  if (proctoringSessionId) {
+    try {
+      await proctoringIntegrationService.completeMonitoringSession(
+        proctoringSessionId,
+        authHeader || undefined
+      );
+    } catch (error) {
+      console.warn('Không thể hoàn tất phiên giám sát (non-critical):', error.message || error);
+    }
+  } else {
+    console.warn('Không tìm thấy proctoring session id để hoàn tất.', {
+      submissionId,
+      studentId,
+      examId,
+    });
+  }
+
   return {
     submissionId: submissionId,
     score: finalScore,

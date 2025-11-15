@@ -66,7 +66,11 @@ public class ExamService {
     @Transactional
     public Exam createExam(ExamCreationRequest request) {
         Exam exam = new Exam();
-        exam.setCourseId(request.courseId);
+        UUID owningOrgId = request.courseId != null ? request.courseId : request.orgId;
+        if (owningOrgId == null) {
+            throw new IllegalArgumentException("courseId/orgId is required");
+        }
+        exam.setOrgId(owningOrgId);
         exam.setTitle(request.title);
         exam.setDescription(request.description);
         exam.setStartAt(request.startAt);

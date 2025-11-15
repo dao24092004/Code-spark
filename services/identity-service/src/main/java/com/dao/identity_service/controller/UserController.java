@@ -51,12 +51,15 @@ public class UserController {
     }
 
     /**
-     * Lấy danh sách tất cả người dùng
+     * Lấy danh sách tất cả người dùng (hỗ trợ pagination query params)
      */
     @GetMapping
     @PreAuthorize("hasAuthority('USER_READ')")
-    public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsers() {
-        List<UserDto> users = userService.findAllUsers();
+    public ResponseEntity<ApiResponse<?>> getAllUsers(
+            @PageableDefault(size = 1000) Pageable pageable
+    ) {
+        // Luôn sử dụng pagination để trả về Page với metadata
+        Page<UserDto> users = userService.findAllUsers(pageable);
         return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 

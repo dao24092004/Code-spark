@@ -1,16 +1,25 @@
 package com.dao.examservice.entity;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import jakarta.persistence.*;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "cm_questions")
+@Table(name = "questions")
 public class Question {
 
     public enum QuestionType { SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER, ESSAY }
@@ -20,24 +29,24 @@ public class Question {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quiz_id", nullable = false)
-    private Exam quiz;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private QuestionType type;
 
-    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "content", columnDefinition = "jsonb", nullable = false)
     private String content;
 
+    @Column(name = "difficulty")
     private Integer difficulty;
 
+    @Column(name = "explanation")
     private String explanation;
 
+    @Column(name = "score")
     private Integer score;
 
-    @Column(length = 2000)
+    @Column(name = "text", length = 2000)
     private String text;
 
     @Column(name = "created_at", nullable = false)
@@ -48,14 +57,11 @@ public class Question {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "question_tags", joinColumns = @JoinColumn(name = "question_id"))
-
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public Exam getQuiz() { return quiz; }
-    public void setQuiz(Exam quiz) { this.quiz = quiz; }
     public QuestionType getType() { return type; }
     public void setType(QuestionType type) { this.type = type; }
     public String getContent() { return content; }
@@ -75,5 +81,4 @@ public class Question {
     public Set<String> getTags() { return tags; }
     public void setTags(Set<String> tags) { this.tags = tags; }
 }
-
 

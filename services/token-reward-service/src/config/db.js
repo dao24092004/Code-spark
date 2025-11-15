@@ -9,7 +9,8 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT, 10), // Chuyển port sang kiểu số
-    dialect: 'postgres'
+    dialect: 'postgres',
+    logging: process.env.DB_LOGGING === 'true' ? console.log : false
   },
   production: {
     // Cấu hình cho môi trường production sau này

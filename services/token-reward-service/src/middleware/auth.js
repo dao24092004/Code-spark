@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 
+const isDebugEnabled = process.env.LOG_LEVEL === 'debug';
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -10,19 +12,23 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Unauthorized: No token provided' });
   }
 
-  console.log('[AUTH] 🔑 Received token:', token.substring(0, 10) + '...');
-  console.log('[AUTH] 🧩 Using secret:', config.security.jwt.secret ? '✅ Loaded' : '❌ Missing');
+  if (!config.security.jwt.secret) {
+    console.error('[AUTH] ❌ JWT secret is missing.');
+    return res.status(500).json({ message: 'Authentication misconfigured.' });
+  }
+
+  if (isDebugEnabled) {
+    console.debug('[AUTH] 🔑 Received token prefix:', token.substring(0, 10));
+  }
 
   jwt.verify(token, config.security.jwt.secret, (err, user) => {
     if (err) {
       console.error('[AUTH] ❌ JWT verification failed!');
       console.error('│ Error type:', err.name);
       console.error('│ Error message:', err.message);
-      console.error('│ Secret loaded:', !!config.security.jwt.secret);
       return res.status(403).json({ message: 'Forbidden: Invalid token' });
     }
 
-    console.log('[AUTH] ✅ Token verified successfully.');
     req.user = user;
     next();
   });
@@ -35,7 +41,9 @@ const checkPermission = (permission) => {
       console.warn('[AUTH] User permissions:', req.user?.permissions);
       return res.status(403).json({ message: `Forbidden: Requires ${permission} permission` });
     }
-    console.log(`[AUTH] ✅ Permission granted: ${permission}`);
+    if (isDebugEnabled) {
+      console.debug(`[AUTH] ✅ Permission granted: ${permission}`);
+    }
     next();
   };
 };

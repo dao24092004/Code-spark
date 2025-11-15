@@ -82,9 +82,10 @@ async function submitQuiz(req, res) {
     const { submissionId } = req.params;
     // Lấy mảng câu trả lời từ body của request
     const answers = req.body.answers;
+    const authHeader = req.headers['authorization'] || '';
 
     // Gọi đến service để xử lý logic
-    const result = await quizService.submitQuiz(submissionId, answers);
+    const result = await quizService.submitQuiz(submissionId, answers, authHeader);
 
     // Trả về kết quả thành công
     res.status(200).json({
@@ -103,15 +104,26 @@ async function submitQuiz(req, res) {
  */
 async function getAllQuizzes(req, res) {
   try {
+    console.log('[getAllQuizzes] Request received');
+    console.log('[getAllQuizzes] Request path:', req.path);
+    console.log('[getAllQuizzes] Request originalUrl:', req.originalUrl);
+    
     const quizzes = await quizService.getAllQuizzes();
+    
+    console.log('[getAllQuizzes] Found', quizzes?.length || 0, 'quizzes');
     
     res.status(200).json({
       success: true,
       data: quizzes,
     });
   } catch (error) {
-    console.error("Lỗi trong getAllQuizzes controller:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[getAllQuizzes] Lỗi trong getAllQuizzes controller:", error);
+    console.error("[getAllQuizzes] Error stack:", error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
 
@@ -141,8 +153,15 @@ async function getQuizDetails(req, res) {
  */
 async function getMySubmissions(req, res) {
   try {
+    console.log('[getMySubmissions] Request received');
+    console.log('[getMySubmissions] Request path:', req.path);
+    console.log('[getMySubmissions] Request originalUrl:', req.originalUrl);
+    
     // Lấy userId từ JWT token (đã được verify bởi auth middleware)
     const userId = req.userId || req.user?.userId || req.user?.sub || req.user?.id;
+    
+    console.log('[getMySubmissions] userId:', userId);
+    console.log('[getMySubmissions] req.user:', req.user);
     
     // Validate userId
     if (!userId) {
@@ -155,13 +174,20 @@ async function getMySubmissions(req, res) {
     
     const submissions = await quizService.getStudentSubmissions(userId);
     
+    console.log('[getMySubmissions] Found', submissions?.length || 0, 'submissions');
+    
     res.status(200).json({
       success: true,
       data: submissions,
     });
   } catch (error) {
-    console.error("Lỗi trong getMySubmissions controller:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[getMySubmissions] Lỗi trong getMySubmissions controller:", error);
+    console.error("[getMySubmissions] Error stack:", error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
 

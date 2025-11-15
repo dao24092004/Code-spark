@@ -3,11 +3,11 @@ const asyncHandler = require('../utils/asyncHandler');
 
 // POST /api/v1/multisig
 const createNewWallet = asyncHandler(async (req, res) => {
-    const { name, owners, threshold } = req.body;
-    if (!name || !owners || !threshold) {
-        return res.status(400).json({ error: 'Thiếu name, owners hoặc threshold' });
+    const { name, ownerUserIds, threshold } = req.body;
+    if (!name || !ownerUserIds || !threshold) {
+        return res.status(400).json({ error: 'Thiếu name, ownerUserIds hoặc threshold' });
     }
-    // req được truyền vào để service có thể lấy creatorId
+    // req được truyền vào để service có thể lấy creatorId + token
     const wallet = await multisigService.createWallet(req); 
     res.status(201).json(wallet);
 });
@@ -25,8 +25,23 @@ const linkExistingWallet = asyncHandler(async (req, res) => {
 // GET /api/v1/multisig/:id
 const getWallet = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const wallet = await multisigService.getWalletById(id);
+    const authHeader = req.headers['authorization'];
+    const wallet = await multisigService.getWalletById(id, authHeader);
     res.status(200).json(wallet);
+});
+
+// GET /api/v1/multisig
+const getAllWallets = asyncHandler(async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const wallets = await multisigService.getAllWallets(authHeader);
+    res.status(200).json(wallets);
+});
+
+// GET /api/v1/multisig/users/available
+const getAvailableUsers = asyncHandler(async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const users = await multisigService.getAvailableUsersForWallet(authHeader);
+    res.status(200).json(users);
 });
 
 // GET /api/v1/multisig/:walletId/transactions
@@ -75,6 +90,8 @@ module.exports = {
     createNewWallet,
     linkExistingWallet,
     getWallet,
+    getAllWallets,
+    getAvailableUsers,
     getTransactions,
     submitTransaction,
     getTransaction,

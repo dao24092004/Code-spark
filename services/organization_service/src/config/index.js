@@ -1,5 +1,4 @@
-// Nạp biến môi trường từ file .env ở thư mục gốc
-require('dotenv').config({ path: '../../.env' });
+require('dotenv').config({ path: '../.env' });
 
 const config = {
   // Cấu hình server
