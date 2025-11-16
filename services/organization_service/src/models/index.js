@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const { 
   profileDbSequelize,
+  organizationDbSequelize, // THÊM MỚI
   identityDbSequelize,
   courseDbSequelize
 } = require('../config/db');
@@ -12,17 +13,20 @@ const db = {};
 db.Sequelize = Sequelize;
 db.DataTypes = DataTypes;
 
+// Export sequelize instance để service có thể dùng transaction
+db.sequelize = organizationDbSequelize;
+
 // === Import các model (từ các file riêng lẻ) ===
 
-// Nhóm 1
-db.Organization = require('./organization.model.js')(profileDbSequelize, DataTypes);
-db.OrganizationMember = require('./organizationMember.model.js')(profileDbSequelize, DataTypes);
+// Nhóm 1 - SỬ DỤNG organizationDbSequelize
+db.Organization = require('./organization.model.js')(organizationDbSequelize, DataTypes);
+db.OrganizationMember = require('./organizationMember.model.js')(organizationDbSequelize, DataTypes);
 
-// Nhóm 3
-db.RecruitmentTest = require('./recruitmentTest.model.js')(profileDbSequelize, DataTypes);
-db.RecruitmentQuestion = require('./recruitmentQuestion.model.js')(profileDbSequelize, DataTypes);
-db.RecruitmentAnswer = require('./recruitmentAnswer.model.js')(profileDbSequelize, DataTypes);
-db.RecruitmentSubmission = require('./recruitmentSubmission.model.js')(profileDbSequelize, DataTypes);
+// Nhóm 3 - SỬ DỤNG organizationDbSequelize
+db.RecruitmentTest = require('./recruitmentTest.model.js')(organizationDbSequelize, DataTypes);
+db.RecruitmentQuestion = require('./recruitmentQuestion.model.js')(organizationDbSequelize, DataTypes);
+db.RecruitmentAnswer = require('./recruitmentAnswer.model.js')(organizationDbSequelize, DataTypes);
+db.RecruitmentSubmission = require('./recruitmentSubmission.model.js')(organizationDbSequelize, DataTypes);
 
 
 // === ĐỊNH NGHĨA CÁC MỐI QUAN HỆ ===

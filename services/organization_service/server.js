@@ -3,6 +3,7 @@ const express = require('express');
 const routes = require('./src/routes');
 const { 
   profileDbSequelize,
+  organizationDbSequelize, // THÊM MỚI
   identityDbSequelize,
   courseDbSequelize
 } = require('./src/config/db');
@@ -17,6 +18,9 @@ async function checkDatabaseConnections() {
     // Kiểm tra kết nối tới từng database
     await profileDbSequelize.authenticate();
     console.log('✅ Kết nối thành công tới profile_db');
+    
+    await organizationDbSequelize.authenticate();
+    console.log('✅ Kết nối thành công tới organization_db');
     
     await identityDbSequelize.authenticate();
     console.log('✅ Kết nối thành công tới identity_db');
@@ -39,13 +43,20 @@ const PORT = config.port || 8008;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS configuration
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-});
+// CORS configuration - CHỈ BẬT KHI CHẠY STANDALONE (không qua Gateway)
+// Khi chạy qua API Gateway, Gateway đã xử lý CORS rồi
+if (process.env.STANDALONE_MODE === 'true') {
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+  console.log('🌐 CORS enabled (Standalone mode)');
+}
 
 // Routes
 app.use('/api/v1', routes);
@@ -107,6 +118,7 @@ process.on('SIGTERM', () => {
   // Đóng kết nối database
   Promise.all([
     profileDbSequelize.close(),
+    organizationDbSequelize.close(),
     identityDbSequelize.close(),
     courseDbSequelize.close()
   ]).then(() => {

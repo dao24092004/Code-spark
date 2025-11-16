@@ -3,38 +3,51 @@
 package com.dao.courseservice.controller;
 
 import com.dao.common.dto.ApiResponse;
+import com.dao.courseservice.entity.Course;
+import com.dao.courseservice.repository.CourseRepository;
+import com.dao.courseservice.service.S3FileService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/courses/{courseId}/images")
-//@RequiredArgsConstructor // (Sẽ inject service ở bước sau)
+@RequestMapping("/api/v1/courses")
+@RequiredArgsConstructor
 public class CourseImageController {
 
-    // (Bạn cần tạo CourseImageService để xử lý logic upload file S3/MinIO)
-    // private final CourseImageService courseImageService; 
+    private final CourseRepository courseRepository;
+    private final S3FileService s3FileService;
 
-    @PostMapping("/upload")
+    @PostMapping("/{courseId}/images/upload")
     @PreAuthorize("isAuthenticated()") // (Nên check quyền 'COURSE_WRITE')
     public ResponseEntity<ApiResponse<String>> uploadCourseImage(
         @PathVariable UUID courseId,
         @RequestParam("file") MultipartFile file
     ) {
-        // Logic (trong Service):
-        // 1. Upload file lên S3/MinIO.
-        // 2. Lấy URL/Key trả về.
-        // 3. Lưu (URL/Key, courseId) vào bảng `cm_course_images`.
-        // String imageUrl = courseImageService.uploadImage(courseId, file);
-        // return ResponseEntity.ok(ApiResponse.success("Image uploaded", imageUrl));
+        try {
+            // Upload to S3/MinIO
+            String publicUrl = s3FileService.uploadFile(file, "thumbnails");
 
-        // (Code tạm)
-        return ResponseEntity.ok(ApiResponse.success("API (chưa code) Upload Image OK"));
+            // Update course thumbnailUrl
+            Course course = courseRepository.findById(courseId).orElse(null);
+            if (course != null) {
+                course.setThumbnailUrl(publicUrl);
+                courseRepository.save(course);
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Image uploaded", publicUrl));
+        } catch (IOException ex) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error("Failed to upload image: " + ex.getMessage()));
+        }
     }
 
-    @DeleteMapping("/{imageId}")
+    @DeleteMapping("/{courseId}/images/{imageId}")
     @PreAuthorize("isAuthenticated()") // (Nên check quyền 'COURSE_WRITE')
     public ResponseEntity<ApiResponse<Void>> deleteCourseImage(
         @PathVariable UUID courseId,

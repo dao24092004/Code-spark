@@ -19,6 +19,16 @@ const organizationService = {
     // SỬA LỖI 4: Dùng 'db.sequelize' (kết nối) để tạo transaction
     const t = await db.sequelize.transaction();
     try {
+      // Tự động set isActive dựa trên status
+      if (orgData.status) {
+        orgData.is_active = orgData.status === 'active';
+      }
+      
+      // Tự động set isPremium dựa trên subscription_plan
+      if (orgData.subscription_plan) {
+        orgData.is_premium = ['enterprise', 'professional'].includes(orgData.subscription_plan);
+      }
+      
       const newOrganization = await Organization.create(orgData, { transaction: t });
       await OrganizationMember.create({
         organizationId: newOrganization.id,
@@ -82,6 +92,39 @@ const organizationService = {
     try {
       const organization = await Organization.findByPk(id);
       if (!organization) throw new Error('OrganizationNotFound');
+      
+      // Tự động cập nhật isActive dựa trên status
+      if (dataToUpdate.status) {
+        dataToUpdate.isActive = dataToUpdate.status === 'active';
+      }
+      
+      // Tự động cập nhật isPremium dựa trên subscription_plan
+      if (dataToUpdate.subscription_plan) {
+        dataToUpdate.isPremium = ['enterprise', 'professional'].includes(dataToUpdate.subscription_plan);
+        dataToUpdate.subscriptionPlan = dataToUpdate.subscription_plan;
+      }
+      
+      // Map snake_case to camelCase for Sequelize
+      if (dataToUpdate.org_type) dataToUpdate.orgType = dataToUpdate.org_type;
+      if (dataToUpdate.org_size) dataToUpdate.orgSize = dataToUpdate.org_size;
+      if (dataToUpdate.short_description) dataToUpdate.shortDescription = dataToUpdate.short_description;
+      if (dataToUpdate.postal_code) dataToUpdate.postalCode = dataToUpdate.postal_code;
+      if (dataToUpdate.founded_year) dataToUpdate.foundedYear = dataToUpdate.founded_year;
+      if (dataToUpdate.contact_person) dataToUpdate.contactPerson = dataToUpdate.contact_person;
+      if (dataToUpdate.social_media) dataToUpdate.socialMedia = dataToUpdate.social_media;
+      if (dataToUpdate.subscription_status) dataToUpdate.subscriptionStatus = dataToUpdate.subscription_status;
+      if (dataToUpdate.subscription_expiry) dataToUpdate.subscriptionExpiry = dataToUpdate.subscription_expiry;
+      if (dataToUpdate.is_verified !== undefined) dataToUpdate.isVerified = dataToUpdate.is_verified;
+      if (dataToUpdate.verification_status) dataToUpdate.verificationStatus = dataToUpdate.verification_status;
+      
+      // Auto-update isVerified based on verificationStatus
+      if (dataToUpdate.verificationStatus) {
+        dataToUpdate.isVerified = dataToUpdate.verificationStatus === 'verified';
+      }
+      if (dataToUpdate.verification_status) {
+        dataToUpdate.isVerified = dataToUpdate.verification_status === 'verified';
+      }
+      
       const updatedOrganization = await organization.update(dataToUpdate);
       return updatedOrganization;
     } catch (error) {
