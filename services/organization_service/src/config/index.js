@@ -5,13 +5,24 @@ const config = {
   port: process.env.PORT || 8008,
   env: process.env.NODE_ENV || 'development',
 
-  // Cấu hình kết nối DB 1 (Profile DB)
+  // Cấu hình kết nối DB 1 (Profile DB) - CHỈ CHO PROFILES
   profileDb: {
     host: process.env.PROFILE_DB_HOST,
     port: process.env.PROFILE_DB_PORT,
     username: process.env.PROFILE_DB_USER,
     password: process.env.PROFILE_DB_PASSWORD,
     database: process.env.PROFILE_DB_NAME,
+    dialect: 'postgres',
+    logging: process.env.DB_LOGGING === 'true' ? console.log : false
+  },
+
+  // Cấu hình kết nối DB Organization (cho organizations, members, recruitment)
+  organizationDb: {
+    host: process.env.ORGANIZATION_DB_HOST || process.env.PROFILE_DB_HOST,
+    port: process.env.ORGANIZATION_DB_PORT || process.env.PROFILE_DB_PORT,
+    username: process.env.ORGANIZATION_DB_USER || process.env.PROFILE_DB_USER,
+    password: process.env.ORGANIZATION_DB_PASSWORD || process.env.PROFILE_DB_PASSWORD,
+    database: process.env.ORGANIZATION_DB_NAME || 'organization_db',
     dialect: 'postgres',
     logging: process.env.DB_LOGGING === 'true' ? console.log : false
   },

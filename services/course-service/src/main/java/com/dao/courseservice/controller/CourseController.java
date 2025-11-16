@@ -50,12 +50,7 @@ public class CourseController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @RequestHeader("Authorization") String authToken
     ) {
-        // [SỬA LỖI]: 'sub' là username ("Son"). 'id' (hoặc 'userId') mới là ID (số)
-        Long userId = ((Number) jwt.getClaim("id")).longValue();
-        
-        if (userId == null) {
-             throw new RuntimeException("Invalid Token: Missing or invalid 'id' claim.");
-        }
+        Long userId = extractUserId(jwt);
 
         CourseResponse newCourse = courseService.createCourse(request, userId, authToken);
         // Trả về 201 Created thì tốt hơn cho POST
@@ -82,7 +77,6 @@ public class CourseController {
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String organizationId,
-            @RequestParam(required = false) Long instructorId,
             @RequestParam(required = false) Long createdBy,
             @RequestParam(required = false) String visibility,
             @RequestParam(required = false) String createdFrom,
@@ -91,7 +85,6 @@ public class CourseController {
         CourseFilterCriteria filterCriteria = CourseFilterCriteria.builder()
                 .keyword(keyword)
                 .organizationId(organizationId)
-                .instructorId(instructorId)
                 .createdBy(createdBy)
                 .visibility(visibility)
                 .createdFrom(parseDateTime(createdFrom))
@@ -114,6 +107,36 @@ public class CourseController {
         }
     }
     
+    /**
+     * Trích xuất userId an toàn từ JWT.
+     * Ưu tiên claim 'id' hoặc 'userId'. Nếu không có, thử parse 'sub' khi là số.
+     * Ném 401 nếu không tìm thấy user id hợp lệ.
+     */
+    private Long extractUserId(Jwt jwt) {
+        Object raw = jwt.getClaim("id");
+        if (raw == null) {
+            raw = jwt.getClaim("userId");
+        }
+        if (raw instanceof Number number) {
+            return number.longValue();
+        }
+        if (raw instanceof String s) {
+            try {
+                return Long.parseLong(s);
+            } catch (NumberFormatException ignored) {
+                // fallthrough
+            }
+        }
+        // Thử từ 'sub' nếu chứa số
+        String sub = jwt.getSubject();
+        if (sub != null) {
+            try {
+                return Long.parseLong(sub);
+            } catch (NumberFormatException ignored) {}
+        }
+        throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Invalid token: missing numeric 'id'/'userId' claim");
+    }
+
     /**
      * Lấy danh sách khóa học theo organizationId với phân trang
      * @param organizationId ID của tổ chức

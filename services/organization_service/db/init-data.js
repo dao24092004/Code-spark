@@ -1,5 +1,5 @@
 // db/init-data.js
-const { profileDbSequelize } = require('../src/config/db');
+const { organizationDbSequelize } = require('../src/config/db');
 const db = require('../src/models');
 
 /**
@@ -9,10 +9,10 @@ const db = require('../src/models');
  */
 const syncDatabase = async () => {
   try {
-    console.log('Bắt đầu đồng bộ hóa cơ sở dữ liệu (profileDb)...');
+    console.log('Bắt đầu đồng bộ hóa cơ sở dữ liệu (organizationDb)...');
     
-    // Chỉ đồng bộ các model thuộc profileDbSequelize
-    await profileDbSequelize.sync({ alter: true });
+    // Đồng bộ các model thuộc organizationDbSequelize
+    await organizationDbSequelize.sync({ alter: true });
 
     console.log('✅ Đồng bộ hóa cơ sở dữ liệu thành công.');
 

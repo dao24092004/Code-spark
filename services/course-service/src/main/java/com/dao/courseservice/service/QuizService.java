@@ -193,6 +193,33 @@ class QuizServiceImpl implements QuizService {
 
         // 2. Dùng mapper để chuyển DTO request thành Entity
         Quiz quiz = quizMapper.toEntity(request, course);
+        // Gán createdBy từ security context (fallback 0 nếu không có)
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            Object principal = auth != null ? auth.getPrincipal() : null;
+            Long creator = null;
+            if (principal instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+                Object idClaim = jwt.getClaim("id");
+                Object userIdClaim = jwt.getClaim("userId");
+                Object subClaim = jwt.getClaim("sub");
+                if (idClaim instanceof Number) creator = ((Number) idClaim).longValue();
+                else if (userIdClaim instanceof Number) creator = ((Number) userIdClaim).longValue();
+                else if (subClaim instanceof String) {
+                    try { creator = Long.parseLong((String) subClaim); } catch (Exception ignored) {}
+                } else if (subClaim instanceof Number) {
+                    creator = ((Number) subClaim).longValue();
+                }
+            }
+            if (creator == null) creator = 0L;
+            quiz.setCreatedBy(creator);
+        } catch (Exception e) {
+            log.warn("Unable to resolve creator from security context, defaulting createdBy=0. Reason: {}", e.getMessage());
+            quiz.setCreatedBy(0L);
+        }
+        // Set default status if not provided by DTO/mapper (DB requires NOT NULL)
+        if (quiz.getStatus() == null || quiz.getStatus().isBlank()) {
+            quiz.setStatus("draft");
+        }
 
         // 3. Lưu (do cấu hình cascade, tất cả question/option sẽ được lưu theo)
         Quiz savedQuiz = quizRepository.save(quiz);

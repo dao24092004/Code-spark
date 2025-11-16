@@ -5,10 +5,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
-    "start": "node server.js",
-    "db:init": "node db/init-data.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:init": "node db/init-data.js",
+    "db:migrate": "node run-migration.js",
+    "db:seed": "node seed-organizations.js",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:cleanup-profile": "node cleanup-profile-db.js"
   },
   "keywords": [],
   "author": "",

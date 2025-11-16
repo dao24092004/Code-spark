@@ -48,6 +48,12 @@ public class Quiz {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy;
+
+    @Column(name = "status", nullable = false)
+    private String status;
+
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Question> questions;
 }

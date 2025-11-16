@@ -52,6 +52,11 @@ async function upsertDepositFromEvent(event) {
     const toAddress = normalizeAddress(args.to);
     const rawAmount = args.value;
 
+    // Ignore mint events (from zero address) and self-transfers that are not deposits
+    if (fromAddress === '0x0000000000000000000000000000000000000000') {
+        return;
+    }
+
     const existing = await db.TokenDeposit.findOne({ where: { txHash: transactionHash } });
     if (existing) {
         // Already processed
@@ -69,7 +74,8 @@ async function upsertDepositFromEvent(event) {
     await db.sequelize.transaction(async (transaction) => {
         const deposit = await db.TokenDeposit.create({
             userId: wallet ? wallet.userId : null,
-            walletAddress: wallet ? wallet.address : fromAddress,
+            // Only set walletAddress when it exists in WalletAccount to satisfy FK
+            walletAddress: wallet ? wallet.address : null,
             txHash: transactionHash,
             tokenAddress: normalizeAddress(process.env.CONTRACT_ADDRESS),
             fromAddress,

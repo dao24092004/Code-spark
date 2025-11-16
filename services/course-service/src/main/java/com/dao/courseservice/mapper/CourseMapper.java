@@ -9,18 +9,27 @@ import org.springframework.stereotype.Component;
 @Component
 public class CourseMapper {
 
+    private String normalizeVisibility(String value) {
+        if (value == null) return "private";
+        String v = value.trim().toLowerCase();
+        // DB constraint chỉ chấp nhận 'public' hoặc 'private'
+        if (v.equals("public") || v.equals("published")) {
+            return "public";
+        }
+        return "private";
+    }
+
     /**
      * Chuyển từ CreateCourseRequest sang Course entity
      */
     public Course toEntity(CreateCourseRequest request) {
         return Course.builder()
                 .id(request.getId())
-                .instructorId(request.getInstructorId())
                 .organizationId(request.getOrganizationId())        // ⭐ NEW
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .thumbnailUrl(request.getThumbnailUrl())
-                .visibility(request.getVisibility() != null ? request.getVisibility() : "private")
+                .visibility(normalizeVisibility(request.getVisibility()))
                 .build();
     }
 
@@ -30,7 +39,6 @@ public class CourseMapper {
     public CourseResponse toCourseResponse(Course course) {
         return CourseResponse.builder()
                 .id(course.getId())
-                .instructorId(course.getInstructorId())
                 .organizationId(course.getOrganizationId())        // ⭐ NEW
                 .title(course.getTitle())
                 .slug(course.getSlug())
@@ -56,7 +64,7 @@ public class CourseMapper {
             course.setThumbnailUrl(request.getThumbnailUrl());
         }
         if (request.getVisibility() != null) {
-            course.setVisibility(request.getVisibility());
+            course.setVisibility(normalizeVisibility(request.getVisibility()));
         }
         if (request.getOrganizationId() != null) {                 // ⭐ NEW
             course.setOrganizationId(request.getOrganizationId());

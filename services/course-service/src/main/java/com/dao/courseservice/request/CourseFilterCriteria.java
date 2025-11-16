@@ -13,7 +13,6 @@ import lombok.Value;
 public class CourseFilterCriteria {
     String keyword;
     String organizationId;
-    Long instructorId;
     Long createdBy;
     String visibility;
     LocalDateTime createdFrom;
