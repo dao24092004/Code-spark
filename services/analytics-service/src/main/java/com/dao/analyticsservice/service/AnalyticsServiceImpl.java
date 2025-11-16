@@ -1,45 +1,40 @@
 package com.dao.analyticsservice.service;
 
 import com.dao.analyticsservice.client.CourseServiceClient;
+import com.dao.analyticsservice.client.ExamServiceClient;
 import com.dao.analyticsservice.client.IdentityServiceClient;
+import com.dao.analyticsservice.client.ProctoringServiceClient;
 import com.dao.analyticsservice.dto.client.CourseSummaryDto;
+import com.dao.analyticsservice.dto.client.ExamSummaryDto;
 import com.dao.analyticsservice.dto.client.PageResponse;
 import com.dao.analyticsservice.dto.client.UserSummaryDto;
-import com.dao.analyticsservice.dto.response.AnalyticsOverviewResponse;
-import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
-import com.dao.analyticsservice.dto.response.DashboardResponse;
-import com.dao.analyticsservice.dto.response.ExamResultResponse;
-import com.dao.analyticsservice.dto.response.KpiMetricResponse;
-import com.dao.analyticsservice.dto.response.RecommendationResponse;
-import com.dao.analyticsservice.dto.response.ScoreTrendPoint;
-import com.dao.analyticsservice.dto.response.TopCourseResponse;
-import com.dao.analyticsservice.dto.response.TopPerformerResponse;
+import com.dao.analyticsservice.dto.response.*;
 import com.dao.analyticsservice.entity.ExamResult;
 import com.dao.analyticsservice.entity.ProctoringEvent;
 import com.dao.analyticsservice.repository.ExamResultRepository;
 import com.dao.analyticsservice.repository.ProctoringEventRepository;
 import com.dao.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final ExamResultRepository examResultRepository;
     private final ProctoringEventRepository proctoringEventRepository;
     private final IdentityServiceClient identityServiceClient;
     private final CourseServiceClient courseServiceClient;
+    private final ExamServiceClient examServiceClient;
+    private final ProctoringServiceClient proctoringServiceClient;
 
     @Override
     public List<ExamResultResponse> getExamResults(UUID examId, UUID userId) {
@@ -106,61 +101,33 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AnalyticsOverviewResponse getAnalyticsOverview() {
-        try {
-            long totalExamSubmissions = examResultRepository.count();
-            long distinctExams = examResultRepository.countDistinctByExamIdIsNotNull();
-            long activeLearners = examResultRepository.countDistinctByUserIdIsNotNull();
-            Double averageScore = Optional.ofNullable(examResultRepository.findAverageScore()).orElse(0.0);
+        long totalUsers = getTotalUsersFromIdentityService();
+        long totalCourses = getTotalCoursesFromCourseService();
+        long activeLearners = examResultRepository.countDistinctByUserIdIsNotNull();
+        long distinctExams = examResultRepository.countDistinctByExamIdIsNotNull();
+        long totalExamSubmissions = examResultRepository.count();
+        Double averageScore = Optional.ofNullable(examResultRepository.findAverageScore()).orElse(0.0);
 
-            long totalUsers = 0;
-            long totalCourses = 0;
-            
-            try {
-                totalUsers = fetchUsers().size();
-            } catch (Exception e) {
-                // Log error but continue with default value
-                System.err.println("Error fetching users: " + e.getMessage());
-            }
-            
-            try {
-                totalCourses = fetchTotalCourses();
-            } catch (Exception e) {
-                // Log error but continue with default value
-                System.err.println("Error fetching courses: " + e.getMessage());
-            }
-
-            return AnalyticsOverviewResponse.builder()
-                    .totalUsers(totalUsers)
-                    .activeUsers(activeLearners)
-                    .totalCourses(totalCourses)
-                    .totalExams(distinctExams)
-                    .totalExamSubmissions(totalExamSubmissions)
-                    .averageScore(round(averageScore))
-                    .build();
-        } catch (Exception e) {
-            // Log the full error for debugging
-            System.err.println("Error in getAnalyticsOverview: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Return default values if there's any error
-            return AnalyticsOverviewResponse.builder()
-                    .totalUsers(0)
-                    .activeUsers(0)
-                    .totalCourses(0)
-                    .totalExams(0)
-                    .totalExamSubmissions(0)
-                    .averageScore(0.0)
-                    .build();
-        }
+        return AnalyticsOverviewResponse.builder()
+                .totalUsers(totalUsers)
+                .activeUsers(activeLearners)
+                .totalCourses(totalCourses)
+                .totalExams(distinctExams)
+                .totalExamSubmissions(totalExamSubmissions)
+                .averageScore(round(averageScore))
+                .build();
     }
 
     @Override
     public List<KpiMetricResponse> getKpiMetrics() {
         AnalyticsOverviewResponse overview = getAnalyticsOverview();
 
-        long last7DaysAttempts = examResultRepository.countByCreatedAtBetween(LocalDateTime.now().minusDays(7), LocalDateTime.now());
-        long previous7DaysAttempts = examResultRepository.countByCreatedAtBetween(LocalDateTime.now().minusDays(14), LocalDateTime.now().minusDays(7));
+        long last7DaysAttempts = examResultRepository.countByCreatedAtBetween(
+                LocalDateTime.now().minusDays(7), LocalDateTime.now());
+        long previous7DaysAttempts = examResultRepository.countByCreatedAtBetween(
+                LocalDateTime.now().minusDays(14), LocalDateTime.now().minusDays(7));
 
         double attemptChange = calculateChangePercentage(previous7DaysAttempts, last7DaysAttempts);
 
@@ -204,7 +171,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public List<ScoreTrendPoint> getScoreTrend() {
         LocalDate today = LocalDate.now();
         LocalDate start = today.minusDays(29);
-        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(start.atStartOfDay(), today.plusDays(1).atStartOfDay());
+        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(
+                start.atStartOfDay(), today.plusDays(1).atStartOfDay());
 
         Map<LocalDate, List<ExamResult>> grouped = results.stream()
                 .collect(Collectors.groupingBy(er -> er.getCreatedAt().toLocalDate()));
@@ -219,6 +187,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TopPerformerResponse> getTopPerformers(int limit) {
         Map<UUID, List<ExamResult>> byUser = examResultRepository.findAll().stream()
                 .collect(Collectors.groupingBy(ExamResult::getUserId));
@@ -226,10 +195,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return byUser.entrySet().stream()
                 .map(entry -> {
                     UUID userId = entry.getKey();
+                    String displayName = getUserDisplayName(userId);
+
                     List<ExamResult> userResults = entry.getValue();
                     double avgScore = userResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
                     long attempts = userResults.size();
-                    String displayName = userId != null ? userId.toString() : "Unknown";
                     return new TopPerformerResponse(userId, displayName, round(avgScore), attempts);
                 })
                 .sorted(Comparator.comparingDouble(TopPerformerResponse::averageScore).reversed())
@@ -238,43 +208,284 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TopCourseResponse> getTopCourses(int limit) {
         Map<UUID, List<ExamResult>> byExam = examResultRepository.findAll().stream()
                 .collect(Collectors.groupingBy(ExamResult::getExamId));
 
         return byExam.entrySet().stream()
                 .map(entry -> {
-                    UUID courseId = entry.getKey();
+                    UUID examId = entry.getKey();
+                    String title = getExamTitle(examId);
+
                     List<ExamResult> examResults = entry.getValue();
                     double avgScore = examResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
 
-                    String title = "Khóa học " + courseId;
-                    ApiResponse<CourseSummaryDto> courseResponse = courseServiceClient.getCourseById(courseId);
-                    if (courseResponse != null && courseResponse.isSuccess() && courseResponse.getData() != null) {
-                        title = courseResponse.getData().title();
-                    }
-
-                    return new TopCourseResponse(courseId, title, examResults.size(), round(avgScore));
+                    return new TopCourseResponse(examId, title, examResults.size(), round(avgScore));
                 })
                 .sorted(Comparator.comparingLong(TopCourseResponse::enrollmentCount).reversed())
                 .limit(limit)
                 .collect(Collectors.toList());
     }
 
-    private List<UserSummaryDto> fetchUsers() {
-        ApiResponse<List<UserSummaryDto>> response = identityServiceClient.getAllUsers();
-        if (response == null || !response.isSuccess() || response.getData() == null) {
-            return List.of();
-        }
-        return response.getData();
+    @Override
+    @Transactional(readOnly = true)
+    public ExamAnalyticsResponse getExamAnalytics(UUID examId) {
+        ExamSummaryDto examDto = getExamDetails(examId);
+        String examTitle = examDto != null ? examDto.title() : "Unknown Exam";
+        Double passScore = examDto != null ? examDto.passScore() : 50.0;
+
+        List<ExamResult> results = examResultRepository.findByExamId(examId);
+        
+        long totalAttempts = results.size();
+        double averageScore = results.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
+        long passedCount = results.stream().filter(r -> r.getScore() >= passScore).count();
+        double passRate = totalAttempts > 0 ? (double) passedCount / totalAttempts * 100 : 0.0;
+        long totalParticipants = results.stream().map(ExamResult::getUserId).distinct().count();
+
+        List<ExamAnalyticsResponse.ScoreDistribution> distribution = calculateScoreDistribution(results);
+        CheatingStatsResponse cheatingStats = getCheatingStats(examId);
+
+        return ExamAnalyticsResponse.builder()
+                .examId(examId)
+                .examTitle(examTitle)
+                .totalAttempts(totalAttempts)
+                .averageScore(round(averageScore))
+                .passRate(round(passRate))
+                .totalParticipants(totalParticipants)
+                .scoreDistribution(distribution)
+                .cheatingStats(cheatingStats)
+                .build();
     }
 
-    private long fetchTotalCourses() {
-        ApiResponse<PageResponse<CourseSummaryDto>> response = courseServiceClient.getCourses(0, 1);
-        if (response == null || !response.isSuccess() || response.getData() == null) {
-            return 0;
+    @Override
+    @Transactional(readOnly = true)
+    public CourseAnalyticsResponse getCourseAnalytics(UUID courseId) {
+        CourseSummaryDto courseDto = getCourseDetails(courseId);
+        String courseTitle = courseDto != null ? courseDto.title() : "Unknown Course";
+        Long enrollmentCount = courseDto != null ? courseDto.enrollmentCount() : 0L;
+
+        List<ExamResult> allResults = examResultRepository.findAll();
+        
+        long activeStudents = allResults.stream()
+                .map(ExamResult::getUserId)
+                .distinct()
+                .count();
+
+        double averageScore = allResults.stream()
+                .mapToDouble(ExamResult::getScore)
+                .average()
+                .orElse(0.0);
+
+        double completionRate = enrollmentCount > 0 ? (double) activeStudents / enrollmentCount * 100 : 0.0;
+
+        Map<UUID, List<ExamResult>> byExam = allResults.stream()
+                .collect(Collectors.groupingBy(ExamResult::getExamId));
+
+        List<CourseAnalyticsResponse.ExamPerformance> examPerformances = 
+            byExam.entrySet().stream()
+                .map(entry -> {
+                    UUID examId = entry.getKey();
+                    List<ExamResult> examResults = entry.getValue();
+                    String examTitle = getExamTitle(examId);
+
+                    double avgScore = examResults.stream()
+                            .mapToDouble(ExamResult::getScore)
+                            .average()
+                            .orElse(0.0);
+
+                    return CourseAnalyticsResponse.ExamPerformance.builder()
+                            .examId(examId)
+                            .examTitle(examTitle)
+                            .attempts((long) examResults.size())
+                            .averageScore(round(avgScore))
+                            .build();
+                })
+                .sorted(Comparator.comparingLong(CourseAnalyticsResponse.ExamPerformance::getAttempts).reversed())
+                .limit(10)
+                .collect(Collectors.toList());
+
+        return CourseAnalyticsResponse.builder()
+                .courseId(courseId)
+                .courseTitle(courseTitle)
+                .totalEnrollments(enrollmentCount)
+                .activeStudents(activeStudents)
+                .completionRate(round(completionRate))
+                .averageScore(round(averageScore))
+                .examPerformances(examPerformances)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserPerformanceResponse getUserPerformance(Long userId) {
+        UserSummaryDto userDto = getUserDetails(UUID.fromString(userId.toString()));
+        String username = userDto != null ? userDto.username() : "Unknown";
+        String fullName = userDto != null ? userDto.fullName() : "Unknown User";
+
+        List<ExamResult> results = examResultRepository.findByUserId(UUID.fromString(userId.toString()));
+        
+        long totalExamsTaken = results.size();
+        double averageScore = results.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
+        
+        long passedExams = results.stream().filter(r -> r.getScore() >= 50.0).count();
+        long failedExams = totalExamsTaken - passedExams;
+        double passRate = totalExamsTaken > 0 ? (double) passedExams / totalExamsTaken * 100 : 0.0;
+
+        List<UserPerformanceResponse.ExamAttempt> recentAttempts = 
+            results.stream()
+                .sorted(Comparator.comparing(ExamResult::getCreatedAt).reversed())
+                .limit(10)
+                .map(result -> {
+                    String examTitle = getExamTitle(result.getExamId());
+
+                    return UserPerformanceResponse.ExamAttempt.builder()
+                            .examId(result.getExamId())
+                            .examTitle(examTitle)
+                            .score(round(result.getScore()))
+                            .passed(result.getScore() >= 50.0)
+                            .attemptedAt(result.getCreatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        List<String> strengths = new ArrayList<>();
+        List<String> weaknesses = new ArrayList<>();
+        
+        if (averageScore >= 80) {
+            strengths.add("Excellent overall performance");
+        } else if (averageScore >= 60) {
+            strengths.add("Good understanding of concepts");
         }
-        return response.getData().getTotalElements();
+        
+        if (passRate < 50) {
+            weaknesses.add("Low pass rate - needs improvement");
+        }
+        if (averageScore < 60) {
+            weaknesses.add("Below average scores");
+        }
+
+        return UserPerformanceResponse.builder()
+                .userId(userId)
+                .username(username)
+                .fullName(fullName)
+                .totalExamsTaken(totalExamsTaken)
+                .averageScore(round(averageScore))
+                .passedExams(passedExams)
+                .failedExams(failedExams)
+                .passRate(round(passRate))
+                .recentAttempts(recentAttempts)
+                .strengths(strengths)
+                .weaknesses(weaknesses)
+                .build();
+    }
+
+    // ==================== Helper Methods ====================
+
+    private long getTotalUsersFromIdentityService() {
+        try {
+            ApiResponse<com.dao.analyticsservice.dto.client.PageResponse<UserSummaryDto>> response = 
+                identityServiceClient.getAllUsers();
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return response.getData().getTotalElements();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch users from identity-service: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+    private long getTotalCoursesFromCourseService() {
+        try {
+            ApiResponse<PageResponse<CourseSummaryDto>> response = courseServiceClient.getCourses(0, 1000);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return response.getData().getTotalElements();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch courses from course-service: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+    private UserSummaryDto getUserDetails(UUID userId) {
+        try {
+            // Note: Identity service uses Long ID, but we have UUID in exam_results
+            // This is a data model mismatch that needs to be resolved
+            // For now, we'll return null and show "Unknown User"
+            log.warn("Cannot fetch user details: UUID {} cannot be converted to Long ID", userId);
+            return null;
+        } catch (Exception e) {
+            log.error("Failed to fetch user details for ID {}: {}", userId, e.getMessage());
+        }
+        return null;
+    }
+    
+    private UserSummaryDto getUserDetailsByLongId(Long userId) {
+        try {
+            ApiResponse<UserSummaryDto> response = identityServiceClient.getUserById(userId);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch user details for ID {}: {}", userId, e.getMessage());
+        }
+        return null;
+    }
+
+    private CourseSummaryDto getCourseDetails(UUID courseId) {
+        try {
+            ApiResponse<CourseSummaryDto> response = courseServiceClient.getCourseById(courseId);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch course details for ID {}: {}", courseId, e.getMessage());
+        }
+        return null;
+    }
+
+    private ExamSummaryDto getExamDetails(UUID examId) {
+        try {
+            ApiResponse<ExamSummaryDto> response = examServiceClient.getExamById(examId);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch exam details for ID {}: {}", examId, e.getMessage());
+        }
+        return null;
+    }
+
+    private String getUserDisplayName(UUID userId) {
+        UserSummaryDto userDto = getUserDetails(userId);
+        return userDto != null ? userDto.fullName() : "Unknown User";
+    }
+
+    private String getExamTitle(UUID examId) {
+        ExamSummaryDto examDto = getExamDetails(examId);
+        return examDto != null ? examDto.title() : "Exam " + examId.toString().substring(0, 8);
+    }
+
+    private List<ExamAnalyticsResponse.ScoreDistribution> calculateScoreDistribution(List<ExamResult> results) {
+        if (results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        long total = results.size();
+        Map<String, Long> distribution = new LinkedHashMap<>();
+        distribution.put("0-20", results.stream().filter(r -> r.getScore() < 20).count());
+        distribution.put("20-40", results.stream().filter(r -> r.getScore() >= 20 && r.getScore() < 40).count());
+        distribution.put("40-60", results.stream().filter(r -> r.getScore() >= 40 && r.getScore() < 60).count());
+        distribution.put("60-80", results.stream().filter(r -> r.getScore() >= 60 && r.getScore() < 80).count());
+        distribution.put("80-100", results.stream().filter(r -> r.getScore() >= 80).count());
+
+        return distribution.entrySet().stream()
+                .map(entry -> ExamAnalyticsResponse.ScoreDistribution.builder()
+                        .range(entry.getKey())
+                        .count(entry.getValue())
+                        .percentage(round((double) entry.getValue() / total * 100))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private double calculateChangePercentage(double previous, double current) {
@@ -299,7 +510,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     private double averageScoreForRange(LocalDate startInclusive, LocalDate endExclusive) {
-        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(startInclusive.atStartOfDay(), endExclusive.atStartOfDay());
+        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(
+                startInclusive.atStartOfDay(), endExclusive.atStartOfDay());
         return results.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
     }
 

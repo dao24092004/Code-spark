@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AnalyticsService {
+    // Existing methods
     List<ExamResultResponse> getExamResults(UUID examId, UUID userId);
     CheatingStatsResponse getCheatingStats(UUID examId);
     DashboardResponse getDashboardData(UUID userId);
@@ -23,4 +24,9 @@ public interface AnalyticsService {
     List<ScoreTrendPoint> getScoreTrend();
     List<TopPerformerResponse> getTopPerformers(int limit);
     List<TopCourseResponse> getTopCourses(int limit);
+    
+    // New advanced analytics methods
+    com.dao.analyticsservice.dto.response.ExamAnalyticsResponse getExamAnalytics(UUID examId);
+    com.dao.analyticsservice.dto.response.CourseAnalyticsResponse getCourseAnalytics(UUID courseId);
+    com.dao.analyticsservice.dto.response.UserPerformanceResponse getUserPerformance(Long userId);
 }
