@@ -6,7 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start-no-db": "node server-no-db.js",
+    "start-safe": "node server-safe.js",
+    "dev": "nodemon server.js",
+    "init-db": "node scripts/init-database.js",
+    "init-db-safe": "node scripts/init-database-safe.js",
+    "start-with-init": "node scripts/start-with-init.js"
   },
   "keywords": [],
   "author": "",

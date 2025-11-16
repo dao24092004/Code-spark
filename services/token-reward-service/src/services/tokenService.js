@@ -213,13 +213,23 @@ const tokenService = {
                     throw new Error('Insufficient funds.');
                 }
 
+                // Lấy wallet address đã đăng ký của user cho foreign key constraint
+                const userWallet = await db.WalletAccount.findOne({ 
+                    where: { userId: studentId },
+                    transaction: t 
+                });
+
+                if (!userWallet) {
+                    throw new Error('No wallet linked to this user. Please link a wallet first.');
+                }
+
                 withdrawalRecord = await db.TokenWithdrawal.create({
                     userId: studentId,
-                    walletAddress: toAddress,
+                    walletAddress: userWallet.address, // Sử dụng wallet đã đăng ký thay vì toAddress
                     amount,
                     status: 'processing',
                     tokenAddress: process.env.CONTRACT_ADDRESS || null,
-                    metadata: null
+                    metadata: { toAddress } // Lưu toAddress trong metadata
                 }, { transaction: t });
 
                 await user.decrement('tokenBalance', { by: amount, transaction: t });
