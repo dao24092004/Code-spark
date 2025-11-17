@@ -400,6 +400,54 @@ services:
       retries: 3
       start_period: 40s
 
+  multisig-service:
+    build: ./services/multisig-service
+    container_name: multisig-service
+    ports:
+      - "3003:3003"
+    networks:
+      - microservice-net
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+
+      # Database
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=multisig_db
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+
+      # Blockchain
+      - RPC_URL=http://ganache:7545
+      - DEPLOYER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY}
+      - SERVICE_ACCOUNT_PRIVATE_KEY=${SERVICE_ACCOUNT_PRIVATE_KEY}
+      - OWNER_PRIVATE_KEYS=${OWNER_PRIVATE_KEYS}
+
+      # Service Discovery
+      - EUREKA_ENABLED=false
+      - EUREKA_HOST=discovery-service
+      - EUREKA_PORT=9999
+      - IDENTITY_SERVICE_URL=
+      - IDENTITY_SERVICE_NAME=IDENTITY-SERVICE
+      - IDENTITY_SERVICE_TIMEOUT=5000
+      - IDENTITY_SERVICE_TOKEN=
+
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+
+      # Wallet
+      - INITIAL_WALLET_BALANCE_ETH=500
+    depends_on:
+      - postgres-db
+      - ganache
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 # Khai báo mạng chung cho các container
 networks:
   microservice-net:

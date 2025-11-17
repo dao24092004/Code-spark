@@ -11,6 +11,11 @@ import java.util.List;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// ...
+
+// Forward declarations for collections
+// (avoid circular import issues in some IDEs)
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,9 +27,6 @@ public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Column(nullable = false)
-    private Long instructorId;
 
     @Column
     private Long createdBy;
@@ -52,6 +54,9 @@ public class Course {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Material> materials;
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Quiz> quizzes;
 }

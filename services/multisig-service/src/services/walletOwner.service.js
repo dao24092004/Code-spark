@@ -131,23 +131,34 @@ const persistOwnerAssignments = async (walletId, assignments = []) => {
 
   for (const assignment of assignments) {
     const numericUserId = Number(assignment.userId);
-    if (assignment.existing && assignment.record) {
-      if (
-        assignment.record.walletId &&
-        assignment.record.walletId !== walletId
-      ) {
-        throw new Error(
-          `Sinh viên ${assignment.userId} đã được gán cho ví khác`
-        );
-      }
-      await assignment.record.update({ walletId });
-    } else {
-      await UserWallet.create({
+    
+    // Kiểm tra xem user đã là owner của ví này chưa
+    const existingAssignment = await UserWallet.findOne({
+      where: {
         userId: numericUserId,
-        walletId,
-        privateKey: assignment.privateKey,
-        label: 'Multisig Owner',
-      });
+        walletId: walletId
+      }
+    });
+    
+    if (existingAssignment) {
+      // User đã là owner của ví này rồi, bỏ qua
+      console.log(`User ${numericUserId} đã là owner của ví ${walletId}, bỏ qua`);
+      continue;
+    }
+    
+    // Tạo record mới cho ví này
+    // assignment.privateKey đã được normalize và sẵn sàng dùng
+    await UserWallet.create({
+      userId: numericUserId,
+      walletId,
+      privateKey: assignment.privateKey, // Đã được normalize trong prepareOwnerAssignments
+      label: 'Multisig Owner',
+    });
+    
+    if (assignment.existing) {
+      console.log(`✓ User ${numericUserId} tái sử dụng private key cho ví ${walletId}`);
+    } else {
+      console.log(`✓ User ${numericUserId} được gán private key mới cho ví ${walletId}`);
     }
   }
 };
@@ -157,43 +168,65 @@ const getOwnerDetailsForWallet = async (walletId, authHeader) => {
     return [];
   }
 
-  const ownerMappings = await UserWallet.findAll({
-    where: { walletId },
-  });
+  try {
+    const ownerMappings = await UserWallet.findAll({
+      where: { walletId },
+    });
 
-  if (ownerMappings.length === 0) {
-    return [];
-  }
-
-  const details = [];
-  for (const mapping of ownerMappings) {
-    const normalizedKey = normalizePrivateKey(mapping.privateKey);
-    const account = web3.eth.accounts.privateKeyToAccount(normalizedKey);
-    let identityData = null;
-    try {
-      const identityResponse = await identityServiceClient.getUserById(
-        mapping.userId,
-        authHeader
-      );
-      if (identityResponse && identityResponse.success && identityResponse.data) {
-        identityData = identityResponse.data;
-      }
-    } catch (error) {
-      console.warn(
-        `[OWNER SERVICE] Không thể lấy thông tin user ${mapping.userId}:`,
-        error.message
-      );
+    if (ownerMappings.length === 0) {
+      return [];
     }
 
-    details.push({
-      userId: mapping.userId.toString(),
-      address: account.address.toLowerCase(),
-      identity: identityData,
-      privateKeyMasked: maskPrivateKey(mapping.privateKey),
-    });
-  }
+    const details = [];
+    for (const mapping of ownerMappings) {
+      try {
+        const normalizedKey = normalizePrivateKey(mapping.privateKey);
+        const account = web3.eth.accounts.privateKeyToAccount(normalizedKey);
+        let identityData = null;
+        
+        // Chỉ gọi identity service nếu có authHeader
+        if (authHeader) {
+          try {
+            const identityResponse = await identityServiceClient.getUserById(
+              mapping.userId,
+              authHeader
+            );
+            if (identityResponse && identityResponse.success && identityResponse.data) {
+              identityData = identityResponse.data;
+            }
+          } catch (error) {
+            console.warn(
+              `[OWNER SERVICE] Không thể lấy thông tin user ${mapping.userId}:`,
+              error.message
+            );
+            // Không throw error, chỉ log warning
+          }
+        }
 
-  return details;
+        details.push({
+          userId: mapping.userId.toString(),
+          address: account.address.toLowerCase(),
+          identity: identityData,
+          privateKeyMasked: maskPrivateKey(mapping.privateKey),
+        });
+      } catch (error) {
+        console.warn(
+          `[OWNER SERVICE] Lỗi khi xử lý owner mapping ${mapping.id}:`,
+          error.message
+        );
+        // Bỏ qua owner này và tiếp tục với owner khác
+      }
+    }
+
+    return details;
+  } catch (error) {
+    console.error(
+      `[OWNER SERVICE] Lỗi khi lấy owner details cho wallet ${walletId}:`,
+      error.message
+    );
+    // Trả về mảng rỗng thay vì throw error
+    return [];
+  }
 };
 
 const getCredentialForUser = async (walletId, userId) => {
@@ -224,11 +257,33 @@ const getCredentialForUser = async (walletId, userId) => {
   };
 };
 
+// Lấy private key của user cho một wallet cụ thể
+const getUserPrivateKey = async (walletId, userId) => {
+  if (!walletId || !userId) {
+    return null;
+  }
+
+  const numericUserId = Number(userId);
+  const record = await UserWallet.findOne({
+    where: {
+      walletId,
+      userId: numericUserId,
+    },
+  });
+
+  if (!record) {
+    return null; // User không có private key cho ví này
+  }
+
+  return normalizePrivateKey(record.privateKey);
+};
+
 module.exports = {
   prepareOwnerAssignments,
   persistOwnerAssignments,
   getOwnerDetailsForWallet,
   getCredentialForUser,
+  getUserPrivateKey,
 };
 
 

@@ -73,16 +73,11 @@ const organizationController = {
    */
   async updateOrganization(req, res) {
     try {
-      // 1. Lấy ID từ URL (ví dụ: /api/v1/organizations/1)
       const { id } = req.params; 
-      
-      // 2. Lấy dữ liệu cần cập nhật từ body
-      const dataToUpdate = req.body; 
+      const dataToUpdate = req.body;
 
-      // 3. Gọi Service
       const updatedOrganization = await organizationService.updateOrganization(id, dataToUpdate);
 
-      // 4. Trả về thành công
       res.status(200).json({
         message: 'Cập nhật tổ chức thành công!',
         data: updatedOrganization
@@ -91,14 +86,12 @@ const organizationController = {
     } catch (error) {
       console.error('Lỗi Controller [updateOrganization]:', error.message);
 
-      // 5. Xử lý lỗi (nếu service ném lỗi 404)
       if (error.message === 'OrganizationNotFound') {
         return res.status(404).json({ 
           message: 'Lỗi: Không tìm thấy tổ chức với ID này.'
         });
       }
 
-      // Lỗi 500 chung
       res.status(500).json({ 
         message: 'Lỗi máy chủ nội bộ.',
         error: error.message 

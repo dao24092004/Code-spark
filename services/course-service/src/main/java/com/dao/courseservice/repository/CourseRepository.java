@@ -25,11 +25,6 @@ public interface CourseRepository extends JpaRepository<Course, UUID>, JpaSpecif
     Optional<Course> findBySlug(String slug);
 
     /**
-     * Tìm tất cả khóa học được tạo bởi một giảng viên cụ thể (UC33).
-     */
-    List<Course> findByInstructorId(Long instructorId);
-
-    /**
      * Kiểm tra xem một slug đã tồn tại hay chưa.
      */
     boolean existsBySlug(String slug);

@@ -1,7 +1,7 @@
 const { Sequelize } = require('sequelize');
 const config = require('./index'); // Import file config/index.js
 
-// 1. Kết nối đến profile_db (GHI)
+// 1. Kết nối đến profile_db (CHỈ CHO PROFILES)
 const profileDbSequelize = new Sequelize(
   config.profileDb.database,
   config.profileDb.username,
@@ -14,7 +14,20 @@ const profileDbSequelize = new Sequelize(
   }
 );
 
-// 2. Kết nối đến identity_db (ĐỌC)
+// 2. Kết nối đến organization_db (CHO ORGANIZATIONS, MEMBERS, RECRUITMENT)
+const organizationDbSequelize = new Sequelize(
+  config.organizationDb.database,
+  config.organizationDb.username,
+  config.organizationDb.password,
+  {
+    host: config.organizationDb.host,
+    port: config.organizationDb.port,
+    dialect: config.organizationDb.dialect,
+    logging: false,
+  }
+);
+
+// 3. Kết nối đến identity_db (ĐỌC)
 const identityDbSequelize = new Sequelize(
   config.identityDb.database,
   config.identityDb.username,
@@ -27,7 +40,7 @@ const identityDbSequelize = new Sequelize(
   }
 );
 
-// 3. Kết nối đến course_db (ĐỌC)
+// 4. Kết nối đến course_db (ĐỌC)
 const courseDbSequelize = new Sequelize(
   config.courseDb.database,
   config.courseDb.username,
@@ -40,9 +53,10 @@ const courseDbSequelize = new Sequelize(
   }
 );
 
-// Xuất cả 3 kết nối
+// Xuất tất cả kết nối
 module.exports = {
   profileDbSequelize,
+  organizationDbSequelize, // THÊM MỚI
   identityDbSequelize,
   courseDbSequelize,
 };
