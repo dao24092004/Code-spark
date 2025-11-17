@@ -26,6 +26,11 @@ module.exports = (sequelize, Sequelize) => {
             type: Sequelize.TEXT,
             defaultValue: '0x'
         },
+        description: {
+            type: Sequelize.TEXT,
+            allowNull: true,
+            comment: 'Mô tả/ghi chú nội dung giao dịch'
+        },
         status: {
             type: Sequelize.ENUM('submitted', 'confirmed', 'executed', 'failed'),
             defaultValue: 'submitted'

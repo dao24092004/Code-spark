@@ -54,7 +54,7 @@ const getTransactions = asyncHandler(async (req, res) => {
 // POST /api/v1/multisig/:walletId/transactions
 const submitTransaction = asyncHandler(async (req, res) => {
     const { walletId } = req.params;
-    const { destination, value } = req.body;
+    const { destination, value, description } = req.body;
      if (!destination || value === undefined) {
         return res.status(400).json({ error: 'Thiếu destination hoặc value' });
     }
@@ -65,9 +65,9 @@ const submitTransaction = asyncHandler(async (req, res) => {
 // POST /api/v1/multisig/transactions/:txId/confirm
 const confirmTransaction = asyncHandler(async (req, res) => {
     const { txId } = req.params; // Đây là UUID của transaction trong DB
-    // Nhận privateKey từ body (optional - nếu không có sẽ dùng Service Account)
-    const { privateKey } = req.body;
-    const tx = await multisigService.confirmExistingTransaction(txId, privateKey);
+    // Lấy userId từ req (đã được set bởi authenticateToken middleware)
+    const userId = req.userId;
+    const tx = await multisigService.confirmExistingTransaction(txId, userId);
     res.status(200).json(tx);
 });
 

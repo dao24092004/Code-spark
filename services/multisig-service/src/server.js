@@ -37,16 +37,26 @@ class MicroservicesServer {
 
         // Global error handler
         this.app.use((error, req, res, next) => {
-            console.error(error);
-            // Xử lý lỗi từ blockchain (vd: "Not an owner")
+            console.error('❌ Error:', error);
+            
+            // Nếu response đã được gửi, không làm gì thêm
+            if (res.headersSent) {
+                return next(error);
+            }
+            
+            // Xử lý lỗi từ blockchain hoặc validation
             if (error.message) {
-                 return res.status(400).json({
+                const statusCode = error.statusCode || 400;
+                return res.status(statusCode).json({
                     error: 'Lỗi nghiệp vụ hoặc Blockchain',
                     message: error.message
                 });
             }
+            
+            // Lỗi không xác định
             res.status(500).json({
-                error: 'Internal Server Error'
+                error: 'Internal Server Error',
+                message: 'Đã xảy ra lỗi không xác định'
             });
         });
     }

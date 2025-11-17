@@ -133,7 +133,11 @@ const submitTransaction = async (contractAddress, to, valueInWei, data, accountT
     const signerAccount = accountToUse || account;
     const { abi } = compiledContract;
     const contract = new web3.eth.Contract(abi, contractAddress);
-    const method = contract.methods.submitTransaction(to, valueInWei, data);
+    
+    // Normalize địa chỉ đích để đảm bảo checksum đúng
+    const normalizedTo = web3.utils.toChecksumAddress(to);
+    
+    const method = contract.methods.submitTransaction(normalizedTo, valueInWei, data);
     
     // Truyền contractAddress vào sendTransaction để sign transaction đúng
     const receipt = await sendTransaction(method, null, signerAccount, contractAddress);
@@ -213,28 +217,36 @@ const executeTransaction = async (contractAddress, txIndexOnChain) => {
 };
 
 // Fund ETH vào contract wallet
-// amountInEth: Số lượng ETH muốn fund (mặc định 500 ETH)
-const fundContractWallet = async (contractAddress, amountInEth = 500) => {
+// amountInEth: Số lượng ETH cần fund
+const fundContractWallet = async (contractAddress, amountInEth) => {
     try {
-        const amountWei = web3.utils.toWei(amountInEth.toString(), 'ether');
-        
-        console.log(`💰 Đang fund ${amountInEth} ETH vào contract wallet ${contractAddress}...`);
-        
         // Kiểm tra balance của Service Account trước
         const serviceBalance = await web3.eth.getBalance(account.address);
         const serviceBalanceEth = parseFloat(web3.utils.fromWei(serviceBalance.toString(), 'ether'));
         
-        if (serviceBalance < BigInt(amountWei)) {
-            throw new Error(`Service Account không đủ ETH để fund. Balance: ${serviceBalanceEth} ETH, Cần: ${amountInEth} ETH`);
+        console.log(`💰 Service Account (${account.address}) balance: ${serviceBalanceEth} ETH`);
+        
+        // Tính số ETH cần (bao gồm gas fee dự phòng ~0.01 ETH)
+        const gasReserve = 0.01;
+        const totalNeeded = amountInEth + gasReserve;
+        
+        // Kiểm tra Service Account có đủ ETH không
+        if (serviceBalanceEth < totalNeeded) {
+            throw new Error(`Service Account không đủ ETH để fund. Cần: ${totalNeeded} ETH (${amountInEth} ETH + ${gasReserve} ETH gas), Có: ${serviceBalanceEth} ETH`);
         }
         
+        const amountWei = web3.utils.toWei(amountInEth.toString(), 'ether');
+        
+        console.log(`💰 Đang fund ${amountInEth} ETH vào contract wallet ${contractAddress}...`);
+        
         // Gửi ETH vào contract wallet
+        const gasPrice = await web3.eth.getGasPrice();
         const receipt = await web3.eth.sendTransaction({
             from: account.address,
             to: contractAddress,
             value: amountWei,
-            gas: 21000,  // Gas limit cho simple transfer
-            gasPrice: await web3.eth.getGasPrice()
+            gas: 100000,  // Gas limit cho contract call (receive function)
+            gasPrice: gasPrice
         });
         
         console.log(`✅ Đã fund ${amountInEth} ETH vào contract wallet. Transaction Hash: ${receipt.transactionHash}`);

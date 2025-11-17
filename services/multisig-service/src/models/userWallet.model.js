@@ -2,9 +2,13 @@ module.exports = (sequelize, DataTypes) => {
   const UserWallet = sequelize.define(
     'UserWallet',
     {
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+      },
       userId: {
         type: DataTypes.BIGINT,
-        primaryKey: true,
         allowNull: false,
       },
       walletId: {
@@ -28,6 +32,13 @@ module.exports = (sequelize, DataTypes) => {
     {
       tableName: 'UserWallets',
       timestamps: true,
+      indexes: [
+        {
+          unique: true,
+          fields: ['userId', 'walletId'],
+          name: 'user_wallet_unique'
+        }
+      ]
     }
   );
 
