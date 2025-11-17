@@ -17,7 +17,6 @@ import java.util.UUID;
 @NoArgsConstructor
 public class CourseResponse {
     private UUID id;
-    private Long instructorId;
     private String title;
     private String slug;
     private String description;

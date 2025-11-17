@@ -25,6 +25,7 @@ public interface MaterialService {
     MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request);
     List<MaterialResponse> getMaterialsForCourse(UUID courseId);
     void deleteMaterial(UUID materialId);
+    MaterialResponse updateMaterial(UUID materialId, com.dao.courseservice.request.UpdateMaterialRequest request);
 }
 
 //================================================================================
@@ -85,5 +86,21 @@ class MaterialServiceImpl implements MaterialService {
 
         materialRepository.deleteById(materialId);
         log.info("Successfully deleted material with id: {}", materialId);
+    }
+
+    @Override
+    public MaterialResponse updateMaterial(UUID materialId, com.dao.courseservice.request.UpdateMaterialRequest request) {
+        log.info("Updating material {}", materialId);
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
+
+        if (request.getTitle() != null) material.setTitle(request.getTitle());
+        if (request.getType() != null) material.setType(request.getType());
+        if (request.getStorageKey() != null) material.setStorageKey(request.getStorageKey());
+        if (request.getContent() != null) material.setContent(request.getContent());
+        if (request.getDisplayOrder() != null) material.setDisplayOrder(request.getDisplayOrder());
+
+        Material saved = materialRepository.save(material);
+        return materialMapper.toMaterialResponse(saved);
     }
 }

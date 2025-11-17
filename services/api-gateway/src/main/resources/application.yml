@@ -1,6 +1,8 @@
 spring:
   application:
     name: api-gateway
+  codec:
+    max-in-memory-size: 200MB
   cloud:
     gateway:
       discovery:
@@ -40,21 +42,42 @@ spring:
             - StripPrefix=1
         # Route cho materials (MaterialController không có v1)
         - id: course-service-materials
-          uri: http://localhost:9001
+          uri: lb://course-service
           predicates:
             - Path=/api/v1/courses/*/materials
           filters:
             - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/materials, /api/courses/$\{courseId}/materials
+        # Route cho quizzes (QuizController không có v1 cho các endpoint /api/courses/{id}/quizzes)
+        - id: course-service-quizzes-by-course
+          uri: lb://course-service
+          predicates:
+            - Path=/api/v1/courses/*/quizzes
+          filters:
+            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/quizzes, /api/courses/$\{courseId}/quizzes
+        # Route cho quiz details & submit (QuizController dùng /api/quizzes/**)
+        - id: course-service-quiz-details
+          uri: lb://course-service
+          predicates:
+            - Path=/api/v1/quizzes/** 
+          filters:
+            - RewritePath=/api/v1/quizzes(?<segment>/?.*), /api/quizzes$\{segment}
+        # Route cho upload materials (không có v1)
+        - id: course-service-materials-upload
+          uri: lb://course-service
+          predicates:
+            - Path=/api/v1/courses/*/materials/upload
+          filters:
+            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/materials/upload, /api/courses/$\{courseId}/materials/upload
         # Route cho progress (ProgressController không có v1)
         - id: course-service-progress
-          uri: http://localhost:9001
+          uri: lb://course-service
           predicates:
             - Path=/api/v1/progress/**
           filters:
             - RewritePath=/api/v1/progress(?<segment>/?.*), /api/progress$\{segment}
         # Route cho courses và các endpoint khác (CourseController có v1)
         - id: course-service
-          uri: http://localhost:9001
+          uri: lb://course-service
           predicates:
             - Path=/api/v1/courses,/api/v1/courses/**,/api/progress/**,/api/rewards/**
           filters:
