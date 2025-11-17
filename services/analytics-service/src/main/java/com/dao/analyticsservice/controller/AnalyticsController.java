@@ -1,5 +1,6 @@
 package com.dao.analyticsservice.controller;
 
+import com.dao.analyticsservice.dto.request.ExamResultsRequest;
 import com.dao.analyticsservice.dto.response.AnalyticsOverviewResponse;
 import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
 import com.dao.analyticsservice.dto.response.DashboardResponse;
@@ -25,11 +26,10 @@ public class AnalyticsController {
     @Autowired
     private AnalyticsService analyticsService;
 
-    @GetMapping("/exam-results")
-    public ResponseEntity<ApiResponse<List<ExamResultResponse>>> getExamResults(
-            @RequestParam(required = false) UUID examId,
-            @RequestParam(required = false) UUID userId) {
-        List<ExamResultResponse> results = analyticsService.getExamResults(examId, userId);
+    @PostMapping("/exam-results/search")
+    public ResponseEntity<ApiResponse<List<ExamResultResponse>>> searchExamResults(
+            @RequestBody ExamResultsRequest request) {
+        List<ExamResultResponse> results = analyticsService.getExamResults(request.getExamId(), request.getUserId());
         return ResponseEntity.ok(ApiResponse.success("Exam results fetched successfully", results));
     }
 
@@ -84,5 +84,26 @@ public class AnalyticsController {
             @RequestParam(value = "limit", defaultValue = "5") int limit) {
         List<TopCourseResponse> courses = analyticsService.getTopCourses(limit);
         return ResponseEntity.ok(ApiResponse.success("Top courses fetched successfully", courses));
+    }
+
+    @GetMapping("/exams/{examId}")
+    public ResponseEntity<ApiResponse<com.dao.analyticsservice.dto.response.ExamAnalyticsResponse>> getExamAnalytics(
+            @PathVariable UUID examId) {
+        com.dao.analyticsservice.dto.response.ExamAnalyticsResponse analytics = analyticsService.getExamAnalytics(examId);
+        return ResponseEntity.ok(ApiResponse.success("Exam analytics fetched successfully", analytics));
+    }
+
+    @GetMapping("/courses/{courseId}")
+    public ResponseEntity<ApiResponse<com.dao.analyticsservice.dto.response.CourseAnalyticsResponse>> getCourseAnalytics(
+            @PathVariable UUID courseId) {
+        com.dao.analyticsservice.dto.response.CourseAnalyticsResponse analytics = analyticsService.getCourseAnalytics(courseId);
+        return ResponseEntity.ok(ApiResponse.success("Course analytics fetched successfully", analytics));
+    }
+
+    @GetMapping("/users/{userId}/performance")
+    public ResponseEntity<ApiResponse<com.dao.analyticsservice.dto.response.UserPerformanceResponse>> getUserPerformance(
+            @PathVariable Long userId) {
+        com.dao.analyticsservice.dto.response.UserPerformanceResponse performance = analyticsService.getUserPerformance(userId);
+        return ResponseEntity.ok(ApiResponse.success("User performance fetched successfully", performance));
     }
 }

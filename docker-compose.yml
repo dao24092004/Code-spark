@@ -25,7 +25,7 @@ services:
 
   # 3. Cơ sở dữ liệu
   postgres-db:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

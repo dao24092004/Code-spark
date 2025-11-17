@@ -49,6 +49,48 @@ COMMENT ON COLUMN proctoring_events.exam_id IS 'ID của bài thi từ exam-serv
 COMMENT ON COLUMN proctoring_events.submission_id IS 'ID của bài nộp từ exam-service (UUID)';
 
 -- =====================================================================
+-- BẢNG 3: courses (Cache dữ liệu khóa học)
+-- =====================================================================
+CREATE TABLE courses (
+    id UUID PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    enrollment_count INT DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE courses IS 'Cache dữ liệu khóa học từ course-service để giảm gọi API';
+COMMENT ON COLUMN courses.id IS 'UUID của khóa học, đồng bộ với course-service';
+COMMENT ON COLUMN courses.title IS 'Tiêu đề khóa học';
+COMMENT ON COLUMN courses.description IS 'Mô tả khóa học';
+COMMENT ON COLUMN courses.enrollment_count IS 'Số lượng học viên đã đăng ký';
+COMMENT ON COLUMN courses.created_at IS 'Thời gian tạo bản ghi cache';
+COMMENT ON COLUMN courses.updated_at IS 'Thời gian cập nhật bản ghi cache';
+
+
+-- =====================================================================
+-- BẢNG 4: users (Cache dữ liệu người dùng)
+-- =====================================================================
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    avatar_url VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE users IS 'Cache dữ liệu người dùng từ identity-service để giảm gọi API';
+COMMENT ON COLUMN users.id IS 'UUID của người dùng, đồng bộ với identity-service';
+COMMENT ON COLUMN users.username IS 'Tên đăng nhập';
+COMMENT ON COLUMN users.full_name IS 'Họ và tên đầy đủ';
+COMMENT ON COLUMN users.avatar_url IS 'URL ảnh đại diện';
+COMMENT ON COLUMN users.created_at IS 'Thời gian tạo bản ghi cache';
+COMMENT ON COLUMN users.updated_at IS 'Thời gian cập nhật bản ghi cache';
+
+
+-- =====================================================================
 -- TẠO INDEX (CHỈ MỤC) ĐỂ TĂNG TỐC ĐỘ TRUY VẤN
 -- =====================================================================
 
@@ -65,6 +107,15 @@ CREATE INDEX idx_proctoring_events_submission_id ON proctoring_events(submission
 CREATE INDEX idx_proctoring_events_exam_submission ON proctoring_events(exam_id, submission_id);
 CREATE INDEX idx_proctoring_events_event_type ON proctoring_events(event_type);
 CREATE INDEX idx_proctoring_events_created_at ON proctoring_events(created_at DESC);
+
+-- Indexes cho bảng courses
+CREATE INDEX idx_courses_title ON courses(title);
+CREATE INDEX idx_courses_updated_at ON courses(updated_at DESC);
+
+-- Indexes cho bảng users
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_updated_at ON users(updated_at DESC);
+
 
 -- =====================================================================
 -- RÀNG BUỘC DỮ LIỆU (CONSTRAINTS)

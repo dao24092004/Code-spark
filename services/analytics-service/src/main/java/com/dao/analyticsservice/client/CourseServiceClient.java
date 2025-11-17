@@ -1,5 +1,6 @@
 package com.dao.analyticsservice.client;
 
+import com.dao.analyticsservice.config.FeignClientConfig;
 import com.dao.analyticsservice.dto.client.CourseSummaryDto;
 import com.dao.analyticsservice.dto.client.PageResponse;
 import com.dao.common.dto.ApiResponse;
@@ -10,14 +11,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name = "course-service", path = "/api/courses")
+@FeignClient(name = "course-service", url = "${app.services.course-service.url:http://localhost:8080}", path = "/api/v1/courses", configuration = FeignClientConfig.class)
 public interface CourseServiceClient {
 
     @GetMapping("/{courseId}")
-    ApiResponse<CourseSummaryDto> getCourseById(@PathVariable("courseId") UUID courseId);
+    ApiResponse<CourseSummaryDto> getCourseById(@PathVariable UUID courseId);
 
     @GetMapping
-    ApiResponse<PageResponse<CourseSummaryDto>> getCourses(@RequestParam(value = "page", defaultValue = "0") int page,
-                                                           @RequestParam(value = "size", defaultValue = "10") int size);
+    ApiResponse<PageResponse<CourseSummaryDto>> getCourses(@RequestParam(defaultValue = "0") int page,
+                                                           @RequestParam(defaultValue = "10") int size);
 }
 
