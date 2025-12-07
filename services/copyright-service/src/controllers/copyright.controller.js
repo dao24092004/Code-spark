@@ -42,7 +42,6 @@ const createCopyright = async (req, res) => {
         
         try {
             let similarityResult = { isSimilar: false };
-            // 2. Kiểm tra trùng lặp nội dung (sử dụng MD5 hash)
             const { isDuplicate, existingDoc, contentHash } = await fileService.findDuplicateByContent(fileInfo.path);
             
             if (isDuplicate) {

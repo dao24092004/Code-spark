@@ -17,19 +17,28 @@ public class WebAuthnConfig {
     private final YubicoCredentialRepository credentialRepository;
 
     @Bean
-    public RelyingParty relyingParty() {
-        RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder()
-                .id("localhost") // This should match the rpId in the frontend
-                .name("CodeSpark")
-                .build();
+public RelyingParty relyingParty() {
+    RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder()
+            .id("nckh2026.vercel.app")  // rpId phải là domain deploy
+            .name("CodeSpark")
+            .build();
 
-        Set<String> origins = new HashSet<>();
-        origins.add("http://localhost:4173");
+    Set<String> origins = new HashSet<>();
 
-        return RelyingParty.builder()
-                .identity(rpIdentity)
-                .credentialRepository(this.credentialRepository)
-                .origins(origins) // The origin of the frontend
-                .build();
-    }
+    // 🌐 Origin deploy (bắt buộc)
+    origins.add("https://nckh2026.vercel.app");
+
+    // 💻 Origin local for development
+    origins.add("http://localhost:3000");
+    origins.add("http://localhost:4173");
+    origins.add("http://localhost:5173"); // nếu dùng Vite port mặc định
+    origins.add("http://127.0.0.1:5173");
+
+    return RelyingParty.builder()
+            .identity(rpIdentity)
+            .credentialRepository(this.credentialRepository)
+            .origins(origins)
+            .build();
+}
+
 }

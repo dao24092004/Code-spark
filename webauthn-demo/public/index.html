@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebAuthn Demo</title>
+    <script src="https://unpkg.com/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { margin-bottom: 20px; padding: 20px; border: 1px solid #eee; border-radius: 5px; }
+        button { 
+            margin: 5px; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status { 
+            margin-top: 20px; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px;
+            min-height: 20px;
+        }
+        .success { 
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error { 
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        h1 { color: #333; }
+        h2 { color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>WebAuthn Demo</h1>
+    
+    <div class="container">
+        <h2>Đăng ký người dùng mới</h2>
+        <p>Nhấn nút bên dưới để đăng ký bằng WebAuthn (bảo mật bằng vân tay/face ID/khóa bảo mật)</p>
+        <button id="registerBtn">Đăng ký</button>
+    </div>
+
+    <div class="container">
+        <h2>Đăng nhập</h2>
+        <p>Nhấn nút bên dưới để đăng nhập bằng phương thức bảo mật đã đăng ký</p>
+        <button id="loginBtn">Đăng nhập</button>
+    </div>
+
+    <div id="status">Trạng thái: Sẵn sàng</div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const registerBtn = document.getElementById('registerBtn');
+        const loginBtn = document.getElementById('loginBtn');
+
+        // Helper function to update status
+        function updateStatus(message, isError = false) {
+            statusEl.textContent = `Trạng thái: ${message}`;
+            statusEl.className = isError ? 'error' : 'success';
+        }
+
+        // Registration
+        registerBtn.addEventListener('click', async () => {
+            try {
+                updateStatus('Đang bắt đầu đăng ký...');
+                
+                // Get registration options from server
+                const resp = await fetch('/register-options');
+                const options = await resp.json();
+                
+                // Start WebAuthn registration
+                updateStatus('Vui lòng xác thực bằng phương thức bảo mật của bạn (vân tay/face ID/khóa bảo mật)...');
+                const credential = await SimpleWebAuthnBrowser.startRegistration(options);
+                
+                // Verify registration with server
+                updateStatus('Đang xác minh thông tin đăng ký...');
+                const verificationResp = await fetch('/verify-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(credential),
+                });
+                
+                const verification = await verificationResp.json();
+                
+                if (verification.verified) {
+                    updateStatus(`Đăng ký thành công! ID người dùng: ${verification.userId}`);
+                } else {
+                    updateStatus('Đăng ký thất bại', true);
+                }
+            } catch (error) {
+                updateStatus(`Lỗi: ${error.message}`, true);
+                console.error(error);
+            }
+        });
+
+        // Authentication
+        loginBtn.addEventListener('click', async () => {
+            try {
+                updateStatus('Đang bắt đầu xác thực...');
+                
+                // Get authentication options from server
+                const resp = await fetch('/login-options');
+                const options = await resp.json();
+                
+                // Start WebAuthn authentication
+                updateStatus('Vui lòng xác thực bằng phương thức bảo mật của bạn...');
+                const credential = await SimpleWebAuthnBrowser.startAuthentication(options);
+                
+                // Verify authentication with server
+                updateStatus('Đang xác minh thông tin đăng nhập...');
+                const verificationResp = await fetch('/verify-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(credential),
+                });
+                
+                const verification = await verificationResp.json();
+                
+                if (verification.verified) {
+                    updateStatus(`Xác thực thành công! Chào mừng ${verification.user.username}`);
+                } else {
+                    updateStatus('Xác thực thất bại', true);
+                }
+            } catch (error) {
+                updateStatus(`Lỗi: ${error.message}`, true);
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
