@@ -1,10 +1,7 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*; // Import đầy đủ Lombok
 
 import java.util.UUID;
 
@@ -15,39 +12,40 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CourseMetadata {
-    
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID) // Nên dùng UUID cho đồng bộ
     private UUID id;
-    
+
     @OneToOne
     @JoinColumn(name = "course_id", nullable = false)
+    @ToString.Exclude // QUAN TRỌNG: Ngăn Lombok tạo vòng lặp vô tận khi in log
     private Course course;
-    
+
     @Column(columnDefinition = "TEXT")
     private String learningObjectives;
-    
+
     @Column(columnDefinition = "TEXT")
     private String prerequisites;
-    
+
     @Column(columnDefinition = "TEXT")
     private String targetAudience;
-    
+
     @Column(columnDefinition = "TEXT")
     private String skillsCovered;
-    
+
     @Column(columnDefinition = "TEXT")
     private String difficultyLevel; // BEGINNER, INTERMEDIATE, ADVANCED
-    
+
     @Column(columnDefinition = "TEXT")
-    private String category; // e.g., "Web Development", "Data Science", "Mobile Development"
-    
+    private String category;
+
     @Column(columnDefinition = "TEXT")
-    private String subcategory; // e.g., "React", "Python", "Machine Learning"
-    
+    private String subcategory;
+
     @Column(columnDefinition = "TEXT")
-    private String tags; // Comma-separated tags for better search and recommendations
-    
+    private String tags;
+
     @Column(columnDefinition = "TEXT")
-    private String aiPromptContext; // Additional context for AI to understand the course better
+    private String aiPromptContext;
 }

@@ -1,7 +1,7 @@
-// src/main/java/com/dao/courseservice/service/CourseService.java
 package com.dao.courseservice.service;
 
 import com.dao.courseservice.entity.Course;
+import com.dao.courseservice.entity.CourseMetadata; // [MỚI] Import Metadata
 import com.dao.courseservice.entity.Progress;
 import com.dao.courseservice.exception.ResourceAlreadyExistsException;
 import com.dao.courseservice.exception.ResourceNotFoundException;
@@ -13,13 +13,11 @@ import com.dao.courseservice.request.UpdateCourseRequest;
 import com.dao.courseservice.request.BatchUserRequest;
 import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseResponse;
+import com.dao.courseservice.response.CourseAiDto; // [MỚI] Import DTO cho AI
 import com.dao.courseservice.response.CourseMemberDto;
-import com.dao.courseservice.response.ExamDto;
 import com.dao.courseservice.response.RoleDto;
 import com.dao.courseservice.response.UserDto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,24 +28,22 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 import org.springframework.util.StringUtils;
 
+import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.criteria.Predicate;
-
 /**
  * Interface định nghĩa và triển khai các chức năng CourseService.
- * (Gộp interface + implementation vào cùng một file)
  */
 public interface CourseService {
 
     // ===============================================================
-    // 1. Khai báo các phương thức (Interface)
+    // 1. Khai báo các phương thức Interface
     // ===============================================================
     CourseResponse createCourse(CreateCourseRequest request, Long userId, String authToken);
 
@@ -59,21 +55,19 @@ public interface CourseService {
 
     Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria);
 
-    /**
-     * Lấy danh sách khóa học theo organizationId
-     * @param organizationId ID của tổ chức
-     * @param pageable Thông tin phân trang
-     * @return Trang danh sách khóa học
-     */
     Page<CourseResponse> getCoursesByOrganizationId(String organizationId, Pageable pageable);
 
     CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request);
 
     void deleteCourse(UUID courseId);
+
+    // [MỚI] Phương thức lấy dữ liệu cho AI
+    List<CourseAiDto> getAllCoursesForAI();
+
 }
 
 // ===============================================================
-// 2. Triển khai Interface CourseService
+// 2. Triển khai Implementation
 // ===============================================================
 @Service
 @RequiredArgsConstructor
@@ -91,7 +85,7 @@ class CourseServiceImpl implements CourseService {
     private String apiGatewayUrl;
 
     // ---------------------------------------------------------------
-    // Triển khai hàm createCourse (Hợp đồng 3.1)
+    // Logic Create Course (GIỮ NGUYÊN)
     // ---------------------------------------------------------------
     @Override
     public CourseResponse createCourse(CreateCourseRequest request, Long userId, String authToken) {
@@ -113,10 +107,10 @@ class CourseServiceImpl implements CourseService {
                     throw new SecurityException("Không có quyền: Yêu cầu quyền 'course:create'.");
                 }
             } else {
-                log.warn("Skip permission check due to missing role data (dev fallback). userId={}, orgId={}", userId, orgId);
+                log.warn("Skip permission check due to missing role data (dev fallback). userId={}, orgId={}", userId,
+                        orgId);
             }
         } catch (Exception e) {
-            // Dev fallback: không chặn khi service kiểm tra quyền chưa sẵn sàng
             log.error("API Auth check failed for user {} in org {}: {}", userId, orgId, e.getMessage());
         }
 
@@ -138,7 +132,7 @@ class CourseServiceImpl implements CourseService {
     }
 
     // ---------------------------------------------------------------
-    // HÀM MỚI: getCourseRoster (Hợp đồng 3.4)
+    // Logic Roster (GIỮ NGUYÊN)
     // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
@@ -146,7 +140,8 @@ class CourseServiceImpl implements CourseService {
         log.info("Fetching roster for course {}", courseId);
 
         List<Progress> progressList = progressRepository.findByCourseId(courseId);
-        if (progressList.isEmpty()) return List.of();
+        if (progressList.isEmpty())
+            return List.of();
 
         List<Long> studentIds = progressList.stream()
                 .map(Progress::getStudentId)
@@ -174,20 +169,17 @@ class CourseServiceImpl implements CourseService {
                     user != null ? user.getFirstName() : "N/A",
                     user != null ? user.getLastName() : "N/A",
                     user != null ? user.getAvatarUrl() : null,
-                    progress.getPercentComplete()
-            );
+                    progress.getPercentComplete());
         }).collect(Collectors.toList());
     }
 
     // ---------------------------------------------------------------
-    // HÀM MỚI: publishCourse (Hợp đồng 3.2)
+    // Logic Publish (GIỮ NGUYÊN)
     // ---------------------------------------------------------------
     @Override
     public void publishCourse(UUID courseId, String authToken) {
         log.info("Attempting to publish course {}", courseId);
 
-        // Bật lại kiểm tra: yêu cầu KHÓA HỌC phải có ít nhất 1 quiz trước khi xuất bản.
-        // (Không phụ thuộc service Exams bên ngoài)
         var quizzes = quizRepository.findByCourseId(courseId);
         if (quizzes == null || quizzes.isEmpty()) {
             throw new ResourceNotFoundException("Course", "Quiz",
@@ -203,7 +195,7 @@ class CourseServiceImpl implements CourseService {
     }
 
     // ---------------------------------------------------------------
-    // CÁC HÀM CŨ (GIỮ NGUYÊN)
+    // Logic Get By ID (GIỮ NGUYÊN)
     // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
@@ -213,6 +205,9 @@ class CourseServiceImpl implements CourseService {
         return courseMapper.toCourseResponse(course);
     }
 
+    // ---------------------------------------------------------------
+    // Logic Get By Org (GIỮ NGUYÊN)
+    // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
     public Page<CourseResponse> getCoursesByOrganizationId(String organizationId, Pageable pageable) {
@@ -221,6 +216,9 @@ class CourseServiceImpl implements CourseService {
                 .map(courseMapper::toCourseResponse);
     }
 
+    // ---------------------------------------------------------------
+    // Logic Get All Filter (GIỮ NGUYÊN)
+    // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
     public Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria) {
@@ -233,6 +231,9 @@ class CourseServiceImpl implements CourseService {
         return coursePage.map(courseMapper::toCourseResponse);
     }
 
+    // ---------------------------------------------------------------
+    // Logic Update (GIỮ NGUYÊN)
+    // ---------------------------------------------------------------
     @Override
     public CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request) {
         log.info("Updating course with id: {}", courseId);
@@ -252,6 +253,9 @@ class CourseServiceImpl implements CourseService {
         return courseMapper.toCourseResponse(savedCourse);
     }
 
+    // ---------------------------------------------------------------
+    // Logic Delete (GIỮ NGUYÊN)
+    // ---------------------------------------------------------------
     @Override
     public void deleteCourse(UUID courseId) {
         log.info("Deleting course with id: {}", courseId);
@@ -259,19 +263,72 @@ class CourseServiceImpl implements CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        // Use entity delete to trigger JPA cascade (quizzes, materials, ...)
         courseRepository.delete(course);
         log.info("Successfully deleted course with id: {}", courseId);
     }
 
+    // ===============================================================
+    // [MỚI] IMPLEMENT LOGIC CHO AI (ĐÃ SỬA LỖI)
+    // ===============================================================
+    @Override
+    public List<CourseAiDto> getAllCoursesForAI() {
+        return courseRepository.findAll().stream()
+                // 1. Lọc theo VISIBILITY (Thay vì status)
+                .filter(course -> course.getVisibility() != null &&
+                        ("public".equalsIgnoreCase(course.getVisibility()) ||
+                                "published".equalsIgnoreCase(course.getVisibility())))
+                // 2. Map Entity -> DTO (Có xử lý Metadata)
+                .map(course -> {
+                    // Lấy Metadata
+                    CourseMetadata meta = course.getMetadata();
+
+                    // Giá trị mặc định
+                    String level = "General";
+                    String category = "Uncategorized";
+                    String skills = "";
+                    String objectives = "";
+                    String aiContext = "";
+
+                    if (meta != null) {
+                        if (meta.getDifficultyLevel() != null)
+                            level = meta.getDifficultyLevel();
+                        if (meta.getCategory() != null)
+                            category = meta.getCategory();
+                        if (meta.getSkillsCovered() != null)
+                            skills = meta.getSkillsCovered();
+                        if (meta.getLearningObjectives() != null)
+                            objectives = meta.getLearningObjectives();
+                        if (meta.getAiPromptContext() != null)
+                            aiContext = meta.getAiPromptContext();
+                    }
+
+                    // Xử lý giá (Price) an toàn
+                    BigDecimal priceValue = course.getPrice() != null ? course.getPrice() : BigDecimal.ZERO;
+
+                    return CourseAiDto.builder()
+                            .id(course.getId())
+                            .title(course.getTitle())
+                            .description(course.getDescription())
+                            .price(priceValue)
+                            .level(level)
+                            .category(category)
+                            .skills(skills)
+                            .objectives(objectives)
+                            .aiContext(aiContext)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
     // ---------------------------------------------------------------
-    // Helper: Tạo slug URL-friendly
+    // Helpers (GIỮ NGUYÊN)
     // ---------------------------------------------------------------
     private String generateSlug(String input) {
         final Pattern WHITESPACE = Pattern.compile("[\\s]");
         final Pattern NONLATIN = Pattern.compile("[^\\w-]");
 
-        if (input == null) return "";
+        if (input == null)
+            return "";
         String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
@@ -290,15 +347,12 @@ class CourseServiceImpl implements CourseService {
                 String likeKeyword = "%" + criteria.getKeyword().toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("title")), likeKeyword),
-                        cb.like(cb.lower(root.get("description")), likeKeyword)
-                ));
+                        cb.like(cb.lower(root.get("description")), likeKeyword)));
             }
 
             if (StringUtils.hasText(criteria.getOrganizationId())) {
                 predicates.add(cb.equal(root.get("organizationId"), criteria.getOrganizationId()));
             }
-
-            // instructorId removed
 
             if (criteria.getCreatedBy() != null) {
                 predicates.add(cb.equal(root.get("createdBy"), criteria.getCreatedBy()));

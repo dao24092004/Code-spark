@@ -1,216 +1,101 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios');
+// ĐƯỜNG DẪN QUAN TRỌNG: Lùi 2 cấp để tìm folder config
 const config = require('../../config');
-const logger = require('../../utils/logger');
 
 class AIService {
   constructor() {
     if (!config.gemini.apiKey) {
-      throw new Error('GEMINI_API_KEY is not set in environment variables');
+      throw new Error("Missing GEMINI_API_KEY in environment variables.");
     }
-    
+    this.genAI = new GoogleGenerativeAI(config.gemini.apiKey);
+    this.model = this.genAI.getGenerativeModel({
+      model: config.gemini.model,
+      generationConfig: {
+        maxOutputTokens: config.gemini.maxOutputTokens,
+        temperature: config.gemini.temperature,
+      }
+    });
+  }
+
+  // 1. Lấy dữ liệu từ Java Service
+  async fetchCourseData() {
     try {
-      this.ai = new GoogleGenerativeAI(config.gemini.apiKey);
-      this.model = this.ai.getGenerativeModel({ 
-        model: config.gemini.model,
-        generationConfig: {
-          temperature: config.gemini.temperature,
-          maxOutputTokens: config.gemini.maxOutputTokens,
-        },
-      });
+      const url = config.services.courseServiceUrl;
+      console.log(`Fetching courses from: ${url}`);
+
+      const response = await axios.get(url);
+      // Java trả về { success: true, data: [...] }
+      return response.data.data || [];
+    } catch (error) {
+      console.error(`Error fetching courses from Java: ${error.message}`);
+      // Trả về null để xử lý fallback
+      return null;
+    }
+  }
+
+  // 2. Format dữ liệu JSON thành văn bản cho Prompt
+  formatCoursesForPrompt(courses) {
+    if (!courses || courses.length === 0) return "Hiện tại chưa có dữ liệu khóa học.";
+
+    return courses.map((c, index) => {
+      const priceStr = c.price > 0 ? `${new Intl.NumberFormat('vi-VN').format(c.price)} VNĐ` : "Miễn phí";
+      const aiNote = c.aiContext ? `\n   [Lưu ý cho AI: ${c.aiContext}]` : "";
+
+      return `
+KHÓA HỌC #${index + 1}:
+- Tên: "${c.title}" (ID: ${c.id})
+- Giá: ${priceStr} | Cấp độ: ${c.level} | Danh mục: ${c.category}
+- Kỹ năng đạt được: ${c.skills || "N/A"}
+- Mục tiêu: ${c.objectives || "N/A"}
+- Mô tả ngắn: ${c.description}${aiNote}
+-----------------------------------`;
+    }).join('\n');
+  }
+
+  // 3. Hàm chat tư vấn
+  async chatConsult(userMessage, history = []) {
+    try {
+      // B1: Lấy dữ liệu Real-time
+      const rawCourses = await this.fetchCourseData();
+      const coursesContext = this.formatCoursesForPrompt(rawCourses);
+
+      // B2: Tạo System Prompt
+      const systemPrompt = `
+      VAI TRÒ: Bạn là Trợ lý Tư vấn Tuyển sinh thông minh.
+      NHIỆM VỤ: Tư vấn khóa học phù hợp dựa trên danh sách bên dưới.
       
-      logger.info(`Initialized Gemini AI with model: ${config.gemini.model}`);
-    } catch (error) {
-      logger.error('Failed to initialize Gemini AI:', error);
-      throw new Error('Failed to initialize AI service');
-    }
-  }
+      DỮ LIỆU KHÓA HỌC (Real-time):
+      ===================================
+      ${coursesContext}
+      ===================================
+      
+      YÊU CẦU:
+      1. Chỉ tư vấn khóa học có trong danh sách trên.
+      2. Nêu rõ Tên, Giá và Lý do phù hợp với nhu cầu người dùng.
+      3. Trả lời ngắn gọn, chuyên nghiệp, dùng emoji.
+      `;
 
-  /**
-   * Generate text based on a prompt
-   * @param {string} prompt - The input prompt
-   * @param {Object} options - Generation options
-   * @returns {Promise<string>} Generated text
-   */
-  async generateText(prompt, options = {}) {
-    try {
-      const { 
-        temperature = config.gemini.temperature,
-        maxOutputTokens = config.gemini.maxOutputTokens,
-        systemInstruction
-      } = options;
-
-      const generationConfig = {
-        temperature,
-        maxOutputTokens,
-      };
-
-      const generationParams = {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig,
-      };
-
-      if (systemInstruction) {
-        generationParams.systemInstruction = {
-          role: 'model',
-          parts: [{ text: systemInstruction }],
-        };
-      }
-
-      const result = await this.model.generateContent(generationParams);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      logger.error('Error generating text with Gemini:', error);
-      throw new Error(`Failed to generate text: ${error.message}`);
-    }
-  }
-
-  /**
-   * Analyze course content and provide insights
-   * @param {string} content - Course content to analyze
-   * @param {Object} options - Generation options
-   * @returns {Promise<Object>} Analysis results
-   */
-  async analyzeCourseContent(content, options = {}) {
-    try {
-      const prompt = `Analyze the following course content and provide detailed insights:
-
-${content}
-
-Please provide a structured analysis including:
-1. Key learning objectives
-2. Main topics covered
-3. Difficulty level assessment
-4. Suggested improvements
-5. Prerequisites (if any)
-6. Estimated study time
-
-Format the response as a JSON object with these fields:
-{
-  "objectives": ["list", "of", "objectives"],
-  "topics": ["main", "topics"],
-  "difficulty": "beginner|intermediate|advanced",
-  "improvements": ["suggested", "improvements"],
-  "prerequisites": ["required", "knowledge"],
-  "estimatedStudyTime": "X hours"
-}`;
-
-      const response = await this.generateText(prompt, {
-        ...options,
-        temperature: 0.5, // More focused analysis
-        maxOutputTokens: 2000
-      });
-
-      // Parse the JSON response
-      try {
-        // Extract JSON from markdown code block if present
-        const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/) || 
-                         response.match(/```\n([\s\S]*?)\n```/) || 
-                         [null, response];
-        
-        const parsedResponse = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        return {
-          success: true,
-          ...parsedResponse
-        };
-      } catch (parseError) {
-        logger.error('Failed to parse AI response:', parseError);
-        // Fallback to returning the raw text if parsing fails
-        return {
-          success: false,
-          error: 'Failed to parse AI response',
-          rawResponse: response
-        };
-      }
-    } catch (error) {
-      logger.error('Error analyzing course content:', error);
-      throw new Error(`Failed to analyze course content: ${error.message}`);
-    }
-  }
-
-  /**
-   * Generate quiz questions based on content
-   * @param {string} content - Content to generate questions from
-   * @param {Object} options - Generation options
-   * @returns {Promise<Array>} Array of quiz questions
-   */
-  async generateQuizQuestions(content, options = {}) {
-    try {
-      const prompt = `Generate 5 multiple-choice quiz questions based on the following content. 
-For each question, provide 4 possible answers with exactly one correct answer.
-
-Content:
-${content}
-
-Format the response as a JSON array of question objects with this structure:
-[
-  {
-    "question": "The question text",
-    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-    "correctAnswer": 0, // Index of the correct answer
-    "explanation": "Explanation of the correct answer"
-  }
-]`;
-
-      const response = await this.generateText(prompt, {
-        ...options,
-        temperature: 0.7,
-        maxOutputTokens: 2000
-      });
-
-      try {
-        // Extract JSON from markdown code block if present
-        const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/) || 
-                         response.match(/```\n([\s\S]*?)\n```/) || 
-                         [null, response];
-        
-        const questions = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        return {
-          success: true,
-          questions: Array.isArray(questions) ? questions : [questions]
-        };
-      } catch (parseError) {
-        logger.error('Failed to parse quiz questions:', parseError);
-        return {
-          success: false,
-          error: 'Failed to parse quiz questions',
-          rawResponse: response
-        };
-      }
-    } catch (error) {
-      logger.error('Error generating quiz questions:', error);
-      throw new Error(`Failed to generate quiz questions: ${error.message}`);
-    }
-  }
-
-  /**
-   * Chat completion with conversation history
-   * @param {Array} messages - Array of message objects with role and content
-   * @param {Object} options - Generation options
-   * @returns {Promise<string>} AI response
-   */
-  async chatCompletion(messages, options = {}) {
-    try {
-      const chat = this.model.startChat({
-        history: messages.map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
+      // B3: Chuẩn bị lịch sử chat
+      const formattedHistory = [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "model", parts: [{ text: "Đã hiểu danh sách khóa học." }] },
+        ...history.map(msg => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content }]
-        })),
-        generationConfig: {
-          temperature: options.temperature || config.gemini.temperature,
-          maxOutputTokens: options.maxOutputTokens || config.gemini.maxOutputTokens,
-        },
-      });
+        }))
+      ];
 
-      const result = await chat.sendMessage(messages[messages.length - 1].content);
-      const response = await result.response;
-      return response.text();
+      // B4: Gọi Gemini
+      const chat = this.model.startChat({ history: formattedHistory });
+      const result = await chat.sendMessage(userMessage);
+      return result.response.text();
+
     } catch (error) {
-      logger.error('Error in chat completion:', error);
-      throw new Error(`Chat completion failed: ${error.message}`);
+      console.error("AI Service Error:", error);
+      return "Xin lỗi, hệ thống tư vấn đang bận. Vui lòng thử lại sau.";
     }
   }
 }
 
-// Export a singleton instance
 module.exports = new AIService();
