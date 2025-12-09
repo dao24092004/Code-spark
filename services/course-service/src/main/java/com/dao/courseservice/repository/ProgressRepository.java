@@ -23,4 +23,10 @@ public interface ProgressRepository extends JpaRepository<Progress, Long> {
      * Tìm tất cả tiến độ học tập trong một khóa học (dành cho dashboard của giảng viên).
      */
     List<Progress> findByCourseId(UUID courseId);
+    
+    /**
+     * Xóa tất cả tiến độ học tập trong một khóa học.
+     * Sử dụng khi xóa khóa học để tránh foreign key constraint violation.
+     */
+    void deleteByCourseId(UUID courseId);
 }

@@ -8,6 +8,7 @@ import com.dao.courseservice.exception.ResourceNotFoundException;
 import com.dao.courseservice.mapper.CourseMapper;
 import com.dao.courseservice.repository.CourseRepository;
 import com.dao.courseservice.repository.ProgressRepository;
+import com.dao.courseservice.repository.QuizSubmissionRepository;
 import com.dao.courseservice.request.CreateCourseRequest;
 import com.dao.courseservice.request.UpdateCourseRequest;
 import com.dao.courseservice.request.BatchUserRequest;
@@ -84,6 +85,7 @@ class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final CourseMapper courseMapper;
     private final ProgressRepository progressRepository;
+    private final QuizSubmissionRepository quizSubmissionRepository;
     private final WebClient.Builder webClientBuilder;
     private final com.dao.courseservice.repository.QuizRepository quizRepository;
 
@@ -258,6 +260,16 @@ class CourseServiceImpl implements CourseService {
 
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        // Delete all quiz submissions for quizzes in this course
+        // This prevents foreign key constraint violations when deleting quizzes
+        quizSubmissionRepository.deleteByCourseId(courseId);
+        log.info("Deleted quiz submissions for course: {}", courseId);
+
+        // Delete all progress records that reference materials in this course
+        // This prevents foreign key constraint violations when deleting materials
+        progressRepository.deleteByCourseId(courseId);
+        log.info("Deleted progress records for course: {}", courseId);
 
         // Use entity delete to trigger JPA cascade (quizzes, materials, ...)
         courseRepository.delete(course);
