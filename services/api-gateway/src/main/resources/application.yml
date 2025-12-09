@@ -5,6 +5,7 @@ spring:
     max-in-memory-size: 200MB
   cloud:
     gateway:
+    
       discovery:
         locator:
           enabled: true
