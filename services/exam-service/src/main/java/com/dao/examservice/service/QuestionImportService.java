@@ -1,7 +1,9 @@
 package com.dao.examservice.service;
 
 import com.dao.examservice.entity.Question;
+import com.dao.examservice.entity.QuestionTag;
 import com.dao.examservice.repository.QuestionRepository;
+import com.dao.examservice.repository.QuestionTagRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,7 @@ import java.util.*;
 public class QuestionImportService {
 
     private final QuestionRepository questionRepository;
+    private final QuestionTagRepository questionTagRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -156,16 +159,21 @@ public class QuestionImportService {
 
             // Create Question entity
             Question question = new Question();
-            question.setType(Question.QuestionType.SINGLE_CHOICE);
+            question.setType(Question.QuestionType.MULTIPLE_CHOICE);
             question.setText(questionText);
             question.setContent(objectMapper.writeValueAsString(content));
             question.setDifficulty(5); // Default medium difficulty
             question.setExplanation(null);
             question.setScore(10); // Default score
-            
-            // ✅ Use LinkedHashSet to preserve order and avoid duplicate tags
-            Set<String> uniqueTags = new LinkedHashSet<>(Arrays.asList(tags));
-            question.setTags(uniqueTags);
+            question = questionRepository.save(question);
+
+            // Create QuestionTag entries for each tag
+            for (String tag : tags) {
+                QuestionTag qt = new QuestionTag();
+                qt.setQuestion(question);
+                qt.setTag(tag);
+                questionTagRepository.save(qt);
+            }
 
             return question;
 
@@ -214,8 +222,6 @@ public class QuestionImportService {
         if (questionText == null || questionText.isBlank()) {
             return false;
         }
-        
-        // Use repository method for efficient database query (case-insensitive)
         List<Question> existingQuestions = questionRepository.findByTextIgnoreCase(questionText.trim());
         return !existingQuestions.isEmpty();
     }
@@ -258,19 +264,20 @@ public class QuestionImportService {
 
     /**
      * Get import statistics (total questions by tag)
+     * Optimized to use single query instead of N+1
      */
     public Map<String, Object> getImportStatistics() {
         List<String> allTags = questionRepository.findAllUniqueTags();
-        Map<String, Long> tagCounts = new HashMap<>();
-
+        
+        // Use optimized count query per tag instead of fetching all questions
+        Map<String, Long> tagCounts = new LinkedHashMap<>();
+        
         for (String tag : allTags) {
-            long count = questionRepository.findAll().stream()
-                    .filter(q -> q.getTags() != null && q.getTags().contains(tag))
-                    .count();
+            long count = questionRepository.countByTag(tag);
             tagCounts.put(tag, count);
         }
 
-        Map<String, Object> stats = new HashMap<>();
+        Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalQuestions", questionRepository.count());
         stats.put("totalTags", allTags.size());
         stats.put("questionsByTag", tagCounts);
@@ -286,23 +293,26 @@ public class QuestionImportService {
     @Transactional
     public int deleteByTag(String tag) {
         log.info("🗑️ Deleting questions with tag: {}", tag);
-        
-        // Find all questions with this tag
-        List<Question> questionsToDelete = questionRepository.findAll().stream()
-                .filter(q -> q.getTags() != null && q.getTags().contains(tag))
+
+        List<QuestionTag> questionTags = questionTagRepository.findAll().stream()
+                .filter(qt -> qt.getTag().equals(tag))
                 .toList();
-        
-        int count = questionsToDelete.size();
+
+        Set<UUID> questionIds = questionTags.stream()
+                .map(qt -> qt.getQuestion().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        int count = questionIds.size();
         log.info("   Found {} questions to delete", count);
-        
+
         if (count > 0) {
-            // Delete all questions (cascade will delete tags)
-            questionRepository.deleteAll(questionsToDelete);
+            questionTagRepository.deleteAll(questionTags);
+            questionRepository.deleteAllById(questionIds);
             log.info("✅ Deleted {} questions with tag '{}'", count, tag);
         } else {
             log.warn("⚠️  No questions found with tag '{}'", tag);
         }
-        
+
         return count;
     }
 }

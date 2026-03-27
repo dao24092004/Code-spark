@@ -8,10 +8,10 @@ const config = {
         env: process.env.NODE_ENV || 'development',
     },
     db: {
-        // Support both PG_* and DB_* env names
+        // CRYPTO DB - dùng chung cho copyright, multisig, token-reward
         host: process.env.PG_HOST || process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.PG_PORT || process.env.DB_PORT, 10) || 5432,
-        database: process.env.PG_DATABASE || process.env.DB_NAME || 'copyright_db',
+        database: process.env.PG_DATABASE || process.env.DB_NAME || 'crypto_db',
         user: process.env.PG_USER || process.env.DB_USER || 'postgres',
         password: process.env.PG_PASSWORD || process.env.DB_PASSWORD || 'password',
     },

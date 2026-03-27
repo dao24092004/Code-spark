@@ -1,46 +1,63 @@
-module.exports = (sequelize, Sequelize) => {
+// file: src/models/multisigTransaction.model.js
+// crypto_db: multisig_transactions table
+// ERD: multisig_transactions(id uuid PK, wallet_id uuid,
+//         tx_index_on_chain, tx_hash, destination, value,
+//         data, description, status, confirmations, created_at, updated_at)
+
+module.exports = (sequelize, DataTypes) => {
     const MultisigTransaction = sequelize.define('MultisigTransaction', {
         id: {
-            type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV4,
-            primaryKey: true
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true,
         },
-        // transactionId on-chain (là index trong mảng)
+        walletId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'wallet_id'
+        },
         txIndexOnChain: {
-            type: Sequelize.INTEGER,
-            allowNull: false
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            field: 'tx_index_on_chain'
         },
-        txHash: { // Hash của giao dịch on-chain (submit, confirm, execute)
-            type: Sequelize.STRING,
-            allowNull: true
+        txHash: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'tx_hash'
         },
         destination: {
-            type: Sequelize.STRING,
-            allowNull: false
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
-        value: { // Lưu dưới dạng string (Wei)
-            type: Sequelize.STRING,
-            allowNull: false
+        value: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
         data: {
-            type: Sequelize.TEXT,
-            defaultValue: '0x'
+            type: DataTypes.TEXT,
+            allowNull: true,
+            defaultValue: '0x',
         },
         description: {
-            type: Sequelize.TEXT,
+            type: DataTypes.TEXT,
             allowNull: true,
-            comment: 'Mô tả/ghi chú nội dung giao dịch'
         },
         status: {
-            type: Sequelize.ENUM('submitted', 'confirmed', 'executed', 'failed'),
-            defaultValue: 'submitted'
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            defaultValue: 'SUBMITTED',
         },
-        // Mảng các địa chỉ đã xác nhận
         confirmations: {
-            type: Sequelize.ARRAY(Sequelize.STRING),
-            defaultValue: []
-        }
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
+    }, {
+        tableName: 'multisig_transactions',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
     });
+
     return MultisigTransaction;
 };
-

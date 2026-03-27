@@ -1,50 +1,57 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-@Data
+@Entity
+@Table(name = "cm_progress",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"student_id", "course_id"})
+    },
+    indexes = {
+        @Index(name = "idx_cm_progress_student", columnList = "student_id"),
+        @Index(name = "idx_cm_progress_course", columnList = "course_id"),
+        @Index(name = "idx_cm_progress_updated", columnList = "updated_at")
+    })
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "cm_progress", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"student_id", "course_id"})
-})
 public class Progress {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
     @Column(name = "student_id", nullable = false)
-    private Long studentId;
+    private UUID studentId;
 
-    // Mối quan hệ: Nhiều Progress thuộc về một Course
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @Column(nullable = false)
+    @Column(name = "percent_complete", nullable = false)
+    @Builder.Default
     private Integer percentComplete = 0;
 
-    // Mối quan hệ: Tiến độ đang ở Material nào
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "last_material_id")
-    private Material lastMaterial;
+    @Column(name = "last_material_id")
+    private UUID lastMaterialId;
 
     @Column(name = "passed_final_exam", nullable = false)
+    @Builder.Default
     private boolean passedFinalExam = false;
 
     @Column(name = "course_completed", nullable = false)
+    @Builder.Default
     private boolean courseCompleted = false;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }

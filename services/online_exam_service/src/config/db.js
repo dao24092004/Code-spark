@@ -1,15 +1,16 @@
- // file: src/config/db.js
+// file: src/config/db.js
+// Dead code — models/index.js đã tự tạo Sequelize instance.
+// Chỉ giữ lại để tránh import lỗi nếu có file nào đó tham chiếu.
 const { Sequelize } = require('sequelize');
-const config = require('./index');
 
 const sequelize = new Sequelize(
-  config.db.database,
-  config.db.username,
-  config.db.password,
+  process.env.DB_NAME || 'exam_db',
+  process.env.DB_USER || 'postgres',
+  process.env.DB_PASSWORD || 'password',
   {
-    host: config.db.host,
-    port: config.db.port,
-    dialect: config.db.dialect,
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 5433,
+    dialect: 'postgres',
     logging: false,
   }
 );

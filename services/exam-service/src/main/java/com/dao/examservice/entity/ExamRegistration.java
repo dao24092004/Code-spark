@@ -1,44 +1,46 @@
 package com.dao.examservice.entity;
 
 import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cm_exam_registrations")
+@Table(name = "cm_exam_registrations", indexes = {
+    @Index(name = "idx_cm_exam_registrations_exam", columnList = "exam_id"),
+    @Index(name = "idx_cm_exam_registrations_user", columnList = "user_id"),
+    @Index(name = "idx_cm_exam_registrations_status", columnList = "status")
+})
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ExamRegistration {
 
     public enum RegistrationStatus { SCHEDULED, REGISTERED, CANCELLED }
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "uuid")
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "exam_id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(name = "exam_id", referencedColumnName = "id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_cm_exam_registrations_exams"))
     private Exam exam;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "user_id", columnDefinition = "uuid")
+    private UUID userId;
 
-    @Column(name = "registered_at", nullable = false)
-    private Instant registeredAt = Instant.now();
+    @CreationTimestamp
+    @Column(name = "registered_at", nullable = false, updatable = false)
+    private Instant registeredAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
+    @Builder.Default
     private RegistrationStatus status = RegistrationStatus.SCHEDULED;
-
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public Exam getExam() { return exam; }
-    public void setExam(Exam exam) { this.exam = exam; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public Instant getRegisteredAt() { return registeredAt; }
-    public void setRegisteredAt(Instant registeredAt) { this.registeredAt = registeredAt; }
-    public RegistrationStatus getStatus() { return status; }
-    public void setStatus(RegistrationStatus status) { this.status = status; }
 }
-
-

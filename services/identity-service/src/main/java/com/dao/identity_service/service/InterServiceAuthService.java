@@ -37,8 +37,8 @@ public class InterServiceAuthService {
                     .map(authority -> authority.getAuthority())
                     .collect(Collectors.toSet());
 
-            Set<String> roles = user.getRoles().stream()
-                    .map(role -> role.getName())
+            Set<String> roles = user.getUserRoles().stream()
+                    .map(ur -> ur.getRole().getName())
                     .collect(Collectors.toSet());
 
             return Map.of(

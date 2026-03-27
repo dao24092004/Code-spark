@@ -1,13 +1,31 @@
 // src/models/recruitmentAnswer.model.js
 module.exports = (sequelize, DataTypes) => {
   const RecruitmentAnswer = sequelize.define('RecruitmentAnswer', {
-    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-    questionId: { type: DataTypes.BIGINT, allowNull: false, field: 'question_id' },
-    content: { type: DataTypes.TEXT, allowNull: false },
-    isCorrect: { type: DataTypes.BOOLEAN, allowNull: false, field: 'is_correct' }
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
+    },
+    questionId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'question_id'
+    },
+    answerText: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      field: 'answer_text'
+    },
+    isCorrect: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_correct'
+    }
   }, {
     tableName: 'recruitment_answers',
-    timestamps: false // Bảng này không có created_at
+    timestamps: false // Không có created_at theo ERD
   });
+
   return RecruitmentAnswer;
 };

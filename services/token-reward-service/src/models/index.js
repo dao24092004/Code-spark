@@ -1,29 +1,68 @@
-// src/models/index.js
+// file: src/models/index.js
+// crypto_db - dùng chung cho copyright, multisig, token-reward
 const { Sequelize } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const config = require('../config/db.js').development;
 
-const db = {};
-const sequelize = new Sequelize(config.database, config.username, config.password, config);
-
-// Đọc tất cả các file model trong thư mục hiện tại
-fs.readdirSync(__dirname)
-  .filter(file => file.indexOf('.') !== 0 && file !== 'index.js' && file.slice(-9) === '.model.js')
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize);
-    db[model.name] = model;
-  });
-
-// Thiết lập mối quan hệ giữa các model
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
+const sequelize = new Sequelize(config.database, config.username, config.password, {
+    host: config.host,
+    port: config.port,
+    dialect: config.dialect,
+    logging: config.logging,
+    pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+    }
 });
 
+// Import models - align với crypto_db schema
+const CryptoAccount = require('./walletAccount.model')(sequelize);
+const TokenDeposit = require('./tokenDeposit.model')(sequelize);
+const TokenWithdrawal = require('./tokenWithdrawal.model')(sequelize);
+const Gift = require('./gift.model')(sequelize);
+const User = require('./user.model')(sequelize);
+const Reward = require('./reward.model')(sequelize);
+
 // Associations
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
+CryptoAccount.hasMany(TokenDeposit, {
+    foreignKey: 'cryptoAccountId',
+    as: 'tokenDeposits'
+});
+TokenDeposit.belongsTo(CryptoAccount, {
+    foreignKey: 'cryptoAccountId',
+    as: 'cryptoAccount'
+});
+
+CryptoAccount.hasMany(TokenWithdrawal, {
+    foreignKey: 'cryptoAccountId',
+    as: 'tokenWithdrawals'
+});
+TokenWithdrawal.belongsTo(CryptoAccount, {
+    foreignKey: 'cryptoAccountId',
+    as: 'cryptoAccount'
+});
+
+CryptoAccount.hasMany(Gift, {
+    foreignKey: 'cryptoAccountId',
+    as: 'gifts'
+});
+Gift.belongsTo(CryptoAccount, {
+    foreignKey: 'cryptoAccountId',
+    as: 'cryptoAccount'
+});
+
+const db = {
+    sequelize,
+    Sequelize,
+    CryptoAccount,
+    TokenDeposit,
+    TokenWithdrawal,
+    Gift,
+    User,
+    Reward,
+};
 
 module.exports = db;

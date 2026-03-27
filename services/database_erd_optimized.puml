@@ -1,0 +1,972 @@
+' ============================================================
+' PlantUML ERD - Code-spark Database (OPTIMIZED)
+' After Database Consolidation + Fixes v1.7
+' ============================================================
+
+@startuml CODE_SPARK_DATABASE_OPTIMIZED
+
+!theme plain
+skinparam linetype ortho
+skinparam roundcorner 5
+skinparam maxmessagesize 250
+skinparam backgroundColor #FEFEFE
+
+' ============================================================
+' PACKAGE: identity_db (Java - identity-service)
+' CONSOLIDATED: identity_db + admin_db
+' ============================================================
+package "identity_db" #E8F5E9 {
+
+    entity "users" as users {
+        * id : uuid <<PK>>
+        * username : varchar(100) <<UK>>
+        * email : varchar(255) <<UK>>
+        + password_hash : varchar(255)
+        + first_name : varchar(100)
+        + last_name : varchar(100)
+        + avatar_url : text
+        + phone_number : varchar(50)
+        + provider : varchar(50)
+        + status : varchar(50) <<DEFAULT: 'ACTIVE'>>
+        + is_email_verified : boolean <<DEFAULT: false>>
+        + is_enabled : boolean <<DEFAULT: true>>
+        + last_login_at : timestamp
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "roles" as roles {
+        * id : uuid <<PK>>
+        * name : varchar(50) <<UK>>
+        + description : text
+        + created_at : timestamp
+    }
+
+    entity "permissions" as permissions {
+        * id : uuid <<PK>>
+        * name : varchar(100) <<UK>>
+        + description : text
+        + resource : varchar(100)
+        + action : varchar(50)
+        + created_at : timestamp
+    }
+    
+    entity "user_roles" as user_roles {
+        * id : uuid <<PK>>
+        * user_id : uuid <<FK>>
+        * role_id : uuid <<FK>>
+        + organization_id : uuid <<FK>>  ' NULL = system-wide role
+        <<UNIQUE: (user_id, role_id, organization_id)>>
+    }
+
+    entity "user_permissions" as user_permissions {
+        * id : uuid <<PK>>
+        * user_id : uuid <<FK>>
+        * permission_id : uuid <<FK>>
+        + granted_by : uuid <<FK>>
+        + granted_at : timestamp
+        <<UNIQUE: (user_id, permission_id)>>
+    }
+
+    entity "role_permissions" as role_permissions {
+        * id : uuid <<PK>>
+        * role_id : uuid <<FK>>
+        * permission_id : uuid <<FK>>
+        <<UNIQUE: (role_id, permission_id)>>
+    }
+    
+    entity "user_credentials" as user_credentials {
+        * id : bigint <<PK>>
+        * user_id : uuid <<FK>>
+        * credential_type : varchar(50) <<ENUM: OAUTH_TOKEN, API_KEY, RECOVERY_CODE, MFA_SECRET>>
+        * key_version : int <<DEFAULT: 1>>
+        + credential_data : text           ' Optional; non-sensitive metadata about the credential
+        + encrypted_credential_data : text  ' Always encrypt sensitive credentials (AES-256-GCM)
+        + expires_at : timestamp           ' OAuth tokens must have expiry; NULL for permanent credentials
+        + created_at : timestamp
+        + updated_at : timestamp            ' Track credential refresh/update events
+        <<UNIQUE: (user_id, credential_type, key_version)>>
+    }
+    
+    entity "verification_codes" as verification_codes {
+        * id : uuid <<PK>>
+        * user_id : uuid <<FK>>
+        * code : varchar(64)  ' FIX: Increased from varchar(10) to varchar(64)
+        ' Supports: 6-digit OTP, 8-char alphanumeric, UUID-based codes (36 chars)
+        + type : varchar(50)
+        * expires_at : timestamp   ' Required for index query: (user_id, expires_at)
+        + is_used : boolean <<DEFAULT: false>>
+        + created_at : timestamp
+    }
+    
+    entity "admin_audit_trails" as admin_audit_trails {
+        * id : uuid <<PK>>
+        * user_id : uuid <<FK>> <<Admin who performed action>>
+        * action : varchar(100)
+        + target_type : varchar(100)
+        + target_id : uuid
+        + old_value : text
+        + new_value : text
+        + ip_address : varchar(50)
+        + user_agent : text
+        + created_at : timestamp
+    }
+    
+    ' Relationships - Identity
+    users ||--o{ user_roles : ""
+    users ||--o{ user_permissions : ""
+    users ||--o{ user_credentials : ""
+    users ||--o{ verification_codes : ""
+    users ||--o{ admin_audit_trails : ""
+    roles ||--o{ user_roles : ""
+    roles ||--o{ role_permissions : ""
+    permissions ||--o{ user_permissions : ""
+    permissions ||--o{ role_permissions : ""
+}
+
+' ============================================================
+' PACKAGE: organization_db (Node - organization_service)
+' ============================================================
+package "organization_db" #E3F2FD {
+
+    entity "organizations" as organizations {
+        * id : uuid <<PK>>
+        * name : varchar(255)
+        + description : text
+        + short_description : varchar(500)
+        + logo : text
+        + website : varchar(255)
+        + email : varchar(255)
+        + phone : varchar(50)
+        + address : text
+        + city : varchar(100)
+        + country : varchar(100)
+        + postal_code : varchar(20)
+        * owner_id : uuid <<FK>>
+        + image_url : text
+        + org_type : varchar(100)
+        + org_size : varchar(100)
+        + industry : varchar(100)
+        + founded_year : int
+        + revenue : bigint
+        + currency : varchar(10)
+        + employees : int
+        + departments : int
+        + subscription_plan : varchar(50)
+        + subscription_package : varchar(100)
+        + subscription_status : varchar(50)
+        + subscription_expiry : timestamp
+        + tags : text (JSON)
+        + contact_person : text (JSON)
+        + social_media : text (JSON)
+        + settings : text (JSON)
+        + status : varchar(50)
+        + verification_status : varchar(50)
+        + notes : text
+        + last_login_at : timestamp
+        + created_at : timestamp
+        + updated_at : timestamp
+
+        ' Cached counters for quick queries
+        + courses_count : int <<DEFAULT: 0>>
+        + members_count : int <<DEFAULT: 0>>
+        + recruitment_tests_count : int <<DEFAULT: 0>>
+    }
+    
+    ' FIX: Added organization_invitations table for invite member via email
+    entity "organization_invitations" as org_invitations {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        + email : varchar(255)
+        + role : varchar(50)
+        + status : varchar(50) <<ENUM: PENDING, ACCEPTED, REJECTED, EXPIRED>>
+        + invited_by : uuid <<FK>>
+        + invited_at : timestamp
+        + expires_at : timestamp
+        + accepted_at : timestamp
+    }
+    
+    entity "organization_members" as org_members {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * user_id : uuid <<FK>>
+        + status : varchar(50) <<ENUM: PENDING, ACTIVE, SUSPENDED>>
+        + joined_at : timestamp
+        + invited_by : uuid <<FK>>  ' FIX: Track who invited this member
+        ' NOTE: Role is managed via user_roles table (organization_id scoped)
+        ' No dual authority - org_members.role was removed
+    }
+    
+    entity "recruitment_tests" as recruitment_tests {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * title : varchar(255)
+        + description : text
+        * duration_minutes : int
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "recruitment_questions" as recruitment_questions {
+        * id : uuid <<PK>>
+        * test_id : uuid <<FK>>
+        + question_text : text
+        + question_type : varchar(50)
+        + options : text (JSON)
+        + points : int
+        + display_order : int
+    }
+    
+    entity "recruitment_answers" as recruitment_answers {
+        * id : uuid <<PK>>
+        * question_id : uuid <<FK>>
+        + answer_text : text
+        + is_correct : boolean
+    }
+    
+    entity "recruitment_submissions" as recruitment_submissions {
+        * id : uuid <<PK>>
+        * test_id : uuid <<FK>>
+        * user_id : uuid <<FK>>
+        + answers : text (JSON)
+        + score : int
+        + submitted_at : timestamp
+    }
+    
+    ' Relationships - Organization
+    organizations ||--o{ org_members : ""
+    organizations ||--o{ recruitment_tests : ""
+    organizations ||--|| organizations : "owner"  ' owner_id → users.id
+    ' NOTE: Role in org is managed via user_roles (scoped by organization_id)
+    ' No org_members.role to avoid dual authority conflict
+    recruitment_tests ||--o{ recruitment_questions : ""
+    recruitment_questions ||--o{ recruitment_answers : ""
+    recruitment_tests ||--o{ recruitment_submissions : ""
+}
+
+' ============================================================
+' PACKAGE: course_db (Java - course-service)
+' ============================================================
+package "course_db" #FFF3E0 {
+
+    entity "cm_courses" as cm_courses {
+        * id : uuid <<PK>>
+        + created_by : uuid <<FK>>
+        + organization_id : uuid <<FK>>
+        * title : varchar(500)
+        * slug : varchar(500) <<UK>>
+        + description : text
+        + thumbnail_url : text
+        + language : varchar(10) <<DEFAULT: 'vi'>>
+        + duration_minutes : int
+        + level : varchar(50)
+        * visibility : varchar(50)
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "cm_materials" as cm_materials {
+        * id : uuid <<PK>>
+        * course_id : uuid <<FK>>
+        * title : varchar(500)
+        * type : varchar(50)
+        + storage_key : varchar(500)
+        + content : text
+        + display_order : int
+        + created_at : timestamp
+    }
+    
+    entity "cm_quizzes" as cm_quizzes {
+        * id : uuid <<PK>>
+        * course_id : uuid <<FK>>
+        * title : varchar(500)
+        + description : text
+        + time_limit_minutes : int
+        + created_by : uuid <<FK>>
+        * status : varchar(50)
+        + created_at : timestamp
+    }
+    
+    entity "cm_questions" as cm_questions {
+        * id : uuid <<PK>>
+        * quiz_id : uuid <<FK>>
+        * content : text
+        * type : varchar(50)
+        + display_order : int
+        + created_at : timestamp
+    }
+    
+    entity "cm_question_options" as cm_question_options {
+        * id : uuid <<PK>>
+        * question_id : uuid <<FK>>
+        * content : text
+        * is_correct : boolean
+        + display_order : int  ' FIX: Added to control option display order in quiz
+    }
+    
+    entity "cm_quiz_submissions" as cm_quiz_submissions {
+        * id : uuid <<PK>>
+        * quiz_id : uuid <<FK>>
+        * student_id : uuid <<FK>>
+        + score : int
+        + answers : text
+        + submitted_at : timestamp
+    }
+    
+    entity "cm_progress" as cm_progress {
+        * id : uuid <<PK>>
+        * student_id : uuid <<FK>>
+        * course_id : uuid <<FK>>
+        * percent_complete : int
+        + last_material_id : uuid <<FK>>
+        + passed_final_exam : boolean
+        + course_completed : boolean
+        + updated_at : timestamp
+    }
+    
+    entity "cm_material_progress" as cm_material_progress {
+        * id : uuid <<PK>>
+        * student_id : uuid <<FK>>
+        * material_id : uuid <<FK>>
+        * completed_at : timestamp
+    }
+    
+    entity "cm_rewards" as cm_rewards {
+        * id : uuid <<PK>>
+        * student_id : uuid <<FK>>
+        * course_id : uuid <<FK>>
+        * tokens_awarded : int
+        + reason_code : varchar(50)
+        + related_id : varchar(255)
+        + transaction_type : varchar(10)
+        + awarded_at : timestamp
+    }
+    
+    entity "cm_course_images" as cm_course_images {
+        * id : uuid <<PK>>
+        * course_id : uuid <<FK>>
+        * image_url : text
+        + caption : varchar(500)
+        * display_order : int
+    }
+    
+    entity "course_metadata" as course_metadata {
+        * id : uuid <<PK>>
+        * course_id : uuid <<FK>>
+        + learning_objectives : text
+        + prerequisites : text
+        + target_audience : text
+        + skills_covered : text
+        + difficulty_level : varchar(50)
+        + category : text
+        + subcategory : text
+        + tags : text
+        + ai_prompt_context : text
+    }
+    
+    ' ===== CERTIFICATE TABLES =====
+    entity "cm_certificates" as cm_certificates {
+        * id : uuid <<PK>>
+        * user_id : uuid <<FK>>
+        * profile_id : uuid <<FK>>
+        * course_id : uuid <<FK>>
+        * certificate_number : varchar(100) <<UK>> <<FORMAT: CSP-{YEAR}-{UUID8}>>
+        + issued_by : uuid <<FK>>
+        * issued_at : timestamp
+        + expires_at : timestamp <<NULLABLE>>  ' FIX: Most certificates don't expire
+        * status : varchar(50) <<DEFAULT: 'ACTIVE'>>
+        + verification_url : text
+        + credential_id : varchar(255)
+        + metadata : text (JSON)
+        + created_at : timestamp  ' FIX: Added missing created_at
+    }
+    
+    entity "cm_certificate_templates" as cm_certificate_templates {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        + course_id : uuid <<FK>>  ' FIX: Changed from required (*) to optional (+)
+        ' Template can be shared across all courses in org if course_id is NULL
+        * name : varchar(255)
+        + description : text
+        + background_image_url : text
+        + border_style : varchar(100)
+        + logo_url : text
+        + signature_url : text
+        + is_default : boolean
+        + created_at : timestamp
+    }
+    
+    entity "cm_certificate_issuances" as cm_certificate_issuances {
+        * id : uuid <<PK>>
+        * certificate_id : uuid <<FK>>
+        * action : varchar(20) <<ENUM: ISSUE, REVOKE, REISSUE, SUSPEND>>
+        * performed_by : uuid <<FK>>
+        * reason : text  ' FIX: Required (*) - must document WHY certificate was revoked/suspended
+        + metadata : text (JSON)  ' Additional context: revocation criteria, approver notes
+        * performed_at : timestamp
+    }
+    
+    entity "cm_certificate_skills" as cm_certificate_skills {
+        * id : uuid <<PK>>
+        * certificate_id : uuid <<FK>>
+        * skill_name : varchar(255)
+        + skill_level : varchar(50)
+        + earned_at : timestamp
+    }
+    
+    ' Huy hiệu của khóa học (do tổ chức định nghĩa) - hoàn thành khóa học sẽ nhận cả chứng chỉ + huy hiệu
+    entity "cm_course_badges" as cm_course_badges {
+        * id : uuid <<PK>>
+        * course_id : uuid <<FK>>
+        * organization_id : uuid <<FK>>
+        * badge_name : varchar(255)
+        + badge_icon : varchar(500)
+        + description : text
+        + display_order : int
+        + created_at : timestamp
+        ' FIX: Added unique constraint to prevent duplicate badge names per course/org
+        <<UNIQUE: (organization_id, badge_name)>>
+    }
+    
+    ' Relationships - Course
+    cm_courses ||--o{ cm_materials : ""
+    cm_courses ||--o{ cm_quizzes : ""
+    cm_courses ||--o{ cm_progress : ""
+    cm_courses ||--o{ cm_course_images : ""
+    cm_courses ||--o{ cm_rewards : ""
+    cm_courses ||--o{ course_metadata : ""   ' 1-N: 1 course can have many metadata (i18n, platforms)
+    ' FIX: Changed from ||--|| (1-1) to ||--o{ (1-N) for multi-language/platform support
+    
+    cm_quizzes ||--o{ cm_questions : ""
+    cm_questions ||--o{ cm_question_options : ""
+    cm_quizzes ||--o{ cm_quiz_submissions : ""
+    
+    cm_materials ||--o{ cm_material_progress : ""
+    ' NOTE: Removed redundant cm_progress }o--o| cm_materials
+    ' → last_material_id in cm_progress already tracks current position
+    ' → cm_materials linked via course_id in cm_progress
+    
+    ' Relationships - Certificates
+    cm_courses ||--o{ cm_certificates : ""
+    cm_courses ||--o{ cm_certificate_templates : ""
+    cm_courses ||--o| cm_course_badges : ""
+    cm_certificates ||--o{ cm_certificate_issuances : ""
+    cm_certificates ||--o{ cm_certificate_skills : ""
+}
+
+' ============================================================
+' PACKAGE: exam_db (Java + Node - exam_service)
+' CONSOLIDATED: exam_db + proctoring_db
+' ============================================================
+package "exam_db" #FCE4EC {
+
+    entity "exams" as exams {
+        * id : uuid <<PK>>
+        ' org_id removed: org can be derived from course_id → cm_courses.organization_id
+        ' This eliminates redundant denormalization and ensures consistency
+        * course_id : uuid <<FK>>
+        * title : varchar(500)
+        + description : text
+        + start_at : timestamp
+        + end_at : timestamp
+        + duration_minutes : int
+        + pass_score : int
+        + max_attempts : int
+        + total_questions : int
+        * created_by : uuid <<FK>>
+        * status : varchar(50)
+        + randomize_question_order : boolean <<DEFAULT: false>>  ' FIX: Randomize question order
+        + randomize_option_order : boolean <<DEFAULT: false>>   ' FIX: Randomize option order
+        + show_correct_answers : boolean <<DEFAULT: true>>     ' FIX: Show/hide correct answers after submission
+        + partial_scoring_enabled : boolean <<DEFAULT: false>> ' FIX: Partial scoring support
+        + created_at : timestamp
+    }
+    
+    entity "questions" as questions {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * type : varchar(50)
+        * content : jsonb
+        + difficulty : int
+        + explanation : text
+        + score : int
+        + text : varchar(2000)
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "exam_questions" as exam_questions {
+        * id : uuid <<PK>>
+        * exam_id : uuid <<FK>>
+        * question_id : uuid <<FK>>
+        + display_order : int
+        + score : int
+        + created_at : timestamp
+    }
+    
+    entity "cm_exam_registrations" as cm_exam_registrations {
+        * id : uuid <<PK>>
+        * exam_id : uuid <<FK>>
+        * user_id : uuid <<FK>>
+        * registered_at : timestamp
+        * status : varchar(50)
+    }
+    
+    entity "exam_tags" as exam_tags {
+        * exam_id : uuid <<FK>>
+        * tag : varchar(100)
+    }
+    
+    entity "question_tags" as question_tags {
+        * question_id : uuid <<FK>>
+        * tag : varchar(100)
+    }
+    
+    entity "question_options" as question_options {
+        * id : uuid <<PK>>
+        * question_id : uuid <<FK>>
+        * content : text
+        * is_correct : boolean
+    }
+    
+    entity "quiz_submissions" as quiz_submissions {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * quiz_id : uuid <<FK>>
+        * student_id : uuid <<FK>>
+        + score : int
+        + submitted_at : timestamp
+        + answers : text
+        + started_at : timestamp
+        + time_spent_seconds : int
+        + correct_answers : int
+        + wrong_answers : int
+        + total_questions : int
+        + is_final : boolean <<DEFAULT: false>>  ' FIX: Prevent double-submit, only last_final counts
+        + ip_address : varchar(45)               ' IPv4/IPv6 for fraud detection
+        + user_agent : text
+        + version : int <<DEFAULT: 1>>           ' FIX: Optimistic locking - detect concurrent updates
+        ' <<UNIQUE: (quiz_id, student_id, is_final)>> with filter is_final = true
+    }
+    
+    entity "answers" as answers {
+        * id : uuid <<PK>>
+        * submission_id : uuid <<FK>>
+        * question_id : uuid <<FK>>
+        * selected_answer : text  ' FIX: Changed from optional (+) to required (*)
+        + score : decimal(5,2)
+        + instructor_comment : text
+        + is_correct : boolean  ' FIX: Added for quick filter without join to question_options
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "quiz_rankings" as quiz_rankings {
+        * id : uuid <<PK>>
+        * quiz_id : uuid <<FK>>
+        * student_id : uuid <<FK>>
+        * submission_id : uuid <<FK>>
+        ' score removed: already exists in quiz_submissions (denormalization removed)
+        + percentile : decimal(5,2)
+        + rank : int
+        + total_submissions : int
+        ' FIX: Added unique constraint - one rank per student per quiz
+        <<UNIQUE: (quiz_id, student_id)>>
+    }
+    
+    ' ===== CONSOLIDATED FROM PROCTORING_DB =====
+    entity "exam_sessions" as exam_sessions {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * user_id : uuid <<FK>>
+        * exam_id : uuid <<FK>>
+        * start_time : timestamp
+        + end_time : timestamp
+        * status : varchar(50)
+        + grace_period_minutes : int <<DEFAULT: 0>>  ' FIX: Grace period support (1-5 phút)
+        + violation_threshold_count : int <<DEFAULT: 3>> ' FIX: Violation threshold → auto-fail
+        + max_severity_level : varchar(50)
+        + high_severity_violation_count : int
+        + is_auto_closed : boolean <<DEFAULT: false>>   ' FIX: Session auto-closed when time expired
+        + auto_fail_reason : varchar(100)               ' FIX: Auto-fail reason if threshold exceeded
+        + review_notes : text
+        + reviewer_id : uuid
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "proctoring_events" as proctoring_events {
+        * id : uuid <<PK>>
+        * session_id : uuid <<FK>>
+        * event_type : varchar(100)
+        + event_data : text (JSON)
+        + timestamp : timestamp
+        + created_at : timestamp
+    }
+    
+    entity "media_captures" as media_captures {
+        * id : uuid <<PK>>
+        * session_id : uuid <<FK>>
+        * capture_type : varchar(50)
+        + capture_url : text
+        + thumbnail_url : text
+        + duration_seconds : int
+        + timestamp : timestamp
+        + created_at : timestamp
+    }
+    
+    ' Relationships - Exam
+    exams ||--o{ exam_questions : ""
+    questions ||--o{ exam_questions : ""
+    exams ||--o{ cm_exam_registrations : ""
+    exams ||--o{ exam_tags : ""
+    questions ||--o{ question_tags : ""
+    questions ||--o{ question_options : ""
+    
+    ' Cross-database: questions belong to organizations
+    ' (organizations in organization_db)
+    
+    exams ||--o{ quiz_submissions : ""
+    quiz_submissions ||--o{ answers : ""
+    questions ||--o{ answers : ""
+    exams ||--o{ quiz_rankings : ""
+    quiz_submissions ||--|| quiz_rankings : ""
+    
+    ' Relationships - Proctoring (CONSOLIDATED)
+    exam_sessions ||--o{ proctoring_events : ""
+    exam_sessions ||--o{ media_captures : ""
+    exams ||--o{ exam_sessions : ""
+}
+
+' ============================================================
+' PACKAGE: crypto_db (Node - crypto_service)
+' CONSOLIDATED: wallet_db + copyright_db + blockchain credentials
+' ============================================================
+package "crypto_db" #E0F2F1 {
+
+    ' ===== CRYPTO PROVIDERS =====
+    ' Danh sách các blockchain/network được hỗ trợ (BTC, ETH, SOL, Polygon...)
+    entity "crypto_providers" as crypto_providers {
+        * id : uuid <<PK>>
+        * code : varchar(50) <<UK>> (ETH, BTC, SOL, MATIC...)
+        * name : varchar(255)
+        * chain_id : int
+        * symbol : varchar(20)
+        * is_active : boolean
+        * is_evm_compatible : boolean
+        + rpc_url : text
+        + explorer_url : text
+        + created_at : timestamp
+    }
+
+    ' ===== ORGANIZATION CRYPTO PROVIDERS =====
+    ' Each organization can configure which blockchain providers they support
+    ' Maps organizations → crypto providers (many-to-many)
+    entity "organization_crypto_providers" as org_crypto_providers {
+        * id : uuid <<PK>>
+        * organization_id : uuid <<FK>>
+        * provider_id : uuid <<FK>>
+        + is_enabled : boolean <<DEFAULT: true>>
+        + custom_rpc_url : text
+        + api_key : text
+        + created_at : timestamp
+    }
+    
+    ' ===== USER CRYPTO ACCOUNTS (1 profile = 1 private key) =====
+    ' Mỗi profile có 1 private key, có thể dùng cho nhiều provider
+    entity "crypto_accounts" as crypto_accounts {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        * provider_id : uuid <<FK>>
+        * address : varchar(255) <<UK>>
+        + encrypted_private_key : text
+        + encryption_algorithm : varchar(50) <<DEFAULT: 'AES-256-GCM'>>  ' FIX: Record which algo was used
+        + key_version : int <<DEFAULT: 1>>              ' FIX: Key rotation without data loss
+        + encryption_iv : varchar(64)                    ' FIX: Initialization Vector for decryption
+        + encryption_salt : varchar(64)                  ' FIX: Salt for key derivation (Argon2id/KDF)
+        + public_key : text
+        + nonce : bigint
+        + is_primary : boolean <<DEFAULT: false>>
+        + status : varchar(32)
+        + linked_at : timestamp
+        + last_used_at : timestamp
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "token_deposits" as token_deposits {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        * crypto_account_id : uuid <<FK>>
+        * tx_hash : varchar(255)  ' FIX: Removed <<UK>> - chain reorg can reuse tx_hash with different block
+        * from_address : varchar(255)
+        * amount : bigint
+        * token_symbol : varchar(50)
+        * status : varchar(50)
+        + block_number : bigint
+        + confirmations : int <<DEFAULT: 0>>    ' FIX: Track confirmation count
+        + processed_at : timestamp
+        + created_at : timestamp
+        <<UNIQUE: (tx_hash, block_number)>>     ' Unique deposit = tx_hash + block (prevents chain reorg issues)
+    }
+    
+    entity "token_withdrawals" as token_withdrawals {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        * crypto_account_id : uuid <<FK>>
+        * to_address : varchar(255)
+        * amount : bigint
+        * token_symbol : varchar(50)
+        * status : varchar(50)
+        + tx_hash : varchar(255)
+        + processed_at : timestamp
+        + created_at : timestamp
+    }
+    
+    entity "gifts" as gifts {
+        * id : uuid <<PK>>
+        * sender_id : uuid <<FK>>
+        * recipient_id : uuid <<FK>>
+        * amount : bigint
+        + token_symbol : varchar(50)
+        + message : text
+        + status : varchar(50)
+        + tx_hash : varchar(255)
+        + created_at : timestamp
+    }
+    
+    ' ===== COPYRIGHT / NFT =====
+    entity "copyrights" as copyrights {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        * crypto_account_id : uuid <<FK>>
+        * filename : varchar(255)
+        + stored_filename : varchar(255)
+        * hash : varchar(255) <<UK>>
+        + content_hash : varchar(255)
+        + transaction_hash : varchar(255)
+        + mime_type : varchar(100)
+        + file_size : int
+        + title : varchar(255)
+        + author : varchar(255)
+        + description : text
+        + category : varchar(100)
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "document_similarities" as document_similarities {
+        * id : uuid <<PK>>
+        * source_document_id : uuid <<FK>>
+        * target_document_id : uuid <<FK>>
+        + similarity_score : decimal(5,4)
+        + created_at : timestamp
+        ' NOTE: This table links TWO documents (source AND target)
+        ' Each FK references copyrights.id
+        ' Added unique constraint to prevent duplicate pairs in both directions
+    }
+    
+    ' FIX: Relationships corrected - each document similarity links two copyrights
+    copyrights ||--o{ document_similarities : "source"
+    copyrights ||--o{ document_similarities : "target"
+
+    ' ===== MULTISIG (optional - cho phép nhiều người ký) =====
+    entity "multisig_wallets" as multisig_wallets {
+        * id : uuid <<PK>>
+        * crypto_account_id : uuid <<FK>>
+        * address : varchar(255) <<UK>>
+        + name : varchar(255)
+        + description : text
+        + required_confirmations : int
+        + total_confirmations : int
+        + is_active : boolean
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+
+    entity "multisig_transactions" as multisig_transactions {
+        * id : uuid <<PK>>
+        * wallet_id : uuid <<FK>>
+        * tx_index_on_chain : int
+        + tx_hash : varchar(255)
+        * destination : varchar(255)
+        * value : varchar(255)
+        + data : text
+        + description : text
+        * status : varchar(50)
+        + confirmations : text[] (array)
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+
+    ' Relationships - Crypto
+    crypto_providers ||--o{ crypto_accounts : ""
+    crypto_providers ||--o{ org_crypto_providers : ""
+    organizations ||--o{ org_crypto_providers : ""   ' Cross-db: orgs can manage their crypto providers
+    profiles ||--o{ crypto_accounts : ""
+    crypto_accounts ||--o{ token_deposits : ""
+    crypto_accounts ||--o{ token_withdrawals : ""
+    crypto_accounts ||--o{ gifts : ""
+    crypto_accounts ||--o{ copyrights : ""
+    crypto_accounts ||--o{ multisig_wallets : ""
+    crypto_accounts ||--o{ multisig_transactions : ""
+    multisig_wallets ||--o{ multisig_transactions : ""
+}
+
+' ============================================================
+' PACKAGE: profile_db (Java - profile-service)
+' ============================================================
+package "profile_db" #F3E5F5 {
+
+    entity "profiles" as profiles {
+        * id : uuid <<PK>>
+        * user_id : uuid <<UK>>
+        + first_name : varchar(100)
+        + last_name : varchar(100)
+        + email : varchar(255)
+        + bio : text
+        + avatar_url : text
+        + total_points : int <<DEFAULT: 0>>
+        + courses_completed : int <<DEFAULT: 0>>
+        + exams_passed : int <<DEFAULT: 0>>
+        + created_at : timestamp
+        + updated_at : timestamp
+    }
+    
+    entity "profile_certificates" as profile_certificates {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        * certificate_id : uuid <<FK>>
+        + title : varchar(500)
+        + issuer : varchar(255)
+        + issued_at : timestamp
+        + credential_url : text
+    }
+    
+    entity "profile_badges" as profile_badges {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        + badge_name : varchar(100)
+        + badge_icon : varchar(255)
+        + description : text
+        + earned_at : timestamp
+        + certificate_id : uuid
+        + course_id : uuid
+    }
+    
+    entity "profile_completed_courses" as profile_completed_courses {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        + course_id : uuid <<FK>>
+        + completed_at : timestamp
+        + final_score : int
+        + note : text <<DEPRICATED: Use cm_progress instead>>
+    }
+    
+    entity "profile_skills" as profile_skills {
+        * id : uuid <<PK>>
+        * profile_id : uuid <<FK>>
+        + skill_name : varchar(100)
+        + proficiency_level : varchar(50)
+        + certificate_id : uuid
+        + earned_at : timestamp
+    }
+    
+    ' Relationships - Profile
+    profiles ||--o{ profile_certificates : ""
+    profiles ||--o{ profile_badges : ""
+    profiles ||--o{ profile_completed_courses : ""
+    profiles ||--o{ profile_skills : ""
+}
+
+' ============================================================
+' CROSS-DATABASE RELATIONSHIPS
+' ============================================================
+
+note as N1
+  <&key> Cross-Database Relationships (Optimized):
+  
+  • users.id (identity_db) → org_members.user_id (organization_db)
+  • users.id (identity_db) → organizations.owner_id (organization_db)
+  • users.id (identity_db) → cm_progress.student_id (course_db)
+  • users.id (identity_db) → cm_quiz_submissions.student_id (course_db)
+  • users.id (identity_db) → cm_rewards.student_id (course_db)
+  • users.id (identity_db) → cm_certificates.user_id (course_db)
+  • users.id (identity_db) → cm_exam_registrations.user_id (exam_db)
+  • users.id (identity_db) → quiz_submissions.student_id (exam_db)
+  • users.id (identity_db) → exam_sessions.user_id (exam_db)
+  • users.id (identity_db) → profiles.user_id (profile_db)
+  • profiles.id (profile_db) → cm_certificates.profile_id (course_db)
+  • profiles.id (profile_db) → crypto_accounts.profile_id (crypto_db)
+  
+  • cm_courses.id (course_db) → exams.course_id (exam_db)
+  
+  • organizations.id (organization_db) → cm_courses.organization_id (course_db)
+  • organizations.id (organization_db) → questions.organization_id (exam_db)
+  • organizations.id (organization_db) → quiz_submissions.organization_id (exam_db)
+  • organizations.id (organization_db) → exam_sessions.organization_id (exam_db)
+  • organizations.id (organization_db) → org_crypto_providers.organization_id (crypto_db)
+
+  • crypto_providers.id (crypto_db) → org_crypto_providers.provider_id (crypto_db)
+  
+  • cm_certificates.id (course_db) → profile_skills.certificate_id (profile_db)
+  • cm_course_badges (course_db) → profile_badges (profile_db) via sync when certificate issued
+  
+  • crypto_accounts.id (crypto_db) → copyrights.crypto_account_id (crypto_db)
+  
+  Note: All foreign keys now use UUID consistently
+end note
+
+' ============================================================
+' DATABASE SUMMARY
+' ============================================================
+
+note as N2
+  <&database> Database Consolidation Summary:
+  
+  BEFORE: 10 databases
+  AFTER:  7 databases (-30%)
+  
+  GROUPS:
+  ┌────────────────┬──────────────────────────────────┐
+  │ identity_db    │ users, roles, permissions,     │
+  │ (CONSOLIDATED) │ admin_audit_trails              │
+  ├────────────────┼──────────────────────────────────┤
+  │ organization_db│ organizations, recruitment      │
+  ├────────────────┼──────────────────────────────────┤
+  │ course_db      │ courses, quizzes, certificates, │
+  │                │ badges, progress                │
+  ├────────────────┼──────────────────────────────────┤
+  │ exam_db        │ exams, questions, submissions, │
+  │ (CONSOLIDATED) │ exam_sessions, proctoring       │
+  ├────────────────┼──────────────────────────────────┤
+  │ crypto_db      │ crypto_providers, org_crypto_providers,│
+  │ (CONSOLIDATED) │ crypto_accounts, tokens, gifts,    │
+  │                │ copyrights, multisig               │
+  ├────────────────┼──────────────────────────────────┤
+  │ profile_db     │ profiles, certificates, badges, │
+  │                │ skills                          │
+  └────────────────┴──────────────────────────────────┘
+end note
+
+' ============================================================
+' BUSINESS RULE: Certificate → Profile Skills Sync
+' ============================================================
+note as N3
+  <&document> Khi cấp chứng chỉ (certificate issued):
+  
+  1. Tạo bản ghi trong cm_certificates
+  2. Ghi các kỹ năng vào cm_certificate_skills
+  3. **Tự động đồng bộ** từ cm_certificate_skills → profile_skills:
+     - Với mỗi skill trong cm_certificate_skills:
+       • INSERT hoặc UPDATE profile_skills (profile_id, skill_name, proficiency_level)
+       • Gán certificate_id = cm_certificates.id, earned_at = issued_at
+     - Nếu skill_name đã tồn tại: cập nhật proficiency_level nếu level mới cao hơn
+  
+  4. **Tự động cấp huy hiệu** (nếu khóa học có cm_course_badges):
+     - Lấy badge từ cm_course_badges theo course_id
+     - INSERT profile_badges (profile_id, badge_name, badge_icon, description, earned_at, certificate_id, course_id)
+     - Huy hiệu = 1 badge riêng do tổ chức tạo cho khóa học đó
+end note
+
+@enduml

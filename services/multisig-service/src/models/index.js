@@ -1,38 +1,57 @@
-const sequelize = require('../config/database');
+// file: src/models/index.js
+// crypto_db: dùng chung cho multisig-service, copyright-service, token-reward-service
 
-const DataTypes = require('sequelize').DataTypes;
+const { Sequelize, DataTypes } = require('sequelize');
+const config = require('../config');
+
+const sequelize = new Sequelize(
+    config.database.name,
+    config.database.user,
+    config.database.pass,
+    {
+        host: config.database.host,
+        port: config.database.port,
+        dialect: 'postgres',
+        logging: config.server.env === 'development' ? console.log : false,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+        }
+    }
+);
+
+// Import models - align với crypto_db schema
+const CryptoAccount = require('./userWallet.model')(sequelize, DataTypes);
 const MultisigWallet = require('./multisigWallet.model')(sequelize, DataTypes);
 const MultisigTransaction = require('./multisigTransaction.model')(sequelize, DataTypes);
-const UserWallet = require('./userWallet.model')(sequelize, DataTypes);
 
-// Định nghĩa associations
+// Associations
 MultisigWallet.hasMany(MultisigTransaction, {
     foreignKey: 'walletId',
     as: 'transactions'
 });
-
 MultisigTransaction.belongsTo(MultisigWallet, {
     foreignKey: 'walletId',
     as: 'wallet'
 });
 
-MultisigWallet.hasMany(UserWallet, {
-    foreignKey: 'walletId',
-    as: 'ownerMappings'
+CryptoAccount.hasMany(MultisigWallet, {
+    foreignKey: 'cryptoAccountId',
+    as: 'multisigWallets'
 });
-
-UserWallet.belongsTo(MultisigWallet, {
-    foreignKey: 'walletId',
-    as: 'wallet'
+MultisigWallet.belongsTo(CryptoAccount, {
+    foreignKey: 'cryptoAccountId',
+    as: 'cryptoAccount'
 });
 
 const db = {
     sequelize,
-    Sequelize: require('sequelize'),
+    Sequelize,
+    CryptoAccount,
     MultisigWallet,
     MultisigTransaction,
-    UserWallet
 };
 
 module.exports = db;
-

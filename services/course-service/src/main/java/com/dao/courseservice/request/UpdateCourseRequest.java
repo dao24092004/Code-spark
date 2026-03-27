@@ -6,10 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO chứa dữ liệu để cập nhật một khóa học (UC29).
- * Các trường là optional, chỉ những trường được gửi sẽ được cập nhật.
- */
+import java.util.UUID;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -24,7 +22,5 @@ public class UpdateCourseRequest {
 
     private String thumbnailUrl;
     private String visibility;
-    private String organizationId; 
-
-// Thêm getter và setter
+    private UUID organizationId;
 }

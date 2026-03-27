@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       field: 'quiz_id'
     },
     studentId: {
-      type: DataTypes.BIGINT,
+      type: DataTypes.UUID,
       allowNull: false,
       field: 'student_id'
     },
@@ -20,10 +20,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.UUID,
       allowNull: false,
       field: 'submission_id'
-    },
-    score: {
-      type: DataTypes.INTEGER,
-      allowNull: false
     },
     percentile: {
       type: DataTypes.DECIMAL(5, 2),
@@ -36,9 +32,8 @@ module.exports = (sequelize, DataTypes) => {
       field: 'total_submissions'
     }
   }, {
-    tableName: 'quiz_rankings', // Align with migration 005
-    timestamps: false, // Table doesn't have created_at/updated_at columns
+    tableName: 'quiz_rankings',
+    timestamps: false,
   });
   return QuizRanking;
 };
-

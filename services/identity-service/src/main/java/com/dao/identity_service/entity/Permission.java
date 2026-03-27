@@ -1,55 +1,54 @@
 package com.dao.identity_service.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "permissions")
 @Getter
 @Setter
-@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = "roles")
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Permission {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    UUID id;
 
-    @Column(unique = true, nullable = false)
-    private String name;
+    @Column(name = "name", unique = true, nullable = false, length = 100)
+    String name;
 
-    @Column(length = 500)
-    private String description;
+    @Column(name = "description", columnDefinition = "TEXT")
+    String description;
 
-    @Column(name = "resource")
-    private String resource;
+    @Column(name = "resource", length = 100)
+    String resource;
 
-    @Column(name = "action")
-    private String action;
+    @Column(name = "action", length = 50)
+    String action;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    LocalDateTime updatedAt;
 
-    @ManyToMany(mappedBy = "permissions")
+    @OneToMany(mappedBy = "permission", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    @ToString.Exclude
-    private Set<Role> roles = new HashSet<>();
+    Set<RolePermission> rolePermissions = new HashSet<>();
+
+    @OneToMany(mappedBy = "permission", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<UserPermission> userPermissions = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

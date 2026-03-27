@@ -18,6 +18,7 @@ import com.dao.courseservice.request.CreateQuizRequest;
 import com.dao.courseservice.request.UpdateQuizRequest;
 import com.dao.courseservice.response.QuizAdminResponse;
 import com.dao.courseservice.response.QuizSummaryResponse;
+import com.dao.courseservice.response.QuestionAdminResponse;
 import org.springframework.http.HttpStatus;
 import java.util.List;
 
@@ -121,5 +122,35 @@ public class QuizController {
     ) {
         quizService.deleteQuiz(quizId);
         return ResponseEntity.ok(ApiResponse.success("Quiz deleted successfully"));
+    }
+
+    // ========================================================================
+    // [THÊM MỚI] - API cho exam-service lấy câu hỏi từ cm_questions
+    // ========================================================================
+
+    /**
+     * (Exam Service) Lấy tất cả câu hỏi của một quiz cho exam-service.
+     * Che giấu đáp án đúng.
+     */
+    @GetMapping("/quizzes/{quizId}/questions")
+    @PreAuthorize("hasAuthority('EXAM_SERVICE') or hasAuthority('COURSE_READ')")
+    public ResponseEntity<ApiResponse<List<QuestionAdminResponse>>> getQuestionsForExam(
+            @PathVariable UUID quizId
+    ) {
+        List<QuestionAdminResponse> questions = quizService.getQuestionsForExam(quizId);
+        return ResponseEntity.ok(ApiResponse.success(questions));
+    }
+
+    /**
+     * (Exam Service - Admin) Lấy tất cả câu hỏi của một quiz cho exam-service.
+     * Bao gồm đáp án đúng.
+     */
+    @GetMapping("/quizzes/{quizId}/admin/questions")
+    @PreAuthorize("hasAuthority('EXAM_SERVICE') or hasAuthority('COURSE_ADMIN')")
+    public ResponseEntity<ApiResponse<List<QuestionAdminResponse>>> getQuestionsForExamAdmin(
+            @PathVariable UUID quizId
+    ) {
+        List<QuestionAdminResponse> questions = quizService.getQuestionsForExamAdmin(quizId);
+        return ResponseEntity.ok(ApiResponse.success(questions));
     }
 }

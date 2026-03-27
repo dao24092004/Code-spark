@@ -1,102 +1,111 @@
 package com.dao.identity_service.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.dao.identity_service.key.WebAuthnCredential;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
 @Getter
 @Setter
-@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = "roles")
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    UUID id;
 
-    @Column(unique = true, nullable = false)
-    private String username;
+    @Column(name = "username", unique = true, nullable = false, length = 100)
+    String username;
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(name = "email", unique = true, nullable = false, length = 255)
+    String email;
 
-    @Column
-    private String password;
+    @Column(name = "password_hash", length = 255)
+    String passwordHash;
 
-    @Column(name = "first_name")
-    private String firstName;
+    @Column(name = "first_name", length = 100)
+    String firstName;
 
-    @Column(name = "last_name")
-    private String lastName;
+    @Column(name = "last_name", length = 100)
+    String lastName;
 
-    @Column(name = "phone_number")
-    private String phoneNumber;
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    String avatarUrl;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
+    @Column(name = "phone_number", length = 50)
+    String phoneNumber;
 
+    @Column(name = "provider", length = 50)
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false,name = "provider")
     @Builder.Default
-    private AuthProvider provider = AuthProvider.LOCAL;
+    AuthProvider provider = AuthProvider.LOCAL;
+
+    @Column(name = "status", length = 50)
+    @Builder.Default
+    String status = "ACTIVE";
+
+    @Column(name = "is_email_verified")
+    @Builder.Default
+    Boolean isEmailVerified = false;
 
     @Column(name = "is_enabled")
     @Builder.Default
-    private Boolean enabled = true;
-
-    @Column(name = "is_account_non_expired")
-    @Builder.Default
-    private Boolean accountNonExpired = true;
-
-    @Column(name = "is_account_non_locked")
-    @Builder.Default
-    private Boolean accountNonLocked = true;
-
-    @Column(name = "is_credentials_non_expired")
-    @Builder.Default
-    private Boolean credentialsNonExpired = true;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    Boolean isEnabled = true;
 
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    LocalDateTime lastLoginAt;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @Column(name = "created_at")
+    LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    @ToString.Exclude
-    private Set<Role> roles = new HashSet<>();
+    Set<UserRole> userRoles = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<UserPermission> userPermissions = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<UserCredential> userCredentials = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<VerificationCode> verificationCodes = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    Set<WebAuthnCredential> webAuthnCredentials = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = "ACTIVE";
+        }
+        if (this.isEmailVerified == null) {
+            this.isEmailVerified = false;
+        }
+        if (this.isEnabled == null) {
+            this.isEnabled = true;
+        }
     }
 
     @PreUpdate
@@ -106,15 +115,33 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .flatMap(role -> role.getPermissions().stream())
-                .map(permission -> (GrantedAuthority) () -> permission.getName())
-                .collect(Collectors.toSet());
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        for (UserRole ur : userRoles) {
+            Role role = ur.getRole();
+            if (role != null && role.getRolePermissions() != null) {
+                role.getRolePermissions().forEach(rp -> {
+                    Permission permission = rp.getPermission();
+                    if (permission != null) {
+                        authorities.add(() -> permission.getName());
+                    }
+                });
+            }
+        }
+
+        for (UserPermission up : userPermissions) {
+            Permission permission = up.getPermission();
+            if (permission != null) {
+                authorities.add(() -> permission.getName());
+            }
+        }
+
+        return authorities;
     }
 
     @Override
     public String getPassword() {
-        return password;
+        return passwordHash;
     }
 
     @Override
@@ -124,21 +151,33 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return accountNonExpired;
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return accountNonLocked;
+        return !"LOCKED".equals(status);
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return credentialsNonExpired;
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return enabled;
+        return isEnabled != null && isEnabled;
+    }
+
+    public void addRole(Role role) {
+        UserRole userRole = UserRole.builder()
+                .user(this)
+                .role(role)
+                .build();
+        this.userRoles.add(userRole);
+    }
+
+    public void removeRole(Role role) {
+        this.userRoles.removeIf(ur -> ur.getRole() != null && ur.getRole().equals(role));
     }
 }

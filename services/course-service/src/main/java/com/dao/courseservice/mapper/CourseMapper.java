@@ -9,50 +9,35 @@ import org.springframework.stereotype.Component;
 @Component
 public class CourseMapper {
 
-    private String normalizeVisibility(String value) {
-        if (value == null) return "private";
-        String v = value.trim().toLowerCase();
-        // DB constraint chỉ chấp nhận 'public' hoặc 'private'
-        if (v.equals("public") || v.equals("published")) {
-            return "public";
-        }
-        return "private";
-    }
-
-    /**
-     * Chuyển từ CreateCourseRequest sang Course entity
-     */
     public Course toEntity(CreateCourseRequest request) {
         return Course.builder()
                 .id(request.getId())
-                .organizationId(request.getOrganizationId())        // ⭐ NEW
+                .organizationId(request.getOrganizationId())
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .thumbnailUrl(request.getThumbnailUrl())
-                .visibility(normalizeVisibility(request.getVisibility()))
+                .visibility(request.getVisibility() != null ? request.getVisibility() : "private")
                 .build();
     }
 
-    /**
-     * Chuyển từ Course entity sang CourseResponse
-     */
     public CourseResponse toCourseResponse(Course course) {
         return CourseResponse.builder()
                 .id(course.getId())
-                .organizationId(course.getOrganizationId())        // ⭐ NEW
+                .createdBy(course.getCreatedBy())
+                .organizationId(course.getOrganizationId())
                 .title(course.getTitle())
                 .slug(course.getSlug())
                 .description(course.getDescription())
                 .thumbnailUrl(course.getThumbnailUrl())
+                .language(course.getLanguage())
+                .durationMinutes(course.getDurationMinutes())
+                .level(course.getLevel())
                 .visibility(course.getVisibility())
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();
     }
 
-    /**
-     * Cập nhật Course entity từ UpdateCourseRequest
-     */
     public void updateEntityFromRequest(Course course, UpdateCourseRequest request) {
         if (request.getTitle() != null) {
             course.setTitle(request.getTitle());
@@ -64,9 +49,9 @@ public class CourseMapper {
             course.setThumbnailUrl(request.getThumbnailUrl());
         }
         if (request.getVisibility() != null) {
-            course.setVisibility(normalizeVisibility(request.getVisibility()));
+            course.setVisibility(request.getVisibility());
         }
-        if (request.getOrganizationId() != null) {                 // ⭐ NEW
+        if (request.getOrganizationId() != null) {
             course.setOrganizationId(request.getOrganizationId());
         }
     }

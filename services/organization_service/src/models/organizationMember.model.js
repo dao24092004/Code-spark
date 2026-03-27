@@ -1,34 +1,44 @@
 // src/models/organizationMember.model.js
-
-// Hàm này sẽ được file index.js gọi
+// Theo ERD: organization_members - Role được quản lý qua user_roles (organization_id scoped)
+// Không có role trong bảng này để tránh xung đột quyền
 module.exports = (sequelize, DataTypes) => {
   const OrganizationMember = sequelize.define('OrganizationMember', {
-    id: { 
-      type: DataTypes.BIGINT, 
-      primaryKey: true, 
-      autoIncrement: true 
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
-    organizationId: { 
-      type: DataTypes.BIGINT, 
-      allowNull: false, 
-      field: 'organization_id' 
+    organizationId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'organization_id'
     },
-    userId: { 
-      type: DataTypes.BIGINT, 
-      allowNull: false, 
-      field: 'user_id' 
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'user_id'
     },
-    role: {
+    status: {
       type: DataTypes.STRING(50),
       allowNull: false,
-      defaultValue: 'USER',
-      field: 'role_id'
+      defaultValue: 'PENDING',  // PENDING, ACTIVE, SUSPENDED
+      field: 'status'
+    },
+    joinedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'joined_at'
+    },
+    invitedBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'invited_by'
     }
   }, {
     tableName: 'organization_members',
     timestamps: true,
     createdAt: 'joined_at',
-    updatedAt: false // Bảng này không có 'updated_at'
+    updatedAt: false // Bảng này chỉ có joined_at, không có updated_at
   });
 
   return OrganizationMember;

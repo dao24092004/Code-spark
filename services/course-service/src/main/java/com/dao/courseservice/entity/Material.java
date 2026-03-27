@@ -15,7 +15,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "cm_materials")
+@Table(name = "cm_materials", indexes = {
+    @Index(name = "idx_cm_materials_course", columnList = "course_id"),
+    @Index(name = "idx_cm_materials_order", columnList = "display_order")
+})
 public class Material {
 
     @Id
@@ -27,19 +30,23 @@ public class Material {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String title;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String type;
 
+    @Column(name = "storage_key", length = 500)
     private String storageKey;
 
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    private Integer displayOrder;
+    @Column(name = "display_order")
+    @Builder.Default
+    private Integer displayOrder = 0;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

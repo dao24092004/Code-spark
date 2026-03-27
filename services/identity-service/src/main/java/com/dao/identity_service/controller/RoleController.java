@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/roles")
@@ -51,7 +52,7 @@ public class RoleController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
-    public ResponseEntity<ApiResponse<RoleDto>> getRoleById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RoleDto>> getRoleById(@PathVariable UUID id) {
         RoleDto role = roleService.findRoleById(id);
         return ResponseEntity.ok(ApiResponse.success("Role retrieved successfully", role));
     }
@@ -83,7 +84,7 @@ public class RoleController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> updateRole(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody CreateRoleRequest request
     ) {
         RoleDto updatedRole = roleService.updateRole(id, request);
@@ -96,8 +97,8 @@ public class RoleController {
     @PutMapping("/{id}/permissions")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> addPermissionsToRole(
-            @PathVariable Long id,
-            @RequestBody Set<Long> permissionIds
+            @PathVariable UUID id,
+            @RequestBody Set<UUID> permissionIds
     ) {
         RoleDto updatedRole = roleService.addPermissions(id, permissionIds);
         return ResponseEntity.ok(ApiResponse.success("Permissions added successfully", updatedRole));
@@ -109,8 +110,8 @@ public class RoleController {
     @PutMapping("/{id}/permissions/replace")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> replaceRolePermissions(
-            @PathVariable Long id,
-            @RequestBody Set<Long> permissionIds
+            @PathVariable UUID id,
+            @RequestBody Set<UUID> permissionIds
     ) {
         RoleDto updatedRole = roleService.replacePermissions(id, permissionIds);
         return ResponseEntity.ok(ApiResponse.success("Permissions replaced successfully", updatedRole));
@@ -122,8 +123,8 @@ public class RoleController {
     @DeleteMapping("/{id}/permissions")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<RoleDto>> removePermissions(
-            @PathVariable Long id,
-            @RequestBody Set<Long> permissionIds
+            @PathVariable UUID id,
+            @RequestBody Set<UUID> permissionIds
     ) {
         RoleDto updatedRole = roleService.removePermissions(id, permissionIds);
         return ResponseEntity.ok(ApiResponse.success("Permissions removed successfully", updatedRole));
@@ -134,7 +135,7 @@ public class RoleController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_DELETE')")
-    public ResponseEntity<ApiResponse<String>> deleteRole(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deleteRole(@PathVariable UUID id) {
         roleService.deleteRole(id);
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully"));
     }

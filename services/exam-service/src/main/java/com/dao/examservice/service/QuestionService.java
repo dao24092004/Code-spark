@@ -7,6 +7,8 @@ import com.dao.examservice.repository.QuestionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,15 +21,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class QuestionService {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private final QuestionRepository questionRepository;
-
-    public QuestionService(QuestionRepository questionRepository) {
-        this.questionRepository = questionRepository;
-    }
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public Question create(QuestionCreationRequest request) {
@@ -38,7 +37,6 @@ public class QuestionService {
         q.setExplanation(request.explanation);
         q.setScore(request.score);
         q.setText(request.text);
-        if (request.tags != null) q.setTags(request.tags);
         return questionRepository.save(q);
     }
 
@@ -115,7 +113,7 @@ public class QuestionService {
         }
 
         try {
-            JsonNode node = OBJECT_MAPPER.readTree(content);
+            JsonNode node = objectMapper.readTree(content);
             String questionKey = takePrefix(node.path("question").asText(null), QUESTION_PREFIX_LENGTH);
 
             List<String> optionKeys = new ArrayList<>();

@@ -1,33 +1,30 @@
 package com.dao.courseservice.controller;
 
-import com.dao.common.dto.ApiResponse; // Import ApiResponse từ common library
+import com.dao.common.dto.ApiResponse;
 import com.dao.courseservice.request.CreateCourseRequest;
 import com.dao.courseservice.request.UpdateCourseRequest;
 import com.dao.courseservice.request.CourseFilterCriteria;
-import com.dao.courseservice.response.CourseMemberDto; // Thêm import
+import com.dao.courseservice.response.CourseMemberDto;
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.service.CourseService;
-import jakarta.validation.Valid; // Sửa lại import từ javax thành jakarta
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus; // Thêm
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.List; // Thêm import
-import java.util.UUID;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Controller chịu trách nhiệm xử lý các request liên quan đến Khóa học (UC29).
@@ -50,7 +47,7 @@ public class CourseController {
             @org.springframework.security.core.annotation.AuthenticationPrincipal Jwt jwt,
             @RequestHeader("Authorization") String authToken
     ) {
-        Long userId = extractUserId(jwt);
+        UUID userId = extractUserId(jwt);
 
         CourseResponse newCourse = courseService.createCourse(request, userId, authToken);
         // Trả về 201 Created thì tốt hơn cho POST
@@ -74,24 +71,32 @@ public class CourseController {
     @GetMapping
     @PreAuthorize("hasAuthority('COURSE_READ')")
     public ResponseEntity<ApiResponse<Page<CourseResponse>>> getAllCourses(
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @PageableDefault(size = 20, page = 0) Pageable pageable,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String organizationId,
-            @RequestParam(required = false) Long createdBy,
             @RequestParam(required = false) String visibility,
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo) {
 
+        // Protection: Limit max page size to prevent abuse
+        int maxPageSize = 100;
+        int safePageSize = Math.min(pageable.getPageSize(), maxPageSize);
+        Pageable safePageable = org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                safePageSize,
+                pageable.getSort()
+        );
+
         CourseFilterCriteria filterCriteria = CourseFilterCriteria.builder()
                 .keyword(keyword)
-                .organizationId(organizationId)
-                .createdBy(createdBy)
+                .organizationId(organizationId != null ? UUID.fromString(organizationId) : null)
                 .visibility(visibility)
                 .createdFrom(parseDateTime(createdFrom))
                 .createdTo(parseDateTime(createdTo))
                 .build();
 
-        Page<CourseResponse> courses = courseService.getAllCourses(pageable, filterCriteria);
+        // Use safePageable instead of original pageable
+        Page<CourseResponse> courses = courseService.getAllCourses(safePageable, filterCriteria);
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 
@@ -112,29 +117,24 @@ public class CourseController {
      * Ưu tiên claim 'id' hoặc 'userId'. Nếu không có, thử parse 'sub' khi là số.
      * Ném 401 nếu không tìm thấy user id hợp lệ.
      */
-    private Long extractUserId(Jwt jwt) {
+    private UUID extractUserId(Jwt jwt) {
         Object raw = jwt.getClaim("id");
         if (raw == null) {
             raw = jwt.getClaim("userId");
         }
-        if (raw instanceof Number number) {
-            return number.longValue();
-        }
         if (raw instanceof String s) {
-            try {
-                return Long.parseLong(s);
-            } catch (NumberFormatException ignored) {
-                // fallthrough
-            }
+            return UUID.fromString(s);
         }
-        // Thử từ 'sub' nếu chứa số
+        if (raw instanceof Number n) {
+            return UUID.nameUUIDFromBytes((n.longValue() + "").getBytes());
+        }
         String sub = jwt.getSubject();
         if (sub != null) {
             try {
-                return Long.parseLong(sub);
-            } catch (NumberFormatException ignored) {}
+                return UUID.fromString(sub);
+            } catch (IllegalArgumentException ignored) {}
         }
-        throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Invalid token: missing numeric 'id'/'userId' claim");
+        throw new ResponseStatusException(HttpStatusCode.valueOf(401), "Invalid token: missing UUID 'id'/'userId' claim");
     }
 
     /**
@@ -146,9 +146,9 @@ public class CourseController {
     @GetMapping("/organization/{organizationId}")
     @PreAuthorize("hasAuthority('COURSE_READ')")
     public ResponseEntity<ApiResponse<Page<CourseResponse>>> getCoursesByOrganizationId(
-            @PathVariable String organizationId,
+            @PathVariable UUID organizationId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        
+
         Page<CourseResponse> courses = courseService.getCoursesByOrganizationId(organizationId, pageable);
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
@@ -205,8 +205,22 @@ public class CourseController {
     public ResponseEntity<ApiResponse<List<CourseMemberDto>>> getCourseRoster(
             @PathVariable UUID courseId,
             @RequestHeader("Authorization") String authToken) {
-        
+
         List<CourseMemberDto> roster = courseService.getCourseRoster(courseId, authToken);
         return ResponseEntity.ok(ApiResponse.success(roster));
+    }
+
+    /**
+     * API để lấy danh sách học viên của một khóa học với phân trang.
+     * Yêu cầu quyền 'COURSE_READ'.
+     */
+    @GetMapping("/{courseId}/students")
+    @PreAuthorize("hasAuthority('COURSE_READ')")
+    public ResponseEntity<ApiResponse<Page<CourseMemberDto>>> getCourseStudents(
+            @PathVariable UUID courseId,
+            @PageableDefault(size = 20) Pageable pageable) {
+
+        Page<CourseMemberDto> students = courseService.getCourseStudents(courseId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(students));
     }
 }

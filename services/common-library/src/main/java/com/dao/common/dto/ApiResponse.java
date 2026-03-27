@@ -54,4 +54,8 @@ public class ApiResponse<T> {
                 .error(error)
                 .build();
     }
+
+    public boolean isSuccess() {
+        return success;
+    }
 }

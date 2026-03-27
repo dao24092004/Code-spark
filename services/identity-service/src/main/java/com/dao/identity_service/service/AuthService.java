@@ -114,19 +114,19 @@ public class AuthService {
     public void sendVerificationEmail(String email) {
         User user = userService.findByEmail(email)
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
-        String code = verificationCodeService.createVerificationCode(user);
-        emailService.sendEmail(email, "Email Verification", "Your verification code is: " + code);
+        VerificationCode code = verificationCodeService.createVerificationCode(user, "EMAIL_VERIFICATION");
+        emailService.sendEmail(email, "Email Verification", "Your verification code is: " + code.getCode());
     }
 
     public AuthResponse verifyEmail(String code) {
-        VerificationCode verificationCode = verificationCodeService.getVerificationCode(code);
+        VerificationCode verificationCode = verificationCodeService.getVerificationCodeByCode(code)
+                .orElseThrow(() -> new AppException("Invalid or expired verification code", HttpStatus.BAD_REQUEST));
         if (verificationCode == null || verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new AppException("Invalid or expired verification code", HttpStatus.BAD_REQUEST);
         }
         User user = verificationCode.getUser();
-        user.setEnabled(true);
-        userService.updateUser(user.getId(), null);
-        verificationCodeService.deleteVerificationCode(verificationCode.getId());
+        user.setIsEnabled(true);
+        verificationCodeService.markAsUsed(verificationCode);
         return generateAuthResponseForUser(user);
     }
 
@@ -139,8 +139,8 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
                 .avatarUrl(user.getAvatarUrl())
-                .roles(user.getRoles().stream()
-                        .map(role -> role.getName())
+                .roles(user.getUserRoles().stream()
+                        .map(ur -> ur.getRole().getName())
                         .collect(Collectors.toSet()))
                 .permissions(user.getAuthorities().stream()
                         .map(authority -> authority.getAuthority())

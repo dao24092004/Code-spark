@@ -4,17 +4,22 @@ const organizationController = require('../controllers/organization.controller')
 const recruitmentController = require('../controllers/recruitment.controller');
 const { authenticateToken } = require('../middleware/auth.js');
 
-// Middleware to validate ID parameter
+// Middleware to validate ID parameter (hỗ trợ cả BIGINT và UUID)
 const validateId = (req, res, next) => {
-  const { id, orgId } = req.params;
-  const idToValidate = id || orgId;
-  
-  if (idToValidate && !/^\d+$/.test(idToValidate)) {
-    return res.status(400).json({ 
-      message: 'ID phải là một số nguyên dương.'
+  const { id, orgId, testId } = req.params;
+  const idToValidate = id || orgId || testId;
+
+  // UUID pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // Numeric pattern (legacy BIGINT)
+  const numericPattern = /^\d+$/;
+
+  if (idToValidate && !uuidPattern.test(idToValidate) && !numericPattern.test(idToValidate)) {
+    return res.status(400).json({
+      message: 'ID phải là UUID hoặc số nguyên dương.'
     });
   }
-  
+
   next();
 };
 
@@ -102,6 +107,30 @@ router.patch(
   authenticateToken,
   validateId,
   organizationController.updateMember
+);
+
+// API 12: POST /api/v1/organization/recruitment/tests/:testId/questions
+router.post(
+  '/recruitment/tests/:testId/questions',
+  authenticateToken,
+  validateId,
+  recruitmentController.addQuestion
+);
+
+// API 13: POST /api/v1/organization/recruitment/tests/:testId/questions/upload
+router.post(
+  '/recruitment/tests/:testId/questions/upload',
+  authenticateToken,
+  validateId,
+  recruitmentController.addQuestionsFromFile
+);
+
+// API 14: POST /api/v1/organization/recruitment/tests/:testId/submit
+router.post(
+  '/recruitment/tests/:testId/submit',
+  authenticateToken,
+  validateId,
+  recruitmentController.submitTest
 );
 
 module.exports = router;

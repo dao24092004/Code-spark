@@ -1,12 +1,10 @@
-// src/main/java/com/dao/courseservice/entity/CourseImage.java
-
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -14,7 +12,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "cm_course_images")
+@Table(name = "cm_course_images", indexes = {
+    @Index(name = "idx_cm_course_images_course", columnList = "course_id"),
+    @Index(name = "idx_cm_course_images_order", columnList = "display_order")
+})
 public class CourseImage {
 
     @Id
@@ -25,11 +26,13 @@ public class CourseImage {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
 
+    @Column(length = 500)
     private String caption;
 
-    @Column(nullable = false)
-    private Integer displayOrder;
+    @Column(name = "display_order", nullable = false)
+    @Builder.Default
+    private Integer displayOrder = 0;
 }

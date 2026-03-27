@@ -1,22 +1,23 @@
 // src/models/recruitmentTest.model.js
 module.exports = (sequelize, DataTypes) => {
   const RecruitmentTest = sequelize.define('RecruitmentTest', {
-    id: { 
-      type: DataTypes.BIGINT, 
-      primaryKey: true, 
-      autoIncrement: true 
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
-    organizationId: { 
-      type: DataTypes.BIGINT, 
-      allowNull: false, 
-      field: 'organization_id' 
+    organizationId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'organization_id'
     },
-    title: { 
-      type: DataTypes.STRING(255), 
-      allowNull: false 
+    title: {
+      type: DataTypes.STRING(255),
+      allowNull: false
     },
-    description: { 
-      type: DataTypes.TEXT 
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true
     },
     durationMinutes: {
       type: DataTypes.INTEGER,
@@ -25,9 +26,9 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     tableName: 'recruitment_tests',
-    timestamps: true,      // 1. Báo Sequelize sử dụng timestamps
-    createdAt: 'created_at', // 2. Map 'createdAt' của Sequelize -> 'created_at' của DB
-    updatedAt: false// Bảng của bạn không có 'updated_at'
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
   });
 
   return RecruitmentTest;

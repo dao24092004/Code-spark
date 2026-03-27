@@ -87,11 +87,6 @@ DB_USER=${args.dbUser || 'postgres'}
 DB_PASSWORD=${args.dbPassword || 'postgres'}
 DB_NAME=${args.dbName || 'exam_db'}
 
-# Blockchain (Ganache)
-WEB3_PROVIDER_URL=${args.web3ProviderUrl || 'http://127.0.0.1:7545'}
-OWNER_ACCOUNT_PRIVATE_KEY=${args.privateKey || 'your_ganache_account_private_key'}
-GRADE_LEDGER_CONTRACT_ADDRESS=${args.contractAddress || ''}
-
 # Services
 PROCTORING_SERVICE_URL=${serviceUrlLine}
 # Choose ONE of the token options below:

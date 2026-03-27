@@ -7,9 +7,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProgressMapper {
 
-    /**
-     * Chuyển từ Progress (entity) sang ProgressResponse (DTO).
-     */
     public ProgressResponse toProgressResponse(Progress progress) {
         if (progress == null) {
             return null;
@@ -19,7 +16,7 @@ public class ProgressMapper {
                 .studentId(progress.getStudentId())
                 .courseId(progress.getCourse().getId())
                 .percentComplete(progress.getPercentComplete())
-                .lastMaterialId(progress.getLastMaterial() != null ? progress.getLastMaterial().getId() : null)
+                .lastMaterialId(progress.getLastMaterialId())
                 .passedFinalExam(progress.isPassedFinalExam())
                 .courseCompleted(progress.isCourseCompleted())
                 .updatedAt(progress.getUpdatedAt())

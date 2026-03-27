@@ -2,7 +2,6 @@ package com.dao.analyticsservice.controller;
 
 import com.dao.analyticsservice.dto.response.AnalyticsOverviewResponse;
 import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
-import com.dao.analyticsservice.dto.response.DashboardResponse;
 import com.dao.analyticsservice.dto.response.ExamResultResponse;
 import com.dao.analyticsservice.dto.response.KpiMetricResponse;
 import com.dao.analyticsservice.dto.response.RecommendationResponse;
@@ -13,6 +12,7 @@ import com.dao.analyticsservice.service.AnalyticsService;
 import com.dao.common.dto.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,8 +27,8 @@ public class AnalyticsController {
 
     @GetMapping("/exam-results")
     public ResponseEntity<ApiResponse<List<ExamResultResponse>>> getExamResults(
-            @RequestParam(required = false) UUID examId,
-            @RequestParam(required = false) UUID userId) {
+            @RequestParam(required = false) Long examId,
+            @RequestParam(required = false) Long userId) {
         List<ExamResultResponse> results = analyticsService.getExamResults(examId, userId);
         return ResponseEntity.ok(ApiResponse.success("Exam results fetched successfully", results));
     }
@@ -40,27 +40,22 @@ public class AnalyticsController {
         return ResponseEntity.ok(ApiResponse.success("Cheating statistics fetched successfully", stats));
     }
 
-    @GetMapping("/dashboards")
-    public ResponseEntity<ApiResponse<DashboardResponse>> getDashboardData(
-            @RequestParam UUID userId) {
-        DashboardResponse dashboard = analyticsService.getDashboardData(userId);
-        return ResponseEntity.ok(ApiResponse.success("Dashboard data fetched successfully", dashboard));
-    }
-
     @GetMapping("/recommendations")
     public ResponseEntity<ApiResponse<List<RecommendationResponse>>> getRecommendations(
-            @RequestParam UUID userId) {
+            @RequestParam Long userId) {
         List<RecommendationResponse> recommendations = analyticsService.getRecommendations(userId);
         return ResponseEntity.ok(ApiResponse.success("Recommendations fetched successfully", recommendations));
     }
 
     @GetMapping("/overview")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<AnalyticsOverviewResponse>> getOverview() {
         AnalyticsOverviewResponse overview = analyticsService.getAnalyticsOverview();
-        return ResponseEntity.ok(ApiResponse.success("Overview fetched successfully", overview));
+        return ResponseEntity.ok(ApiResponse.success("Analytics overview fetched successfully", overview));
     }
 
     @GetMapping("/kpis")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<List<KpiMetricResponse>>> getKpis() {
         List<KpiMetricResponse> kpis = analyticsService.getKpiMetrics();
         return ResponseEntity.ok(ApiResponse.success("KPIs fetched successfully", kpis));
@@ -74,15 +69,15 @@ public class AnalyticsController {
 
     @GetMapping("/top-performers")
     public ResponseEntity<ApiResponse<List<TopPerformerResponse>>> getTopPerformers(
-            @RequestParam(value = "limit", defaultValue = "5") int limit) {
-        List<TopPerformerResponse> performers = analyticsService.getTopPerformers(limit);
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        List<TopPerformerResponse> performers = analyticsService.getTopPerformers(Math.min(limit, 100));
         return ResponseEntity.ok(ApiResponse.success("Top performers fetched successfully", performers));
     }
 
     @GetMapping("/top-courses")
     public ResponseEntity<ApiResponse<List<TopCourseResponse>>> getTopCourses(
-            @RequestParam(value = "limit", defaultValue = "5") int limit) {
-        List<TopCourseResponse> courses = analyticsService.getTopCourses(limit);
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        List<TopCourseResponse> courses = analyticsService.getTopCourses(Math.min(limit, 100));
         return ResponseEntity.ok(ApiResponse.success("Top courses fetched successfully", courses));
     }
 }

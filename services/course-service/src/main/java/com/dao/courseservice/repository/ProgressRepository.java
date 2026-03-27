@@ -1,32 +1,34 @@
 package com.dao.courseservice.repository;
 
 import com.dao.courseservice.entity.Progress;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Repository để truy vấn dữ liệu cho bảng cm_progress (UC33).
- */
 @Repository
-public interface ProgressRepository extends JpaRepository<Progress, Long> {
+public interface ProgressRepository extends JpaRepository<Progress, UUID> {
 
-    /**
-     * Tìm kiếm tiến độ học tập của một học sinh trong một khóa học.
-     */
-    Optional<Progress> findByStudentIdAndCourseId(Long studentId, UUID courseId);
-    
-    /**
-     * Tìm tất cả tiến độ học tập trong một khóa học (dành cho dashboard của giảng viên).
-     */
-    List<Progress> findByCourseId(UUID courseId);
-    
-    /**
-     * Xóa tất cả tiến độ học tập trong một khóa học.
-     * Sử dụng khi xóa khóa học để tránh foreign key constraint violation.
-     */
+    @Query("SELECT p FROM Progress p " +
+           "LEFT JOIN FETCH p.course " +
+           "WHERE p.studentId = :studentId AND p.course.id = :courseId")
+    Optional<Progress> findByStudentIdAndCourseId(@Param("studentId") UUID studentId, @Param("courseId") UUID courseId);
+
+    @Query("SELECT DISTINCT p FROM Progress p " +
+           "LEFT JOIN FETCH p.course " +
+           "WHERE p.course.id = :courseId")
+    List<Progress> findByCourseId(@Param("courseId") UUID courseId);
+
+    @Query("SELECT DISTINCT p FROM Progress p " +
+           "LEFT JOIN FETCH p.course " +
+           "WHERE p.course.id = :courseId")
+    Page<Progress> findByCourseId(@Param("courseId") UUID courseId, Pageable pageable);
+
     void deleteByCourseId(UUID courseId);
 }

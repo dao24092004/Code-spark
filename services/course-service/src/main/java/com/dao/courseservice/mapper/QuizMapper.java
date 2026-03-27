@@ -1,43 +1,31 @@
 package com.dao.courseservice.mapper;
 
+import com.dao.courseservice.entity.Course;
 import com.dao.courseservice.entity.Question;
 import com.dao.courseservice.entity.QuestionOption;
 import com.dao.courseservice.entity.Quiz;
 import com.dao.courseservice.entity.QuizSubmission;
-import com.dao.courseservice.response.QuestionOptionResponse;
-import com.dao.courseservice.response.QuestionResponse;
-import com.dao.courseservice.response.QuizDetailResponse;
-import com.dao.courseservice.response.QuizSubmissionResultResponse;
-import org.springframework.stereotype.Component;
-
-import java.util.Collections;
-import java.util.stream.Collectors;
-
-// ========================================================================
-// [THÊM MỚI] - Các import cho CRUD Admin
-// ========================================================================
-import com.dao.courseservice.entity.Course;
 import com.dao.courseservice.request.CreateOptionRequest;
 import com.dao.courseservice.request.CreateQuestionRequest;
 import com.dao.courseservice.request.CreateQuizRequest;
 import com.dao.courseservice.request.UpdateQuizRequest;
-import com.dao.courseservice.response.QuestionAdminResponse;
 import com.dao.courseservice.response.QuestionOptionAdminResponse;
+import com.dao.courseservice.response.QuestionOptionResponse;
+import com.dao.courseservice.response.QuestionResponse;
 import com.dao.courseservice.response.QuizAdminResponse;
+import com.dao.courseservice.response.QuizDetailResponse;
+import com.dao.courseservice.response.QuizSubmissionResultResponse;
 import com.dao.courseservice.response.QuizSummaryResponse;
-import java.util.HashSet;
-import java.util.Set; // <-- THÊM IMPORT NÀY
+import com.dao.courseservice.response.QuestionAdminResponse;
+import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class QuizMapper {
 
-    // ========================================================================
-    // CÁC HÀM CŨ (CHO HỌC SINH)
-    // ========================================================================
-
-    /**
-     * Chuyển đổi Quiz sang DTO chi tiết để cho học sinh xem (che giấu đáp án).
-     */
     public QuizDetailResponse toQuizDetailResponseForStudent(Quiz quiz) {
         if (quiz == null) return null;
 
@@ -48,40 +36,30 @@ public class QuizMapper {
                 .timeLimitMinutes(quiz.getTimeLimitMinutes())
                 .createdAt(quiz.getCreatedAt())
                 .questions(quiz.getQuestions() != null ? quiz.getQuestions().stream()
-                        .map(this::toQuestionResponseForStudent) // Gọi hàm con để xử lý từng câu hỏi
+                        .map(this::toQuestionResponseForStudent)
                         .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 
-    /**
-     * Chuyển đổi Question sang DTO (che giấu đáp án).
-     */
     private QuestionResponse toQuestionResponseForStudent(Question question) {
         return QuestionResponse.builder()
                 .id(question.getId())
                 .content(question.getContent())
                 .type(question.getType())
                 .options(question.getOptions() != null ? question.getOptions().stream()
-                        .map(this::toQuestionOptionResponseForStudent) // Gọi hàm con để xử lý từng lựa chọn
+                        .map(this::toQuestionOptionResponseForStudent)
                         .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 
-    /**
-     * Chuyển đổi QuestionOption sang DTO (che giấu đáp án).
-     * QUAN TRỌNG: Gán isCorrect = false để không lộ đáp án cho học sinh.
-     */
     private QuestionOptionResponse toQuestionOptionResponseForStudent(QuestionOption option) {
         return QuestionOptionResponse.builder()
                 .id(option.getId())
                 .content(option.getContent())
-                .isCorrect(false) // Luôn trả về false
+                .isCorrect(false)
                 .build();
     }
 
-    /**
-     * Chuyển đổi QuizSubmission (entity) sang DTO kết quả trả về.
-     */
     public QuizSubmissionResultResponse toQuizSubmissionResultResponse(QuizSubmission submission) {
         if (submission == null) return null;
 
@@ -91,18 +69,10 @@ public class QuizMapper {
                 .quizId(submission.getQuiz().getId())
                 .score(submission.getScore())
                 .submittedAt(submission.getSubmittedAt())
-                .answers(submission.getAnswers()) // Giả sử bạn có lưu câu trả lời
+                .answers(submission.getAnswers())
                 .build();
     }
 
-    // ========================================================================
-    // [THÊM MỚI] - Mapper cho Request (Tạo mới Entity)
-    // ========================================================================
-
-    /**
-     * Chuyển đổi CreateQuizRequest (DTO) sang Quiz (Entity).
-     * Đây là hàm phức tạp nhất, nó xây dựng toàn bộ cây entity.
-     */
     public Quiz toEntity(CreateQuizRequest request, Course course) {
         if (request == null) return null;
 
@@ -113,10 +83,9 @@ public class QuizMapper {
                 .course(course)
                 .build();
 
-        // Map Questions
         if (request.getQuestions() != null) {
             Set<Question> questions = request.getQuestions().stream()
-                    .map(qDto -> toQuestionEntity(qDto, quiz)) // Chuyển từng Question DTO
+                    .map(qDto -> toQuestionEntity(qDto, quiz))
                     .collect(Collectors.toSet());
             quiz.setQuestions(questions);
         }
@@ -124,9 +93,6 @@ public class QuizMapper {
         return quiz;
     }
 
-    /**
-     * Hàm hỗ trợ: Chuyển CreateQuestionRequest (DTO) sang Question (Entity)
-     */
     private Question toQuestionEntity(CreateQuestionRequest qDto, Quiz quiz) {
         Question question = Question.builder()
                 .content(qDto.getContent())
@@ -135,20 +101,16 @@ public class QuizMapper {
                 .quiz(quiz)
                 .build();
 
-        // Map Options
         if (qDto.getOptions() != null) {
             Set<QuestionOption> options = qDto.getOptions().stream()
-                    .map(oDto -> toOptionEntity(oDto, question)) // Chuyển từng Option DTO
+                    .map(oDto -> toOptionEntity(oDto, question))
                     .collect(Collectors.toSet());
             question.setOptions(options);
         }
-        
+
         return question;
     }
 
-    /**
-     * Hàm hỗ trợ: Chuyển CreateOptionRequest (DTO) sang QuestionOption (Entity)
-     */
     private QuestionOption toOptionEntity(CreateOptionRequest oDto, Question question) {
         return QuestionOption.builder()
                 .content(oDto.getContent())
@@ -156,10 +118,7 @@ public class QuizMapper {
                 .question(question)
                 .build();
     }
-    
-    /**
-     * Cập nhật thông tin Quiz (Entity) từ UpdateQuizRequest (DTO).
-     */
+
     public void updateQuizFromRequest(Quiz quiz, UpdateQuizRequest request) {
         if (request.getTitle() != null && !request.getTitle().isBlank()) {
             quiz.setTitle(request.getTitle());
@@ -172,14 +131,6 @@ public class QuizMapper {
         }
     }
 
-
-    // ========================================================================
-    // [THÊM MỚI] - Mapper cho Response (Admin - Hiển thị đáp án)
-    // ========================================================================
-
-    /**
-     * Chuyển đổi Quiz (Entity) sang QuizAdminResponse (DTO cho Admin).
-     */
     public QuizAdminResponse toQuizAdminResponse(Quiz quiz) {
         if (quiz == null) return null;
 
@@ -190,14 +141,11 @@ public class QuizMapper {
                 .timeLimitMinutes(quiz.getTimeLimitMinutes())
                 .createdAt(quiz.getCreatedAt())
                 .questions(quiz.getQuestions() != null ? quiz.getQuestions().stream()
-                        .map(this::toQuestionAdminResponse) // Gọi hàm con
+                        .map(this::toQuestionAdminResponse)
                         .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 
-    /**
-     * Hàm hỗ trợ: Chuyển Question (Entity) sang QuestionAdminResponse (DTO)
-     */
     private QuestionAdminResponse toQuestionAdminResponse(Question question) {
         return QuestionAdminResponse.builder()
                 .id(question.getId())
@@ -205,30 +153,37 @@ public class QuizMapper {
                 .type(question.getType())
                 .displayOrder(question.getDisplayOrder())
                 .options(question.getOptions() != null ? question.getOptions().stream()
-                        .map(this::toQuestionOptionAdminResponse) // Gọi hàm con
+                        .map(this::toQuestionOptionAdminResponse)
                         .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 
-    /**
-     * Hàm hỗ trợ: Chuyển QuestionOption (Entity) sang QuestionOptionAdminResponse (DTO)
-     */
     private QuestionOptionAdminResponse toQuestionOptionAdminResponse(QuestionOption option) {
         return QuestionOptionAdminResponse.builder()
                 .id(option.getId())
                 .content(option.getContent())
-                .isCorrect(option.isCorrect()) // Hiển thị đáp án đúng
+                .isCorrect(option.isCorrect())
                 .build();
     }
-    
-    /**
-     * Chuyển đổi Quiz (Entity) sang QuizSummaryResponse (DTO tóm tắt).
-     */
+
     public QuizSummaryResponse toQuizSummaryResponse(Quiz quiz) {
         if (quiz == null) return null;
         return QuizSummaryResponse.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
+                .build();
+    }
+
+    public QuestionAdminResponse toQuestionForExam(Question question) {
+        if (question == null) return null;
+        return QuestionAdminResponse.builder()
+                .id(question.getId())
+                .content(question.getContent())
+                .type(question.getType())
+                .displayOrder(question.getDisplayOrder())
+                .options(question.getOptions() != null ? question.getOptions().stream()
+                        .map(this::toQuestionOptionAdminResponse)
+                        .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 }

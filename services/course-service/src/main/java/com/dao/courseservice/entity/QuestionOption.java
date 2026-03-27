@@ -1,23 +1,22 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-// SỬA LẠI: Bỏ @Data, thêm @Getter và @Setter
-import lombok.Getter;
-import lombok.Setter;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.util.UUID;
 
-@Getter // Thêm @Getter
-@Setter // Thêm @Setter
+@Entity
+@Table(name = "cm_question_options", indexes = {
+    @Index(name = "idx_cm_question_options_question", columnList = "question_id"),
+    @Index(name = "idx_cm_question_options_correct", columnList = "question_id, is_correct")
+})
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "cm_question_options")
 public class QuestionOption {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -29,6 +28,10 @@ public class QuestionOption {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column(nullable = false)
+    @Column(name = "is_correct", nullable = false)
     private boolean isCorrect;
+
+    @Column(name = "display_order")
+    @Builder.Default
+    private Integer displayOrder = 0;
 }

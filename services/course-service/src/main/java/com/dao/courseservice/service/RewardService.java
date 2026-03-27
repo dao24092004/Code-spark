@@ -1,7 +1,10 @@
 package com.dao.courseservice.service;
 
+import com.dao.courseservice.entity.Course;
 import com.dao.courseservice.entity.Reward;
+import com.dao.courseservice.exception.ResourceNotFoundException;
 import com.dao.courseservice.mapper.RewardMapper;
+import com.dao.courseservice.repository.CourseRepository;
 import com.dao.courseservice.repository.RewardRepository;
 import com.dao.courseservice.request.TokenGrantRequest;
 import com.dao.courseservice.response.RewardResponse;
@@ -20,36 +23,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-//================================================================================
-// 1. INTERFACE: Định nghĩa các chức năng nghiệp vụ cho việc trao thưởng token (UC32)
-//================================================================================
-
-/**
- * Interface định nghĩa các chức năng nghiệp vụ cho việc trao thưởng token (UC32).
- */
 public interface RewardService {
-
-    /**
-     * Tạo một bản ghi phần thưởng mới cho học sinh.
-     * Phương thức này sẽ được gọi bởi các service khác (QuizService, ProgressService).
-     * @param studentId ID của học sinh được thưởng.
-     * @param tokens Số lượng token được thưởng.
-     * @param reason Mã lý do được thưởng (ví dụ: "PASS_QUIZ").
-     * @param relatedId ID của đối tượng liên quan (ví dụ: quiz_submission_id).
-     */
-    void grantReward(Long studentId, int tokens, String reason, UUID relatedId);
-
-    /**
-     * Lấy lịch sử phần thưởng của một học sinh.
-     * @param studentId ID của học sinh.
-     * @return Danh sách các phần thưởng.
-     */
-    List<RewardResponse> getRewardsForStudent(Long studentId);
+    void grantReward(UUID studentId, int tokens, String reason, UUID relatedId, UUID courseId);
+    List<RewardResponse> getRewardsForStudent(UUID studentId);
 }
-
-//================================================================================
-// 2. IMPLEMENTATION: Lớp triển khai logic cho các chức năng trên
-//================================================================================
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +35,7 @@ public interface RewardService {
 class RewardServiceImpl implements RewardService {
 
     private final RewardRepository rewardRepository;
+    private final CourseRepository courseRepository;
     private final RewardMapper rewardMapper;
     private final WebClient.Builder webClientBuilder;
 
@@ -67,16 +45,16 @@ class RewardServiceImpl implements RewardService {
     @Value("${app.services.token-reward.api-key:}")
     private String tokenRewardApiKey;
 
-    //--------------------------------------------------------------------------
-    // Trao thưởng token cho học sinh (UC32)
-    //--------------------------------------------------------------------------
-
     @Override
-    public void grantReward(Long studentId, int tokens, String reason, UUID relatedId) {
+    public void grantReward(UUID studentId, int tokens, String reason, UUID relatedId, UUID courseId) {
         log.info("Granting {} tokens to student {} for reason: {}", tokens, studentId, reason);
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
         Reward reward = Reward.builder()
                 .studentId(studentId)
+                .course(course)
                 .tokensAwarded(tokens)
                 .reasonCode(reason)
                 .relatedId(relatedId != null ? relatedId.toString() : null)
@@ -90,20 +68,17 @@ class RewardServiceImpl implements RewardService {
                 .amount(tokens)
                 .reasonCode(reason)
                 .relatedId(relatedId)
+                .courseId(courseId)
                 .build();
         dispatchToTokenRewardService(requestPayload);
     }
 
-    //--------------------------------------------------------------------------
-    // Lấy lịch sử phần thưởng của học sinh
-    //--------------------------------------------------------------------------
-
     @Override
     @Transactional(readOnly = true)
-    public List<RewardResponse> getRewardsForStudent(Long studentId) {
+    public List<RewardResponse> getRewardsForStudent(UUID studentId) {
         log.info("Fetching rewards for student {}", studentId);
 
-        return rewardRepository.findByStudentId(studentId).stream()
+        return rewardRepository.findByStudentIdOrderByAwardedAtDesc(studentId).stream()
                 .map(rewardMapper::toRewardResponse)
                 .collect(Collectors.toList());
     }
@@ -114,17 +89,17 @@ class RewardServiceImpl implements RewardService {
             WebClient.RequestBodySpec requestSpec = webClientBuilder.build().post()
                     .uri(targetUrl)
                     .header("Content-Type", "application/json");
-            
+
             if (StringUtils.hasText(tokenRewardApiKey)) {
                 requestSpec.header("Authorization", "Bearer " + tokenRewardApiKey);
             }
-            
+
             requestSpec.bodyValue(requestPayload)
                     .retrieve()
                     .toBodilessEntity()
                     .timeout(Duration.ofSeconds(5))
                     .block();
-            
+
             log.info("Dispatched token reward to {} for student {}", targetUrl, requestPayload.getStudentId());
         } catch (WebClientResponseException ex) {
             log.warn("Token reward service rejected request (status {}): {}", ex.getStatusCode(), ex.getResponseBodyAsString());

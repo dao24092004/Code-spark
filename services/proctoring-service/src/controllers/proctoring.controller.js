@@ -6,6 +6,13 @@ console.log('[CONTROLLER] Service loaded:', typeof proctoringService);
 console.log('[CONTROLLER] Service keys:', Object.keys(proctoringService || {}));
 
 /**
+ * Chuyển đổi userId/examId sang UUID
+ */
+function toUuid(value) {
+  return proctoringService.toUuid(value);
+}
+
+/**
  * Controller để lấy tất cả các sự kiện vi phạm của một phiên thi.
  */
 async function getEventsBySession(req, res) {
@@ -100,7 +107,7 @@ async function getStudentsInExam(req, res) {
 async function analyzeFrame(req, res) {
   try {
     const { image, examId, studentId, sessionId } = req.body;
-    
+
     if (!image) {
       return res.status(400).json({ message: 'Image is required.' });
     }
@@ -136,33 +143,29 @@ async function analyzeFrame(req, res) {
         console.warn('[CONTROLLER] Không thể emit status update', statusError);
       }
     }
-    
+
     // Map AI service response sang format mà frontend mong đợi
     const detections = aiEvents.map(event => {
-      // Map event_type từ AI service sang type mà frontend mong đợi
       let type = event.event_type;
       if (type === 'FACE_NOT_DETECTED') type = 'FACE_NOT_DETECTED';
       else if (type === 'MULTIPLE_FACES') type = 'MULTIPLE_FACES';
       else if (type === 'MOBILE_PHONE_DETECTED') type = 'MOBILE_PHONE_DETECTED';
       else if (type === 'CAMERA_TAMPERED') type = 'CAMERA_TAMPERED';
       else if (type === 'LOOKING_AWAY') type = 'LOOKING_AWAY';
-      
-      // Map severity
+
       let severity = event.severity;
-      if (!severity || !['low', 'medium', 'high', 'critical'].includes(severity)) {
-        // Default severity mapping
+      if (!severity || !['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'low', 'medium', 'high', 'critical'].includes(severity)) {
         if (event.event_type === 'FACE_NOT_DETECTED' || event.event_type === 'MULTIPLE_FACES') {
-          severity = 'high';
+          severity = 'HIGH';
         } else if (event.event_type === 'MOBILE_PHONE_DETECTED') {
-          severity = 'critical';
+          severity = 'CRITICAL';
         } else if (event.event_type === 'CAMERA_TAMPERED') {
-          severity = 'high';
+          severity = 'HIGH';
         } else {
-          severity = 'medium';
+          severity = 'MEDIUM';
         }
       }
 
-      // Generate description based on event type
       const descriptions = {
         'FACE_NOT_DETECTED': 'Không phát hiện khuôn mặt',
         'MULTIPLE_FACES': 'Phát hiện nhiều người trong khung hình',
@@ -174,18 +177,16 @@ async function analyzeFrame(req, res) {
       return {
         type: type,
         severity: severity,
-        confidence: 90, // Default confidence, có thể lấy từ AI service nếu có
+        confidence: 90,
         timestamp: Date.now(),
         description: descriptions[event.event_type] || 'Phát hiện hành vi bất thường',
         metadata: event.metadata || {},
       };
     });
 
-    // Trả về response theo format mà frontend mong đợi
     res.status(200).json({ detections });
   } catch (error) {
     console.error('Error in analyzeFrame controller:', error);
-    // Trả về empty detections thay vì lỗi để frontend không bị crash
     res.status(200).json({ detections: [] });
   }
 }
@@ -287,6 +288,7 @@ console.log('[CONTROLLER DEBUG] Exports keys:', Object.keys({
   getStudentsInExam,
   analyzeFrame,
   terminateSession,
+  completeSession,
   sendWarning,
 }));
 

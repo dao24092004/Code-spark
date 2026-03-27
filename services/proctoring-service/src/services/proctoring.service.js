@@ -1,16 +1,16 @@
 // src/services/proctoring.service.js
+// Proctoring service sử dụng exam_db (proctoring_db đã gộp vào exam_db)
 
 const path = require('path');
 const fs = require('fs/promises');
 const crypto = require('crypto');
 
 const db = require('../models');
-console.log('[DEBUG MODELS in proctoring.service]', Object.keys(db));
+console.log('[PROCTORING SERVICE] Models loaded:', Object.keys(db));
 
 const { Op } = db.Sequelize;
 
 const aiService = require('./ai.service');
-const blockchainService = require('./blockchain.service');
 
 const ACTIVE_SESSION_TIMEOUT_MS = 2 * 60 * 1000; // 2 phút
 const activeSessionHeartbeats = new Map();
@@ -29,22 +29,15 @@ function markSessionHeartbeat(sessionId) {
   activeSessionHeartbeats.set(sessionId, Date.now());
 }
 
-// <<< BỎ DÒNG REQUIRE Ở ĐÂY ĐỂ TRÁNH LỖI VÒNG LẶP >>>
-// const { getIO } = require('../config/websocket'); 
-
 const SEVERE_VIOLATIONS = ['MOBILE_PHONE_DETECTED', 'MULTIPLE_FACES', 'FACE_NOT_DETECTED'];
 
-// <<< BỔ SUNG (CHO YÊU CẦU MỚI) >>>
-// Chỉ định nghĩa các event_type từ AI mà bạn MUỐN LƯU VÀO DB
 const VIOLATIONS_TO_SAVE = [
   'MOBILE_PHONE_DETECTED',
   'MULTIPLE_FACES',
   'FACE_NOT_DETECTED',
-  'LOOKING_AWAY', // << Thêm các vi phạm khác của bạn ở đây
-  'TALKING'       // << (ví dụ)
-  // AI có thể trả về 'FACE_OKAY' nhưng chúng ta không thêm nó vào đây
+  'LOOKING_AWAY',
+  'TALKING'
 ];
-
 
 const SCREENSHOT_DIR = path.resolve(__dirname, '../../uploads/screenshots');
 const STORAGE_PATH_PREFIX = '/uploads/screenshots';
@@ -103,33 +96,61 @@ async function persistScreenshotFile({ screenshotBase64, eventType }) {
   }
 }
 
+/**
+ * Chuyển đổi userId/examId sang UUID string
+ * Hỗ trợ cả UUID, numeric string, và number
+ */
+function toUuid(value) {
+  if (!value) return null;
+  // Nếu đã là UUID string hợp lệ
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (typeof value === 'string' && uuidRegex.test(value)) {
+    return value;
+  }
+  // Nếu là số hoặc numeric string, chuyển sang UUID (dùng 0000-0000-0000-0000 prefix)
+  const num = Number(value);
+  if (!Number.isNaN(num)) {
+    // Tạo UUID từ số bằng cách padding
+    const padded = num.toString().padStart(12, '0');
+    return `${padded.slice(0, 8)}-${padded.slice(8, 12)}-0000-0000-000000000000`;
+  }
+  return null;
+}
 
 /**
- * ✅ Tạo một phiên giám sát mới (exam session)
+ * Tạo một phiên giám sát mới (exam session)
+ * userId và examId: UUID string hoặc giá trị có thể chuyển đổi sang UUID
  */
 async function createSession({ user_id, exam_id }) {
-  // ... (Code này của bạn đã đúng, giữ nguyên)
   try {
+    const userUuid = toUuid(user_id);
+    const examUuid = toUuid(exam_id);
+
+    if (!userUuid || !examUuid) {
+      throw new Error(`Invalid UUID: user_id=${user_id}, exam_id=${exam_id}`);
+    }
+
     const newSession = await db.ExamSession.create({
-      userId: user_id,
-      examId: exam_id,
-      startTime: new Date(), 
-      status: 'in_progress',
+      userId: userUuid,
+      examId: examUuid,
+      startTime: new Date(),
+      status: 'ACTIVE',
+      gracePeriodMinutes: 0,
+      violationThresholdCount: 3,
+      highSeverityViolationCount: 0,
     });
-    console.log(`[ProctoringService] Đã tạo phiên giám sát mới:`, newSession.id);
+    console.log(`[ProctoringService] Đã tạo exam session mới:`, newSession.id);
     return newSession;
   } catch (error) {
-    console.error('❌ Lỗi khi tạo phiên giám sát:', error);
+    console.error('Lỗi khi tạo exam session:', error);
     throw error;
   }
 }
-
 
 /**
  * Nhận dữ liệu giám sát từ AI
  */
 async function handleProctoringData(sessionId, studentId, imageBuffer) {
-  // <<< SỬA LỖI (Phần 1): Di chuyển require vào đây >>>
   const { getIO } = require('../config/websocket');
 
   const violations = await aiService.analyzeFrame(imageBuffer);
@@ -137,47 +158,37 @@ async function handleProctoringData(sessionId, studentId, imageBuffer) {
 
   const session = await db.ExamSession.findByPk(sessionId);
   if (!session) {
-      console.error(`Không tìm thấy session với ID: ${sessionId}`);
-      return;
+    console.error(`Không tìm thấy session với ID: ${sessionId}`);
+    return;
   }
-  const examId = session.examId;
 
-  // <<< SỬA ĐỔI (Phần 2): Lọc vi phạm trước khi lưu >>>
-  const filteredViolations = violations.filter(v => 
+  const filteredViolations = violations.filter(v =>
     VIOLATIONS_TO_SAVE.includes(v.event_type)
   );
 
   if (filteredViolations.length === 0) {
-    // AI có trả về sự kiện, nhưng không phải lỗi vi phạm cần lưu
     return;
   }
-  
-  console.log(`[Service] Phát hiện ${filteredViolations.length} vi phạm CẦN LƯU cho SV ${studentId}.`);
 
-  // Chỉ lặp qua các vi phạm đã lọc
+  console.log(`[Service] Phát hiện ${filteredViolations.length} vi phạm CẦN LƯU.`);
+
   for (const violation of filteredViolations) {
     const eventData = {
       sessionId: sessionId,
-      studentId: studentId, 
       eventType: violation.event_type,
-      severity: violation.severity,
-      metadata: violation.metadata,
-      timestamp: new Date()
+      severity: violation.severity || 'MEDIUM',
+      metadata: violation.metadata || {},
     };
 
     try {
-      // 1. Lưu vào DB (Đã lọc)
       const newEvent = await db.ProctoringEvent.create(eventData);
       console.log(`[Database] Đã lưu vi phạm '${eventData.eventType}' vào DB, ID:`, newEvent.id);
 
-      // 2. Gửi cảnh báo real-time
       const io = getIO();
-      io.to(examId).emit('proctoring_alert', newEvent);
-      
-      // 3. (Tùy chọn) Ghi Blockchain
+      io.to(String(session.examId)).emit('proctoring_alert', newEvent);
+
       if (SEVERE_VIOLATIONS.includes(eventData.eventType)) {
-        console.log(`[Blockchain] Vi phạm nghiêm trọng [${eventData.eventType}], đang chuẩn bị ghi...`);
-        // await blockchainService.recordViolation(...);
+        console.log(`[Proctoring] Vi phạm nghiêm trọng [${eventData.eventType}]`);
       }
     } catch (error) {
       console.error(`Lỗi khi xử lý vi phạm '${eventData.eventType}':`, error);
@@ -185,6 +196,9 @@ async function handleProctoringData(sessionId, studentId, imageBuffer) {
   }
 }
 
+/**
+ * Đảm bảo proctoring session tồn tại
+ */
 async function ensureProctoringSession({ sessionId, examId, studentId }) {
   if (!sessionId && !examId) {
     console.warn('[ProctoringService] Không thể đảm bảo phiên giám sát vì thiếu sessionId và examId');
@@ -201,12 +215,14 @@ async function ensureProctoringSession({ sessionId, examId, studentId }) {
   }
 
   if (examId && studentId) {
-    const numericStudentId = Number(studentId);
-    if (!Number.isNaN(numericStudentId)) {
+    const examUuid = toUuid(examId);
+    const studentUuid = toUuid(studentId);
+
+    if (examUuid && studentUuid) {
       existingSession = await db.ExamSession.findOne({
         where: {
-          examId,
-          userId: numericStudentId,
+          examId: examUuid,
+          userId: studentUuid,
         },
         order: [['startTime', 'DESC']],
       });
@@ -222,18 +238,22 @@ async function ensureProctoringSession({ sessionId, examId, studentId }) {
     return null;
   }
 
-  const parsedStudentId = Number(studentId);
+  const examUuid = toUuid(examId);
+  const studentUuid = toUuid(studentId);
 
-  if (Number.isNaN(parsedStudentId)) {
-    console.warn('[ProctoringService] studentId không hợp lệ, không thể tạo phiên giám sát', { studentId });
+  if (!examUuid || !studentUuid) {
+    console.warn('[ProctoringService] examId hoặc studentId không hợp lệ', { examId, studentId });
     return null;
   }
 
   const payload = {
-    examId,
-    userId: parsedStudentId,
+    examId: examUuid,
+    userId: studentUuid,
     startTime: new Date(),
-    status: 'in_progress',
+    status: 'ACTIVE',
+    gracePeriodMinutes: 0,
+    violationThresholdCount: 3,
+    highSeverityViolationCount: 0,
   };
 
   if (sessionId) {
@@ -257,7 +277,7 @@ async function emitSessionStatusUpdate(sessionId, examId, statusUpdate) {
   try {
     const { getIO } = require('../config/websocket');
     const io = getIO();
-    
+
     if (io && examId) {
       const updatePayload = {
         sessionId,
@@ -265,9 +285,9 @@ async function emitSessionStatusUpdate(sessionId, examId, statusUpdate) {
         timestamp: new Date().toISOString(),
         ...statusUpdate
       };
-      
+
       io.to(String(examId)).emit('session_status_update', updatePayload);
-      console.log(`[ProctoringService] Đã emit session_status_update cho session ${sessionId}`, updatePayload);
+      console.log(`[ProctoringService] Đã emit session_status_update cho session ${sessionId}`);
     }
   } catch (error) {
     console.warn('[ProctoringService] Không thể emit session_status_update', error);
@@ -281,14 +301,13 @@ async function recordSessionActivity({ sessionId, examId, studentId }) {
     return null;
   }
 
-  if (session.status !== 'in_progress') {
+  if (session.status !== 'ACTIVE') {
     activeSessionHeartbeats.delete(session.id);
     return session;
   }
 
   markSessionHeartbeat(session.id);
 
-  // Emit connection status update (online)
   await emitSessionStatusUpdate(sessionId, examId, {
     connectionStatus: 'online'
   });
@@ -305,9 +324,7 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
 
   if (!session) {
     console.warn('[ProctoringService] Không thể lưu sự kiện vì không tìm thấy hoặc tạo được session', {
-      sessionId,
-      examId,
-      studentId,
+      sessionId, examId, studentId,
     });
     return [];
   }
@@ -321,17 +338,17 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
       continue;
     }
 
-    const severity = (detection.severity || 'medium').toLowerCase();
+    const severity = (detection.severity || 'MEDIUM').toUpperCase();
 
     const recentDuplicate = await db.ProctoringEvent.findOne({
       where: {
         sessionId: session.id,
         eventType,
-        timestamp: {
+        createdAt: {
           [Op.gt]: new Date(baseTimestamp.getTime() - 3000),
         },
       },
-      order: [['timestamp', 'DESC']],
+      order: [['createdAt', 'DESC']],
     });
 
     if (recentDuplicate) {
@@ -366,7 +383,6 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
         eventType,
         severity,
         metadata: metadataPayload,
-        timestamp: new Date(),
       });
 
       savedEvents.push(savedEvent);
@@ -374,6 +390,7 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
       if (captureInfo) {
         try {
           await db.MediaCapture.create({
+            sessionId: session.id,
             eventId: savedEvent.id,
             captureType: 'screenshot',
             storagePath: captureInfo.storagePath,
@@ -396,27 +413,23 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
     }
   }
 
-  // Emit status updates based on detections
   if (savedEvents.length > 0) {
     const statusUpdate = {};
-    
-    // Check for face-related detections
+
     const faceNotDetected = savedEvents.some(e => e.eventType === 'FACE_NOT_DETECTED' || e.eventType === 'CAMERA_TAMPERED');
     const multipleFaces = savedEvents.some(e => e.eventType === 'MULTIPLE_FACES');
-    
+
     if (faceNotDetected) {
       statusUpdate.faceDetected = false;
-      statusUpdate.cameraEnabled = false; // Camera tampered or no face = camera issue
+      statusUpdate.cameraEnabled = false;
     } else if (multipleFaces) {
       statusUpdate.faceDetected = true;
       statusUpdate.faceCount = 2;
     } else {
-      // If no face issues detected, assume face is detected
       statusUpdate.faceDetected = true;
       statusUpdate.faceCount = 1;
     }
-    
-    // Emit status update
+
     await emitSessionStatusUpdate(sessionId, examId, statusUpdate);
   }
 
@@ -430,7 +443,7 @@ async function getEventsBySession(sessionId) {
   try {
     const events = await db.ProctoringEvent.findAll({
       where: { sessionId },
-      order: [['timestamp', 'ASC']],
+      order: [['createdAt', 'ASC']],
     });
     return events;
   } catch (error) {
@@ -440,7 +453,7 @@ async function getEventsBySession(sessionId) {
 }
 
 /**
- * Lấy tất cả các phiên thi (của sinh viên) đang hoạt động
+ * Lấy tất cả các phiên thi đang hoạt động
  */
 async function getActiveSessions() {
   pruneInactiveSessions();
@@ -457,7 +470,7 @@ async function getActiveSessions() {
     const sessions = await db.ExamSession.findAll({
       where: {
         id: activeSessionIds,
-        status: 'in_progress',
+        status: 'ACTIVE',
       },
     });
 
@@ -473,15 +486,15 @@ async function getActiveSessions() {
 }
 
 /**
- * Lấy tất cả các sinh viên (ExamSession) đang thi trong một kỳ thi (examId)
+ * Lấy tất cả các sinh viên đang thi trong một kỳ thi
  */
 async function getStudentsInExam(examId) {
-  // ... (Code này của bạn đã đúng, giữ nguyên)
   try {
+    const examUuid = toUuid(examId) || examId;
     const students = await db.ExamSession.findAll({
-      where: { 
-        examId: examId,
-        status: 'in_progress' 
+      where: {
+        examId: examUuid,
+        status: 'ACTIVE'
       },
     });
     return students;
@@ -491,6 +504,9 @@ async function getStudentsInExam(examId) {
   }
 }
 
+/**
+ * Kết thúc phiên giám sát (terminated by admin)
+ */
 async function terminateSession(sessionId, { terminatedBy, reason } = {}) {
   if (!sessionId) {
     throw new Error('Session ID is required');
@@ -502,11 +518,11 @@ async function terminateSession(sessionId, { terminatedBy, reason } = {}) {
       return null;
     }
 
-    session.status = 'terminated';
+    session.status = 'TERMINATED';
     session.endTime = new Date();
 
     if (terminatedBy) {
-      session.reviewerId = terminatedBy;
+      session.reviewerId = toUuid(terminatedBy) || terminatedBy;
     }
 
     if (reason) {
@@ -516,7 +532,6 @@ async function terminateSession(sessionId, { terminatedBy, reason } = {}) {
     await session.save();
     activeSessionHeartbeats.delete(sessionId);
 
-    // Emit WebSocket event (non-blocking)
     try {
       const { getIO } = require('../config/websocket');
       const io = getIO();
@@ -524,22 +539,15 @@ async function terminateSession(sessionId, { terminatedBy, reason } = {}) {
         const terminatePayload = {
           sessionId,
           examId: String(session.examId),
-          userId: String(session.userId), // Thêm userId để frontend có thể match
+          userId: String(session.userId),
           terminatedBy: terminatedBy ?? null,
           reason: reason ?? null,
         };
         io.to(String(session.examId)).emit('proctoring_session_terminated', terminatePayload);
-        console.log(`[ProctoringService] Đã emit terminate event cho session ${sessionId}`, {
-          examId: session.examId,
-          userId: session.userId,
-          payload: terminatePayload
-        });
-      } else {
-        console.warn(`[ProctoringService] Không thể emit terminate: io=${!!io}, examId=${session.examId}`);
+        console.log(`[ProctoringService] Đã emit terminate event cho session ${sessionId}`);
       }
     } catch (notifyError) {
       console.warn('[ProctoringService] Không thể thông báo sự kiện terminate qua socket', notifyError);
-      // Không throw error vì đây chỉ là thông báo, không ảnh hưởng đến việc terminate
     }
 
     return session;
@@ -564,18 +572,16 @@ async function completeSession(sessionId) {
       return null;
     }
 
-    // Chỉ complete nếu session đang in_progress
-    if (session.status !== 'in_progress') {
+    if (session.status !== 'ACTIVE') {
       console.log(`[ProctoringService] Session ${sessionId} đã có status ${session.status}, không cần complete`);
       return session;
     }
 
-    session.status = 'completed';
+    session.status = 'COMPLETED';
     session.endTime = new Date();
     await session.save();
     activeSessionHeartbeats.delete(sessionId);
 
-    // Emit WebSocket event để admin tự động ẩn session
     try {
       const { getIO } = require('../config/websocket');
       const io = getIO();
@@ -586,17 +592,10 @@ async function completeSession(sessionId) {
           userId: String(session.userId),
         };
         io.to(String(session.examId)).emit('proctoring_session_completed', completePayload);
-        console.log(`[ProctoringService] Đã emit completed event cho session ${sessionId}`, {
-          examId: session.examId,
-          userId: session.userId,
-          payload: completePayload
-        });
-      } else {
-        console.warn(`[ProctoringService] Không thể emit completed: io=${!!io}, examId=${session.examId}`);
+        console.log(`[ProctoringService] Đã emit completed event cho session ${sessionId}`);
       }
     } catch (notifyError) {
       console.warn('[ProctoringService] Không thể thông báo sự kiện completed qua socket', notifyError);
-      // Không throw error vì đây chỉ là thông báo
     }
 
     return session;
@@ -620,11 +619,10 @@ async function sendWarning(sessionId, { sentBy, message } = {}) {
       return null;
     }
 
-    // Tạo event cảnh báo trong DB
     const warningEvent = await db.ProctoringEvent.create({
       sessionId: sessionId,
       eventType: 'ADMIN_WARNING',
-      severity: 'medium',
+      severity: 'MEDIUM',
       metadata: {
         sentBy: sentBy ?? null,
         message: message ?? 'Bạn đã nhận được cảnh báo từ giám thị',
@@ -632,35 +630,25 @@ async function sendWarning(sessionId, { sentBy, message } = {}) {
       }
     });
 
-    // Emit event qua WebSocket (non-blocking)
     try {
       const { getIO } = require('../config/websocket');
       const io = getIO();
-      
+
       if (io && session.examId) {
         const warningPayload = {
           sessionId,
           examId: String(session.examId),
-          userId: String(session.userId), // Đảm bảo convert sang string để match
+          userId: String(session.userId),
           sentBy: sentBy ?? null,
           message: message ?? 'Bạn đã nhận được cảnh báo từ giám thị',
           timestamp: new Date().toISOString(),
           eventId: warningEvent.id
         };
-        // Gửi đến tất cả client trong exam room, nhưng chỉ student có sessionId này sẽ nhận
         io.to(String(session.examId)).emit('admin_warning', warningPayload);
-        
-        console.log(`[ProctoringService] Đã gửi cảnh báo đến session ${sessionId} qua WebSocket`, {
-          examId: session.examId,
-          userId: session.userId,
-          payload: warningPayload
-        });
-      } else {
-        console.warn(`[ProctoringService] Không thể gửi cảnh báo: io=${!!io}, examId=${session.examId}`);
+        console.log(`[ProctoringService] Đã gửi cảnh báo đến session ${sessionId}`);
       }
     } catch (notifyError) {
       console.warn('[ProctoringService] Không thể thông báo cảnh báo qua socket', notifyError);
-      // Không throw error vì đây chỉ là thông báo, không ảnh hưởng đến việc tạo event
     }
 
     return warningEvent;
@@ -682,4 +670,5 @@ module.exports = {
   completeSession,
   sendWarning,
   emitSessionStatusUpdate,
+  toUuid,
 };

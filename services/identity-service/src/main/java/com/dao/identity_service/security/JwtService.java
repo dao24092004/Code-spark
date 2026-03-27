@@ -63,8 +63,8 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(USER_ID_CLAIM, userId);
         
-        List<String> roles = user.getRoles().stream()
-                .map(role -> "ROLE_" + role.getName())
+        List<String> roles = user.getUserRoles().stream()
+                .map(ur -> ur.getRole().getName())
                 .collect(Collectors.toList());
         claims.put(ROLES_CLAIM, roles);
 

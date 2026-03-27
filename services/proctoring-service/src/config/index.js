@@ -20,7 +20,7 @@ const config = {
     port: toNumber(process.env.DB_PORT || process.env.PG_PORT, 5432),
     username: process.env.DB_USER || process.env.PG_USER || 'postgres',
     password: process.env.DB_PASSWORD || process.env.PG_PASSWORD || '',
-    database: process.env.DB_NAME || process.env.PG_DATABASE || 'proctoring_db',
+    database: process.env.DB_NAME || process.env.PG_DATABASE || 'exam_db', // Đổi từ proctoring_db sang exam_db
     dialect: process.env.DB_DIALECT || 'postgres'
   },
   // Keep legacy access pattern for modules still using config.database
@@ -29,16 +29,11 @@ const config = {
     port: toNumber(process.env.DB_PORT || process.env.PG_PORT, 5432),
     user: process.env.DB_USER || process.env.PG_USER || 'postgres',
     password: process.env.DB_PASSWORD || process.env.PG_PASSWORD || '',
-    name: process.env.DB_NAME || process.env.PG_DATABASE || 'proctoring_db'
+    name: process.env.DB_NAME || process.env.PG_DATABASE || 'exam_db' // Đổi từ proctoring_db sang exam_db
   },
   ai: {
     url: process.env.AI_SERVICE_URL || 'http://localhost:8000',
     timeout: toNumber(process.env.AI_SERVICE_TIMEOUT, 30000)
-  },
-  blockchain: {
-    providerUrl: process.env.WEB3_PROVIDER_URL || 'http://127.0.0.1:7545',
-    privateKey: process.env.ACCOUNT_PRIVATE_KEY || '',
-    contractAddress: process.env.CONTRACT_ADDRESS || ''
   },
   security: {
     jwt: {

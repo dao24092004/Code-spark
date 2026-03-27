@@ -1,59 +1,58 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-
-import lombok.ToString;
-
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
-import java.util.Set;
+import java.util.*;
 
-@Getter 
+@Entity
+@Table(name = "cm_quizzes", indexes = {
+    @Index(name = "idx_cm_quizzes_course", columnList = "course_id"),
+    @Index(name = "idx_cm_quizzes_status", columnList = "status"),
+    @Index(name = "idx_cm_quizzes_creator", columnList = "created_by")
+})
+@Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "cm_quizzes")
 public class Quiz {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-
-
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "time_limit_minutes")
     private Integer timeLimitMinutes;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+    @Column(name = "created_by")
+    private UUID createdBy;
 
-    @Column(name = "status", nullable = false)
-    private String status;
+    @Column(nullable = false, length = 50)
+    @Builder.Default
+    private String status = "DRAFT";
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<Question> questions;
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<Question> questions = new HashSet<>();
+
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<QuizSubmission> submissions = new HashSet<>();
 }

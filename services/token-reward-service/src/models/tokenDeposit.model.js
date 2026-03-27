@@ -1,3 +1,8 @@
+// ERD: token_deposits(id uuid PK, profile_id uuid,
+//         crypto_account_id uuid, tx_hash, from_address, amount bigint,
+//         token_symbol, status, block_number, confirmations,
+//         processed_at, created_at) — KHÔNG có updated_at
+
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -8,116 +13,67 @@ module.exports = (sequelize) => {
             defaultValue: DataTypes.UUIDV4,
             field: 'id'
         },
-        userId: {
-            type: DataTypes.BIGINT,
-            allowNull: true,
-            field: 'user_id'
+        profileId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'profile_id'
         },
-        walletAddress: {
-            type: DataTypes.STRING(255),
-            allowNull: true,
-            field: 'wallet_address',
-            set(value) {
-                if (typeof value === 'string') {
-                    this.setDataValue('walletAddress', value.toLowerCase());
-                } else {
-                    this.setDataValue('walletAddress', value);
-                }
-            },
-            get() {
-                const value = this.getDataValue('walletAddress');
-                return value ? value.toLowerCase() : value;
-            }
+        cryptoAccountId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'crypto_account_id'
         },
         txHash: {
-            type: DataTypes.STRING(80),
-            allowNull: false,
-            unique: true,
-            field: 'tx_hash'
-        },
-        tokenAddress: {
             type: DataTypes.STRING(255),
             allowNull: false,
-            field: 'token_address'
+            field: 'tx_hash'
         },
         fromAddress: {
             type: DataTypes.STRING(255),
-            allowNull: false,
+            allowNull: true,
             field: 'from_address'
         },
-        toAddress: {
-            type: DataTypes.STRING(255),
-            allowNull: false,
-            field: 'to_address'
-        },
-        amountRaw: {
-            type: DataTypes.DECIMAL(78, 0),
-            allowNull: false,
-            field: 'amount_raw'
-        },
-        amountTokens: {
+        amount: {
             type: DataTypes.BIGINT,
             allowNull: false,
-            field: 'amount_tokens'
+        },
+        tokenSymbol: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            field: 'token_symbol'
+        },
+        status: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            defaultValue: 'PENDING',
         },
         blockNumber: {
             type: DataTypes.BIGINT,
-            allowNull: false,
+            allowNull: true,
             field: 'block_number'
         },
-        blockTimestamp: {
+        confirmations: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 0,
+        },
+        processedAt: {
             type: DataTypes.DATE,
             allowNull: true,
-            field: 'block_timestamp'
-        },
-        status: {
-            type: DataTypes.STRING(32),
-            allowNull: false,
-            defaultValue: 'pending',
-            field: 'status'
-        },
-        metadata: {
-            type: DataTypes.JSONB,
-            allowNull: true,
-            field: 'metadata'
-        },
-        confirmedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: 'confirmed_at'
+            field: 'processed_at'
         },
         createdAt: {
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW,
             field: 'created_at'
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-            field: 'updated_at'
         }
     }, {
-        tableName: 'cm_token_deposits',
+        tableName: 'token_deposits',
         timestamps: true,
-        underscored: true,
         createdAt: 'created_at',
-        updatedAt: 'updated_at'
+        updatedAt: false
     });
-
-    TokenDeposit.associate = (models) => {
-        TokenDeposit.belongsTo(models.User, {
-            foreignKey: 'userId',
-            as: 'user'
-        });
-        TokenDeposit.belongsTo(models.WalletAccount, {
-            foreignKey: 'walletAddress',
-            targetKey: 'address',
-            as: 'wallet'
-        });
-    };
 
     return TokenDeposit;
 };
-

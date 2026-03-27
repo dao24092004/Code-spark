@@ -17,11 +17,11 @@ module.exports = {
       .filter((key) => key.length > 0)
   },
   database: {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    pass: process.env.DB_PASS,
-    name: process.env.DB_NAME
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    user: process.env.DB_USER || 'postgres',
+    pass: process.env.DB_PASSWORD || 'postgres',
+    name: process.env.DB_NAME || 'crypto_db' // CRYPTO DB - dùng chung
   },
   identity: {
     baseUrl: process.env.IDENTITY_SERVICE_URL || null,
