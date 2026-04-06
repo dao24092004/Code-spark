@@ -55,8 +55,11 @@ const recruitmentService = {
     try {
       const newQuestion = await RecruitmentQuestion.create({
         testId: testId,
-        content: questionData.content,
-        questionType: questionData.questionType
+        questionText: questionData.questionText || questionData.content,
+        questionType: questionData.questionType,
+        options: questionData.options ? JSON.stringify(questionData.options) : null,
+        points: questionData.points || 1,
+        displayOrder: questionData.displayOrder || 0
       }, { transaction: t });
 
       const answersData = questionData.answers.map(answer => ({
@@ -109,9 +112,9 @@ const recruitmentService = {
    * API 5 (Nhóm 3): Ứng viên nộp bài và chấm điểm
    * (HÀM BỊ THIẾU LÀ ĐÂY)
    */
-  async submitTest(testId, candidateId, submittedAnswers) {
-    // submittedAnswers = [ { "questionId": 1, "answerId": 3 }, ... ]
-    
+  async submitTest(testId, userId, submittedAnswers) {
+    // submittedAnswers = [ { "questionId": "uuid", "answerId": "uuid" }, ... ]
+
     const t = await db.sequelize.transaction();
     try {
       // 1. Lấy thông tin bài Test (để lấy orgId)
@@ -140,18 +143,16 @@ const recruitmentService = {
       // 5. Tính điểm
       let score = 0;
       if (totalQuestions > 0) {
-        score = (correctAnswersCount / totalQuestions) * 100; // Tính theo thang 100
+        score = Math.round((correctAnswersCount / totalQuestions) * 100); // Tính theo thang 100
       }
 
       // 6. GHI vào bảng 'recruitment_submissions'
       const submission = await RecruitmentSubmission.create({
         testId: testId,
-        candidateId: candidateId,
-        organizationId: organizationId,
+        userId: userId,
+        answers: JSON.stringify(submittedAnswers),
         score: score,
-        status: 'submitted',
-        startedAt: new Date(), // (Tạm thời)
-        completedAt: new Date()
+        submittedAt: new Date()
       }, { transaction: t });
 
       await t.commit();

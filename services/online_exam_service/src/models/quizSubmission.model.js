@@ -1,4 +1,4 @@
- // file: src/models/quizSubmission.model.js
+// file: src/models/quizSubmission.model.js
 module.exports = (sequelize, DataTypes) => {
   const QuizSubmission = sequelize.define('QuizSubmission', {
     id: {
@@ -6,13 +6,18 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    organizationId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'organization_id'
+    },
     quizId: {
       type: DataTypes.UUID,
       allowNull: false,
       field: 'quiz_id'
     },
     studentId: {
-      type: DataTypes.BIGINT,
+      type: DataTypes.UUID,
       allowNull: false,
       field: 'student_id'
     },
@@ -26,7 +31,6 @@ module.exports = (sequelize, DataTypes) => {
     answers: {
       type: DataTypes.TEXT,
     },
-    // New tracking fields
     startedAt: {
       type: DataTypes.DATE,
       field: 'started_at'
@@ -46,9 +50,27 @@ module.exports = (sequelize, DataTypes) => {
     totalQuestions: {
       type: DataTypes.INTEGER,
       field: 'total_questions'
+    },
+    isFinal: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_final'
+    },
+    ipAddress: {
+      type: DataTypes.STRING(45),
+      field: 'ip_address'
+    },
+    userAgent: {
+      type: DataTypes.TEXT,
+      field: 'user_agent'
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1,
     }
   }, {
-    tableName: 'quiz_submissions', // CHANGED: Align with migration
+    tableName: 'quiz_submissions',
     timestamps: false,
   });
   return QuizSubmission;

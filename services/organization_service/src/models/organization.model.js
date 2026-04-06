@@ -1,15 +1,16 @@
 // src/models/organization.model.js
+const { DataTypes } = require('sequelize');
 
-module.exports = (sequelize, DataTypes) => {
+module.exports = (sequelize) => {
   const Organization = sequelize.define('Organization', {
-    id: { 
-      type: DataTypes.BIGINT, 
-      primaryKey: true, 
-      autoIncrement: true 
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
-    name: { 
-      type: DataTypes.STRING(255), 
-      allowNull: false 
+    name: {
+      type: DataTypes.STRING(255),
+      allowNull: false
     },
     description: {
       type: DataTypes.TEXT,
@@ -54,25 +55,25 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       field: 'postal_code'
     },
-    ownerId: { 
-      type: DataTypes.BIGINT, 
-      allowNull: false, 
-      field: 'owner_id' 
+    ownerId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'owner_id'
     },
-    imageUrl: { 
-      type: DataTypes.TEXT, 
-      field: 'image_url' 
+    imageUrl: {
+      type: DataTypes.TEXT,
+      field: 'image_url'
     },
-    orgType: { 
-      type: DataTypes.STRING(100), 
-      field: 'org_type' 
+    orgType: {
+      type: DataTypes.STRING(100),
+      field: 'org_type'
     },
-    orgSize: { 
-      type: DataTypes.STRING(100), 
-      field: 'org_size' 
+    orgSize: {
+      type: DataTypes.STRING(100),
+      field: 'org_size'
     },
-    industry: { 
-      type: DataTypes.STRING(100) 
+    industry: {
+      type: DataTypes.STRING(100)
     },
     foundedYear: {
       type: DataTypes.INTEGER,
@@ -99,14 +100,16 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: 0
     },
-    package: { 
-      type: DataTypes.STRING(100) 
-    },
     subscriptionPlan: {
       type: DataTypes.STRING(50),
       allowNull: true,
       defaultValue: 'free',
       field: 'subscription_plan'
+    },
+    subscriptionPackage: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'subscription_package'
     },
     subscriptionStatus: {
       type: DataTypes.STRING(50),
@@ -165,28 +168,10 @@ module.exports = (sequelize, DataTypes) => {
         this.setDataValue('settings', JSON.stringify(value || null));
       }
     },
-    status: { 
-      type: DataTypes.STRING(50), 
-      allowNull: false, 
-      defaultValue: 'active' 
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-      field: 'is_active'
-    },
-    isVerified: { 
-      type: DataTypes.BOOLEAN, 
-      allowNull: false, 
-      defaultValue: false, 
-      field: 'is_verified' 
-    },
-    isPremium: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      field: 'is_premium'
+    status: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: 'active'
     },
     verificationStatus: {
       type: DataTypes.STRING(50),
@@ -202,6 +187,25 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'last_login_at'
+    },
+    // Cached counters for quick queries (theo ERD)
+    coursesCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'courses_count'
+    },
+    membersCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'members_count'
+    },
+    recruitmentTestsCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'recruitment_tests_count'
     }
   }, {
     tableName: 'organizations',

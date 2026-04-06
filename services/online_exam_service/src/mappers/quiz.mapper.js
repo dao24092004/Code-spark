@@ -63,7 +63,7 @@ function toQuizDetailResponse(quiz) {
     id: quiz.id,
     title: quiz.title,
     description: quiz.description,
-    timeLimitMinutes: quiz.timeLimitMinutes,
+    timeLimitMinutes: quiz.durationMinutes,
     questions: quiz.questions ? quiz.questions.map(toQuestionResponse) : [],
   };
 }

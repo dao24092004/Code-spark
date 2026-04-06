@@ -1,4 +1,3 @@
-// src/main/java/com/dao/courseservice/service/CourseService.java
 package com.dao.courseservice.service;
 
 import com.dao.courseservice.entity.Course;
@@ -8,29 +7,28 @@ import com.dao.courseservice.exception.ResourceNotFoundException;
 import com.dao.courseservice.mapper.CourseMapper;
 import com.dao.courseservice.repository.CourseRepository;
 import com.dao.courseservice.repository.ProgressRepository;
+import com.dao.courseservice.repository.QuizSubmissionRepository;
 import com.dao.courseservice.request.CreateCourseRequest;
 import com.dao.courseservice.request.UpdateCourseRequest;
-import com.dao.courseservice.request.BatchUserRequest;
 import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.response.CourseMemberDto;
-import com.dao.courseservice.response.ExamDto;
-import com.dao.courseservice.response.RoleDto;
 import com.dao.courseservice.response.UserDto;
+import com.dao.courseservice.client.IdentityServiceClient;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 import org.springframework.util.StringUtils;
 
 import java.text.Normalizer;
@@ -40,16 +38,9 @@ import java.util.stream.Collectors;
 
 import jakarta.persistence.criteria.Predicate;
 
-/**
- * Interface định nghĩa và triển khai các chức năng CourseService.
- * (Gộp interface + implementation vào cùng một file)
- */
 public interface CourseService {
 
-    // ===============================================================
-    // 1. Khai báo các phương thức (Interface)
-    // ===============================================================
-    CourseResponse createCourse(CreateCourseRequest request, Long userId, String authToken);
+    CourseResponse createCourse(CreateCourseRequest request, UUID userId, String authToken);
 
     List<CourseMemberDto> getCourseRoster(UUID courseId, String authToken);
 
@@ -59,22 +50,15 @@ public interface CourseService {
 
     Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria);
 
-    /**
-     * Lấy danh sách khóa học theo organizationId
-     * @param organizationId ID của tổ chức
-     * @param pageable Thông tin phân trang
-     * @return Trang danh sách khóa học
-     */
-    Page<CourseResponse> getCoursesByOrganizationId(String organizationId, Pageable pageable);
+    Page<CourseResponse> getCoursesByOrganizationId(UUID organizationId, Pageable pageable);
 
     CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request);
 
     void deleteCourse(UUID courseId);
+
+    Page<CourseMemberDto> getCourseStudents(UUID courseId, Pageable pageable);
 }
 
-// ===============================================================
-// 2. Triển khai Interface CourseService
-// ===============================================================
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -84,46 +68,41 @@ class CourseServiceImpl implements CourseService {
     private final CourseRepository courseRepository;
     private final CourseMapper courseMapper;
     private final ProgressRepository progressRepository;
-    private final WebClient.Builder webClientBuilder;
+    private final QuizSubmissionRepository quizSubmissionRepository;
+    private final IdentityServiceClient identityServiceClient;
     private final com.dao.courseservice.repository.QuizRepository quizRepository;
+    private final WebClient.Builder webClientBuilder;
 
     @Value("${app.services.api-gateway.url}")
     private String apiGatewayUrl;
 
-    // ---------------------------------------------------------------
-    // Triển khai hàm createCourse (Hợp đồng 3.1)
-    // ---------------------------------------------------------------
     @Override
-    public CourseResponse createCourse(CreateCourseRequest request, Long userId, String authToken) {
+    public CourseResponse createCourse(CreateCourseRequest request, UUID userId, String authToken) {
         log.info("User {} attempting to create course for org {}", userId, request.getOrganizationId());
-        String orgId = request.getOrganizationId();
+        UUID orgId = request.getOrganizationId();
 
         String authCheckUrl = apiGatewayUrl + "/api/v1/organizations/" + orgId + "/members/" + userId + "/permissions";
 
         try {
-            RoleDto roleDto = webClientBuilder.build().get()
+            var roleDto = webClientBuilder.build().get()
                     .uri(authCheckUrl)
                     .header("Authorization", authToken)
                     .retrieve()
-                    .bodyToMono(RoleDto.class)
+                    .bodyToMono(com.dao.courseservice.response.RoleDto.class)
                     .block();
 
             if (roleDto != null) {
                 if (roleDto.getPermissions() == null || !roleDto.getPermissions().contains("course:create")) {
-                    throw new SecurityException("Không có quyền: Yêu cầu quyền 'course:create'.");
+                    throw new SecurityException("Khong co quyen: Yeu cau quyen 'course:create'.");
                 }
-            } else {
-                log.warn("Skip permission check due to missing role data (dev fallback). userId={}, orgId={}", userId, orgId);
             }
         } catch (Exception e) {
-            // Dev fallback: không chặn khi service kiểm tra quyền chưa sẵn sàng
-            log.error("API Auth check failed for user {} in org {}: {}", userId, orgId, e.getMessage());
+            log.warn("Skip permission check due to missing role data (dev fallback). userId={}, orgId={}: {}",
+                    userId, orgId, e.getMessage());
         }
 
-        log.info("Permission check completed. Proceeding to create course...");
-
         String slug = generateSlug(request.getTitle());
-        if (courseRepository.existsBySlug(slug)) {
+        if (courseRepository.existsActiveBySlug(slug)) {
             throw new ResourceAlreadyExistsException("Course", "title", request.getTitle());
         }
 
@@ -137,9 +116,6 @@ class CourseServiceImpl implements CourseService {
         return courseMapper.toCourseResponse(savedCourse);
     }
 
-    // ---------------------------------------------------------------
-    // HÀM MỚI: getCourseRoster (Hợp đồng 3.4)
-    // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
     public List<CourseMemberDto> getCourseRoster(UUID courseId, String authToken) {
@@ -148,23 +124,14 @@ class CourseServiceImpl implements CourseService {
         List<Progress> progressList = progressRepository.findByCourseId(courseId);
         if (progressList.isEmpty()) return List.of();
 
-        List<Long> studentIds = progressList.stream()
+        List<UUID> userIds = progressList.stream()
                 .map(Progress::getStudentId)
                 .distinct()
                 .collect(Collectors.toList());
 
-        String batchLookupUrl = apiGatewayUrl + "/api/v1/users/batch-lookup";
+        List<UserDto> userList = identityServiceClient.getUsersByIds(userIds);
 
-        List<UserDto> userList = webClientBuilder.build().post()
-                .uri(batchLookupUrl)
-                .header("Authorization", authToken)
-                .bodyValue(new BatchUserRequest(studentIds))
-                .retrieve()
-                .bodyToFlux(UserDto.class)
-                .collectList()
-                .block();
-
-        Map<Long, UserDto> userMap = userList.stream()
+        Map<UUID, UserDto> userMap = userList.stream()
                 .collect(Collectors.toMap(UserDto::getId, user -> user));
 
         return progressList.stream().map(progress -> {
@@ -174,48 +141,42 @@ class CourseServiceImpl implements CourseService {
                     user != null ? user.getFirstName() : "N/A",
                     user != null ? user.getLastName() : "N/A",
                     user != null ? user.getAvatarUrl() : null,
+                    user != null ? user.getEmail() : null,
                     progress.getPercentComplete()
             );
         }).collect(Collectors.toList());
     }
 
-    // ---------------------------------------------------------------
-    // HÀM MỚI: publishCourse (Hợp đồng 3.2)
-    // ---------------------------------------------------------------
     @Override
     public void publishCourse(UUID courseId, String authToken) {
         log.info("Attempting to publish course {}", courseId);
 
-        // Bật lại kiểm tra: yêu cầu KHÓA HỌC phải có ít nhất 1 quiz trước khi xuất bản.
-        // (Không phụ thuộc service Exams bên ngoài)
         var quizzes = quizRepository.findByCourseId(courseId);
         if (quizzes == null || quizzes.isEmpty()) {
             throw new ResourceNotFoundException("Course", "Quiz",
-                    "Chưa có quiz cho khóa học. Hãy tạo quiz (ví dụ 'final') trước khi xuất bản.");
+                    "Chua co quiz cho khoa hoc. Hay tao quiz truoc khi xuat ban.");
         }
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        course.setVisibility("public");
+        course.setVisibility("PUBLIC");
         courseRepository.save(course);
         log.info("Course {} published successfully.", courseId);
     }
 
-    // ---------------------------------------------------------------
-    // CÁC HÀM CŨ (GIỮ NGUYÊN)
-    // ---------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "courseDetails", key = "#courseId")
     public CourseResponse getCourseById(UUID courseId) {
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
         return courseMapper.toCourseResponse(course);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CourseResponse> getCoursesByOrganizationId(String organizationId, Pageable pageable) {
+    public Page<CourseResponse> getCoursesByOrganizationId(UUID organizationId, Pageable pageable) {
         log.info("Fetching courses for organization: {}", organizationId);
         return courseRepository.findByOrganizationId(organizationId, pageable)
                 .map(courseMapper::toCourseResponse);
@@ -223,21 +184,19 @@ class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "courses", key = "#filterCriteria.hashCode() + '-' + #pageable.pageNumber")
     public Page<CourseResponse> getAllCourses(Pageable pageable, CourseFilterCriteria filterCriteria) {
-        Specification<Course> specification = buildCourseSpecification(filterCriteria);
-
-        Page<Course> coursePage = specification == null
-                ? courseRepository.findAll(pageable)
-                : courseRepository.findAll(specification, pageable);
-
+        Specification<Course> spec = buildCourseSpecification(filterCriteria);
+        Page<Course> coursePage = courseRepository.findAll(spec, pageable);
         return coursePage.map(courseMapper::toCourseResponse);
     }
 
     @Override
+    @CacheEvict(value = {"courses", "courseDetails", "popularCourses"}, allEntries = true)
     public CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request) {
         log.info("Updating course with id: {}", courseId);
 
-        Course existingCourse = courseRepository.findById(courseId)
+        Course existingCourse = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
         courseMapper.updateEntityFromRequest(existingCourse, request);
@@ -253,20 +212,58 @@ class CourseServiceImpl implements CourseService {
     }
 
     @Override
+    @CacheEvict(value = {"courses", "courseDetails", "popularCourses"}, allEntries = true)
     public void deleteCourse(UUID courseId) {
         log.info("Deleting course with id: {}", courseId);
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        // Use entity delete to trigger JPA cascade (quizzes, materials, ...)
         courseRepository.delete(course);
+
         log.info("Successfully deleted course with id: {}", courseId);
     }
 
-    // ---------------------------------------------------------------
-    // Helper: Tạo slug URL-friendly
-    // ---------------------------------------------------------------
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CourseMemberDto> getCourseStudents(UUID courseId, Pageable pageable) {
+        log.info("Fetching students for course {} with pagination", courseId);
+
+        courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        Page<Progress> progressPage = progressRepository.findByCourseId(courseId, pageable);
+
+        if (progressPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<UUID> userIds = progressPage.getContent().stream()
+                .map(Progress::getStudentId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<UserDto> userList = identityServiceClient.getUsersByIds(userIds);
+        Map<UUID, UserDto> userMap = userList.stream()
+                .collect(Collectors.toMap(UserDto::getId, user -> user));
+
+        List<CourseMemberDto> members = progressPage.getContent().stream()
+                .map(progress -> {
+                    UserDto user = userMap.get(progress.getStudentId());
+                    return new CourseMemberDto(
+                            progress.getStudentId(),
+                            user != null ? user.getFirstName() : "N/A",
+                            user != null ? user.getLastName() : "N/A",
+                            user != null ? user.getAvatarUrl() : null,
+                            user != null ? user.getEmail() : null,
+                            progress.getPercentComplete()
+                    );
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(members, pageable, progressPage.getTotalElements());
+    }
+
     private String generateSlug(String input) {
         final Pattern WHITESPACE = Pattern.compile("[\\s]");
         final Pattern NONLATIN = Pattern.compile("[^\\w-]");
@@ -280,7 +277,7 @@ class CourseServiceImpl implements CourseService {
 
     private Specification<Course> buildCourseSpecification(CourseFilterCriteria criteria) {
         if (criteria == null) {
-            return null;
+            return Specification.where(null);
         }
 
         return (root, query, cb) -> {
@@ -294,14 +291,8 @@ class CourseServiceImpl implements CourseService {
                 ));
             }
 
-            if (StringUtils.hasText(criteria.getOrganizationId())) {
+            if (criteria.getOrganizationId() != null) {
                 predicates.add(cb.equal(root.get("organizationId"), criteria.getOrganizationId()));
-            }
-
-            // instructorId removed
-
-            if (criteria.getCreatedBy() != null) {
-                predicates.add(cb.equal(root.get("createdBy"), criteria.getCreatedBy()));
             }
 
             if (StringUtils.hasText(criteria.getVisibility())) {

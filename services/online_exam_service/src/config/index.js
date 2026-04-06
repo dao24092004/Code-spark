@@ -90,14 +90,14 @@ const config = {
     env: process.env.NODE_ENV || 'development',
   },
 
-  // === MỤC DATABASE (Giữ nguyên logic của bạn, thêm fallback) ===
+  // === MỤC DATABASE ===
   db: {
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    port: parseInt(process.env.DB_PORT, 10) || 5433,
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || 'default_db',
-    dialect: 'postgres', // Giữ nguyên từ file cũ
+    database: process.env.DB_NAME || 'exam_db',
+    dialect: 'postgres',
   },
 
   // === MỤC DISCOVERY (MỚI - Thêm từ ví dụ) ===
@@ -135,21 +135,12 @@ const config = {
     }
   },
 
-  // === MỤC WEB3 (Đổi tên từ blockchain, giữ biến của bạn) ===
-  web3: {
-    providerUrl: process.env.WEB3_PROVIDER_URL, // Giữ biến của bạn
-    contractAddress: process.env.GRADE_LEDGER_CONTRACT_ADDRESS, // Giữ biến của bạn
-    privateKey: process.env.OWNER_ACCOUNT_PRIVATE_KEY, // Giữ biến của bạn
-    chainId: parseInt(process.env.BLOCKCHAIN_CHAIN_ID, 10) || 1337 // Thêm từ ví dụ
-  },
-
   // === MỤC SERVICES (Tổ chức lại từ file cũ) ===
   services: {
     proctoring: {
-      url: process.env.PROCTORING_SERVICE_URL, // Giữ biến của bạn
-      token: process.env.PROCTORING_SERVICE_TOKEN, // Giữ biến của bạn
+      url: process.env.PROCTORING_SERVICE_URL,
+      token: resolveProctoringServiceToken(),
     }
-    // Thêm các service khác nếu cần
   }
 };
 

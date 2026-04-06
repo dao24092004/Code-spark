@@ -1,14 +1,14 @@
 // src/config/db.js
+// crypto_db - dùng chung cho copyright, multisig, token-reward
 require('dotenv').config();
 
 module.exports = {
   development: {
-    // Các tên biến này phải khớp 100% với file .env
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT, 10), // Chuyển port sang kiểu số
+    username: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'crypto_db', // CRYPTO DB - dùng chung
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
     dialect: 'postgres',
     logging: process.env.DB_LOGGING === 'true' ? console.log : false
   },

@@ -3,6 +3,7 @@ package com.dao.identity_service.mapper;
 import com.dao.identity_service.dto.CreateRoleRequest;
 import com.dao.identity_service.dto.RoleDto;
 import com.dao.identity_service.entity.Role;
+import com.dao.identity_service.entity.RolePermission;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -25,7 +26,9 @@ public class RoleMapper {
                 .id(role.getId())
                 .name(role.getName())
                 .description(role.getDescription())
-                .permissions(role.getPermissions().stream()
+                .permissions(role.getRolePermissions().stream()
+                        .map(rp -> rp.getPermission())
+                        .filter(p -> p != null)
                         .map(permissionMapper::toDto)
                         .collect(Collectors.toSet()))
                 .createdAt(role.getCreatedAt())

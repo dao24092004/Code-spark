@@ -18,52 +18,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-//================================================================================
-// 1. INTERFACE: Định nghĩa các chức năng nghiệp vụ cho việc Theo dõi tiến độ (UC33)
-//================================================================================
-
-/**
- * Interface định nghĩa các chức năng nghiệp vụ cho việc Theo dõi tiến độ (UC33).
- */
 public interface ProgressService {
-
-    /**
-     * Cập nhật tiến độ của học sinh khi họ hoàn thành một học liệu.
-     * @param studentId ID của học sinh.
-     * @param courseId ID của khóa học.
-     * @param materialId ID của học liệu vừa hoàn thành.
-     * @return Dữ liệu tiến độ đã được cập nhật.
-     */
-    ProgressResponse updateStudentProgress(Long studentId, UUID courseId, UUID materialId);
-
-    /**
-     * Đánh dấu trạng thái vượt qua bài thi cuối kỳ của học sinh.
-     * @param studentId ID học sinh
-     * @param courseId ID khóa học
-     * @param passed   Đã vượt qua hay chưa
-     * @return Dữ liệu tiến độ sau khi cập nhật
-     */
-    ProgressResponse markFinalExamResult(Long studentId, UUID courseId, boolean passed);
-
-    /**
-     * Lấy thông tin tiến độ của một học sinh trong một khóa học.
-     * @param studentId ID của học sinh.
-     * @param courseId ID của khóa học.
-     * @return Dữ liệu tiến độ.
-     */
-    ProgressResponse getStudentProgressInCourse(Long studentId, UUID courseId);
-
-    /**
-     * Lấy dashboard tiến độ của tất cả học sinh trong một khóa học (dành cho giảng viên).
-     * @param courseId ID của khóa học.
-     * @return Danh sách tiến độ của tất cả học sinh.
-     */
+    ProgressResponse updateStudentProgress(UUID studentId, UUID courseId, UUID materialId);
+    ProgressResponse markFinalExamResult(UUID studentId, UUID courseId, boolean passed);
+    ProgressResponse getStudentProgressInCourse(UUID studentId, UUID courseId);
     List<ProgressResponse> getCourseProgressDashboard(UUID courseId);
 }
-
-//================================================================================
-// 2. IMPLEMENTATION: Lớp triển khai logic cho các chức năng trên
-//================================================================================
 
 @Service
 @RequiredArgsConstructor
@@ -74,25 +34,19 @@ class ProgressServiceImpl implements ProgressService {
     private final ProgressRepository progressRepository;
     private final CourseRepository courseRepository;
     private final MaterialRepository materialRepository;
-    private final RewardService rewardService; // ✅ Tích hợp UC32
+    private final RewardService rewardService;
     private final ProgressMapper progressMapper;
 
-    //--------------------------------------------------------------------------
-    // Cập nhật tiến độ học tập của học sinh
-    //--------------------------------------------------------------------------
-
     @Override
-    public ProgressResponse updateStudentProgress(Long studentId, UUID courseId, UUID materialId) {
+    public ProgressResponse updateStudentProgress(UUID studentId, UUID courseId, UUID materialId) {
         log.info("Updating progress for student {} in course {} at material {}", studentId, courseId, materialId);
 
-        // 1️⃣ Lấy thông tin khóa học và học liệu
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        Material material = materialRepository.findById(materialId)
+        Material material = materialRepository.findActiveById(materialId)
                 .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
 
-        // 2️⃣ Tìm hoặc tạo tiến độ mới
         Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
                 .orElse(Progress.builder()
                         .studentId(studentId)
@@ -102,10 +56,8 @@ class ProgressServiceImpl implements ProgressService {
                         .courseCompleted(false)
                         .build());
 
-        // 3️⃣ Cập nhật học liệu cuối cùng đã hoàn thành
-        progress.setLastMaterial(material);
+        progress.setLastMaterialId(material.getId());
 
-        // 4️⃣ Tính toán phần trăm hoàn thành
         List<Material> allMaterials = materialRepository.findByCourseIdOrderByDisplayOrderAsc(courseId);
         int materialIndex = -1;
         for (int i = 0; i < allMaterials.size(); i++) {
@@ -124,21 +76,17 @@ class ProgressServiceImpl implements ProgressService {
         boolean completedBefore = progress.isCourseCompleted();
         updateCompletionStatus(progress);
 
-        // 5️⃣ Lưu tiến độ vào DB
         Progress savedProgress = progressRepository.save(progress);
-
-        // 6️⃣ (UC32) Trao thưởng nếu hoàn thành khóa học sau cập nhật
         maybeGrantCompletionReward(course, savedProgress, completedBefore);
 
-        // 7️⃣ Trả về DTO
         return progressMapper.toProgressResponse(savedProgress);
     }
 
     @Override
-    public ProgressResponse markFinalExamResult(Long studentId, UUID courseId, boolean passed) {
+    public ProgressResponse markFinalExamResult(UUID studentId, UUID courseId, boolean passed) {
         log.info("Updating final exam flag for student {} in course {} -> passed? {}", studentId, courseId, passed);
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
         Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
@@ -161,47 +109,25 @@ class ProgressServiceImpl implements ProgressService {
         return progressMapper.toProgressResponse(savedProgress);
     }
 
-    //--------------------------------------------------------------------------
-    // Lấy tiến độ học tập của một học sinh trong khóa học
-    //--------------------------------------------------------------------------
-
     @Override
     @Transactional(readOnly = true)
-    public ProgressResponse getStudentProgressInCourse(Long studentId, UUID courseId) {
+    public ProgressResponse getStudentProgressInCourse(UUID studentId, UUID courseId) {
         log.info("Fetching progress for student {} in course {}", studentId, courseId);
 
-        try {
-            // Kiểm tra course có tồn tại không
-            Course course = courseRepository.findById(courseId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
-            log.debug("Found course: {}", course.getTitle());
+        Course course = courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-            // Tìm progress, nếu không có thì tạo progress mặc định (0%)
-            Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
-                    .orElse(Progress.builder()
-                            .studentId(studentId)
-                            .course(course)
-                            .percentComplete(0)
-                            .passedFinalExam(false)
-                            .courseCompleted(false)
-                            .build());
-            
-            if (progress.getId() == null) {
-                log.info("No existing progress found for student {} in course {}. Creating default progress (0%)", studentId, courseId);
-            } else {
-                log.debug("Found existing progress: {}% complete", progress.getPercentComplete());
-            }
+        Progress progress = progressRepository.findByStudentIdAndCourseId(studentId, courseId)
+                .orElse(Progress.builder()
+                        .studentId(studentId)
+                        .course(course)
+                        .percentComplete(0)
+                        .passedFinalExam(false)
+                        .courseCompleted(false)
+                        .build());
 
-            return progressMapper.toProgressResponse(progress);
-        } catch (Exception e) {
-            log.error("Error fetching progress for student {} in course {}: {}", studentId, courseId, e.getMessage(), e);
-            throw e;
-        }
+        return progressMapper.toProgressResponse(progress);
     }
-
-    //--------------------------------------------------------------------------
-    // Lấy dashboard tiến độ cho giảng viên
-    //--------------------------------------------------------------------------
 
     @Override
     @Transactional(readOnly = true)
@@ -220,7 +146,7 @@ class ProgressServiceImpl implements ProgressService {
 
     private void maybeGrantCompletionReward(Course course, Progress progress, boolean completedBefore) {
         if (!completedBefore && progress.isCourseCompleted()) {
-            rewardService.grantReward(progress.getStudentId(), 100, "COMPLETE_COURSE", course.getId());
+            rewardService.grantReward(progress.getStudentId(), 100, "COURSE_COMPLETE", course.getId(), course.getId());
         }
     }
 }

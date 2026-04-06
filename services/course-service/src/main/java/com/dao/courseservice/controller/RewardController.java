@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/rewards")
@@ -28,7 +29,7 @@ public class RewardController {
     @GetMapping("/student/{studentId}")
     // Giả sử trong token có claim 'sub' là user id
     @PreAuthorize("hasAuthority('COURSE_READ') or #studentId == authentication.principal.claims['sub']")
-    public ResponseEntity<ApiResponse<List<RewardResponse>>> getRewardsForStudent(@PathVariable Long studentId) {
+    public ResponseEntity<ApiResponse<List<RewardResponse>>> getRewardsForStudent(@PathVariable UUID studentId) {
         List<RewardResponse> rewards = rewardService.getRewardsForStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(rewards));
     }

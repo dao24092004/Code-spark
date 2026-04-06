@@ -1,62 +1,106 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import java.util.List; 
+
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.*;
 
-// ...
-
-// Forward declarations for collections
-// (avoid circular import issues in some IDEs)
-
-@Data
+@Entity
+@Table(name = "cm_courses", indexes = {
+    @Index(name = "idx_cm_courses_slug", columnList = "slug"),
+    @Index(name = "idx_cm_courses_org", columnList = "organization_id"),
+    @Index(name = "idx_cm_courses_creator", columnList = "created_by"),
+    @Index(name = "idx_cm_courses_visibility", columnList = "visibility"),
+    @Index(name = "idx_cm_courses_created_at", columnList = "created_at")
+})
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "cm_courses")
 public class Course {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column
-    private Long createdBy;
+    @Column(name = "created_by")
+    private UUID createdBy;
 
-    @Column(nullable = false)
-    private String organizationId;
+    @Column(name = "organization_id")
+    private UUID organizationId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String title;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 500)
     private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
-    @Column(nullable = false)
+    @Column(length = 10)
+    @Builder.Default
+    private String language = "vi";
+
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
+    @Column(length = 50)
+    private String level;
+
+    @Column(nullable = false, length = 50)
     private String visibility;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Relationships
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Material> materials;
+    @Builder.Default
+    private List<Material> materials = new ArrayList<>();
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Quiz> quizzes;
+    @Builder.Default
+    private List<Quiz> quizzes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<CourseMetadata> metadataList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Progress> progressList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<CourseImage> courseImages = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<CourseBadge> badges = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<CertificateTemplate> certificateTemplates = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Certificate> certificates = new ArrayList<>();
+
+    @OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Reward> rewards = new ArrayList<>();
 }

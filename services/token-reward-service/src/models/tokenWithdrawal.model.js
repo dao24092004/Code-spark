@@ -1,3 +1,7 @@
+// ERD: token_withdrawals(id uuid PK, profile_id uuid,
+//         crypto_account_id uuid, to_address, amount bigint, token_symbol,
+//         status, tx_hash, processed_at, created_at) — KHÔNG có updated_at
+
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -8,95 +12,57 @@ module.exports = (sequelize) => {
             defaultValue: DataTypes.UUIDV4,
             field: 'id'
         },
-        userId: {
-            type: DataTypes.BIGINT,
-            allowNull: true,
-            field: 'user_id'
+        profileId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'profile_id'
         },
-        walletAddress: {
+        cryptoAccountId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+            field: 'crypto_account_id'
+        },
+        toAddress: {
             type: DataTypes.STRING(255),
             allowNull: false,
-            field: 'wallet_address',
-            set(value) {
-                if (typeof value === 'string') {
-                    this.setDataValue('walletAddress', value.toLowerCase());
-                } else {
-                    this.setDataValue('walletAddress', value);
-                }
-            },
-            get() {
-                const value = this.getDataValue('walletAddress');
-                return value ? value.toLowerCase() : value;
-            }
+            field: 'to_address'
         },
         amount: {
             type: DataTypes.BIGINT,
             allowNull: false,
-            field: 'amount'
         },
-        tokenAddress: {
-            type: DataTypes.STRING(255),
+        tokenSymbol: {
+            type: DataTypes.STRING(50),
             allowNull: true,
-            field: 'token_address'
+            field: 'token_symbol'
+        },
+        status: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            defaultValue: 'PENDING',
         },
         txHash: {
-            type: DataTypes.STRING(80),
+            type: DataTypes.STRING(255),
             allowNull: true,
             field: 'tx_hash'
         },
-        escrowRequestId: {
-            type: DataTypes.STRING(80),
+        processedAt: {
+            type: DataTypes.DATE,
             allowNull: true,
-            field: 'escrow_request_id'
-        },
-        status: {
-            type: DataTypes.STRING(32),
-            allowNull: false,
-            defaultValue: 'requested',
-            field: 'status'
-        },
-        metadata: {
-            type: DataTypes.JSONB,
-            allowNull: true,
-            field: 'metadata'
+            field: 'processed_at'
         },
         createdAt: {
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW,
             field: 'created_at'
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW,
-            field: 'updated_at'
-        },
-        completedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            field: 'completed_at'
         }
     }, {
-        tableName: 'cm_token_withdrawals',
+        tableName: 'token_withdrawals',
         timestamps: true,
-        underscored: true,
         createdAt: 'created_at',
-        updatedAt: 'updated_at'
+        updatedAt: false
     });
-
-    TokenWithdrawal.associate = (models) => {
-        TokenWithdrawal.belongsTo(models.User, {
-            foreignKey: 'userId',
-            as: 'user'
-        });
-        TokenWithdrawal.belongsTo(models.WalletAccount, {
-            foreignKey: 'walletAddress',
-            targetKey: 'address',
-            as: 'wallet'
-        });
-    };
 
     return TokenWithdrawal;
 };
-

@@ -1,74 +1,85 @@
+// file: src/models/copyright.model.js
+// crypto_db: copyrights table (shared with multisig-service, token-reward-service)
+// ERD: copyrights(id uuid PK, profile_id uuid FK,
+//         crypto_account_id uuid FK, filename, stored_filename,
+//         hash UNIQUE, content_hash, transaction_hash,
+//         mime_type, file_size, title, author, description, category,
+//         created_at, updated_at)
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
 const Copyright = sequelize.define('Copyright', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+    },
+    profileId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'profile_id'
+    },
+    cryptoAccountId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        field: 'crypto_account_id'
+    },
     filename: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
         allowNull: false,
     },
     storedFilename: {
-        type: DataTypes.STRING,
-        allowNull: true,  // Allow null for existing records during migration
+        type: DataTypes.STRING(255),
+        allowNull: true,
     },
     hash: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
         allowNull: false,
         unique: true,
     },
     contentHash: {
-        type: DataTypes.STRING,
-        allowNull: true,  // Allow null for backward compatibility
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        field: 'content_hash',
         comment: 'MD5 hash of file content for duplicate detection'
     },
-    ownerAddress: {
-        type: DataTypes.STRING,
-        comment: 'User ID or wallet address of the owner'
-    },
-    ownerUsername: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        comment: 'Username of the person who uploaded the document'
-    },
-    ownerEmail: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        comment: 'Email of the person who uploaded the document'
-    },
     transactionHash: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        field: 'transaction_hash'
     },
     mimeType: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(100),
         allowNull: true,
-        comment: 'MIME type of the uploaded file (e.g., application/pdf, image/jpeg)'
+        field: 'mime_type'
     },
     fileSize: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'File size in bytes'
+        field: 'file_size'
     },
     title: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
         allowNull: true,
-        comment: 'Document title'
     },
     author: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(255),
         allowNull: true,
-        comment: 'Document author'
     },
     description: {
         type: DataTypes.TEXT,
         allowNull: true,
-        comment: 'Document description'
     },
     category: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(100),
         allowNull: true,
-        comment: 'Document category'
     },
 }, {
+    tableName: 'copyrights',
     timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
 });
 
 // Define associations

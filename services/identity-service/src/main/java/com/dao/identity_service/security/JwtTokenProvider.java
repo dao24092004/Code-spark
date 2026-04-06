@@ -36,7 +36,9 @@ public class JwtTokenProvider {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
         var user = (User) userPrincipal;
         Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", user.getRoles().stream().map(Role::getName).collect(Collectors.toList()));
+        claims.put("roles", user.getUserRoles().stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toList()));
         claims.put("permissions", user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList()));

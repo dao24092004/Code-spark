@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Set;
+
 @RestController
 @RequestMapping("/questions")
 public class QuestionController {
@@ -24,7 +25,6 @@ public class QuestionController {
         this.questionService = questionService;
     }
 
-    // POST /questions: create
     @PostMapping
     public ResponseEntity<QuestionResponse> create(@RequestBody QuestionCreationRequest request) {
         Question q = questionService.create(request);
@@ -37,9 +37,11 @@ public class QuestionController {
         return ResponseEntity.ok().build();
     }
 
-    // GET /questions: search by tags, difficulty
     @GetMapping
-    public ResponseEntity<List<QuestionResponse>> search(@RequestParam(required = false) List<String> tags, @RequestParam(required = false) Integer minDifficulty, @RequestParam(required = false) Integer maxDifficulty) {
+    public ResponseEntity<List<QuestionResponse>> search(
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) Integer minDifficulty,
+            @RequestParam(required = false) Integer maxDifficulty) {
         QuestionSearchRequest req = new QuestionSearchRequest();
         if (tags != null) req.tags = Set.copyOf(tags);
         req.minDifficulty = minDifficulty;
@@ -48,12 +50,13 @@ public class QuestionController {
         return ResponseEntity.ok(results.stream().map(this::toResponse).collect(Collectors.toList()));
     }
 
-    // POST /exams/{id}/generate-questions is placed under /exams controller per spec
-    // To support quick testing here, we expose a helper endpoint to generate by filter
     @PostMapping("/generate")
-    public ResponseEntity<GeneratedQuestionsResponse> generate(@RequestParam(defaultValue = "10") int count, @RequestBody(required = false) QuestionSearchRequest filter) {
+    public ResponseEntity<GeneratedQuestionsResponse> generate(
+            @RequestParam(defaultValue = "10") int count,
+            @RequestBody(required = false) QuestionSearchRequest filter) {
         if (filter == null) filter = new QuestionSearchRequest();
-        com.dao.examservice.dto.request.GenerateQuestionsRequest serviceRequest = new com.dao.examservice.dto.request.GenerateQuestionsRequest();
+        com.dao.examservice.dto.request.GenerateQuestionsRequest serviceRequest =
+                new com.dao.examservice.dto.request.GenerateQuestionsRequest();
         serviceRequest.count = count;
         serviceRequest.tags = filter.tags;
         serviceRequest.minDifficulty = filter.minDifficulty;
@@ -73,7 +76,6 @@ public class QuestionController {
         r.explanation = q.getExplanation();
         r.score = q.getScore();
         r.text = q.getText();
-        r.tags = q.getTags();
         r.createdAt = q.getCreatedAt();
         r.updatedAt = q.getUpdatedAt();
         return r;

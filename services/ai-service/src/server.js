@@ -55,7 +55,28 @@ class AIService {
       });
     });
 
-    // API routes
+    // Public chat endpoint (no auth required)
+    const express = require('express');
+    const publicRouter = express.Router();
+    const aiController = require('./controllers/ai.controller');
+    const { body } = require('express-validator');
+    const { validate } = require('./middleware/validate');
+    
+    publicRouter.post(
+      '/chat',
+      [
+        body('messages').isArray().withMessage('Messages must be an array'),
+        body('messages.*.role').isIn(['user', 'assistant']).withMessage('Invalid role'),
+        body('messages.*.content').isString().withMessage('Content must be a string'),
+        body('options').optional().isObject(),
+        validate
+      ],
+      aiController.chatCompletion
+    );
+    
+    this.app.use('/api/v1/ai/public', publicRouter);
+
+    // Protected API routes (require authentication)
     this.app.use('/api/v1/ai', require('./routes/ai.routes'));
 
     // 404 handler

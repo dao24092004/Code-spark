@@ -16,7 +16,7 @@ async function initDatabase(options = {}) {
         
         // Chèn dữ liệu mẫu (nếu database rỗng)
         await insertSampleData(db);
-        
+
         console.log('✅ Khởi tạo database hoàn tất!');
         
     } catch (error) {
@@ -32,55 +32,55 @@ async function initDatabase(options = {}) {
 }
 
 async function insertSampleData(models) {
-    const { User, WalletAccount, Reward, Gift, TokenDeposit, TokenWithdrawal } = models;
     console.log('📝 Chèn dữ liệu mẫu...');
+    const { User, CryptoAccount, Reward, Gift, TokenDeposit, TokenWithdrawal } = models;
 
     // Kiểm tra xem đã có dữ liệu chưa
     const userCount = await User.count();
-
     if (userCount > 0) {
         console.log('ℹ️  Database đã có dữ liệu, bỏ qua chèn dữ liệu mẫu.');
         return;
     }
 
-    // Chèn user mẫu
+    const PROFILE_ID_1 = '00000000-0000-0000-0000-000000000001';
+    const PROFILE_ID_2 = '00000000-0000-0000-0000-000000000002';
+    const PROFILE_ID_3 = '00000000-0000-0000-0000-000000000003';
+    const PROVIDER_ID  = '00000000-0000-0000-0000-000000000001';
+    const ACCOUNT_ID_1 = '00000000-0000-0000-0000-000000000011';
+    const ACCOUNT_ID_2 = '00000000-0000-0000-0000-000000000012';
+    const ACCOUNT_ID_3 = '00000000-0000-0000-0000-000000000013';
+
     await User.bulkCreate([
-        { id: 12345, tokenBalance: 1000 },
-        { id: 67890, tokenBalance: 500 },
-        { id: 13579, tokenBalance: 2500 }
+        { id: 12345n, tokenBalance: 1000 },
+        { id: 67890n, tokenBalance: 500 },
+        { id: 13579n, tokenBalance: 2500 },
     ]);
 
-    // Chèn wallet accounts mẫu
-    await WalletAccount.bulkCreate([
-        { userId: 12345, address: '0x1234567890abcdef1234567890abcdef12345678', status: 'linked' },
-        { userId: 67890, address: '0xabcdef1234567890abcdef1234567890abcdef12', status: 'linked' },
-        { userId: 13579, address: '0x567890abcdef1234567890abcdef1234567890ab', status: 'linked' }
+    await CryptoAccount.bulkCreate([
+        { id: ACCOUNT_ID_1, profileId: PROFILE_ID_1, providerId: PROVIDER_ID, address: '0x1234567890abcdef1234567890abcdef12345678', status: 'ACTIVE', isPrimary: true },
+        { id: ACCOUNT_ID_2, profileId: PROFILE_ID_2, providerId: PROVIDER_ID, address: '0xabcdef1234567890abcdef1234567890abcdef12', status: 'ACTIVE', isPrimary: true },
+        { id: ACCOUNT_ID_3, profileId: PROFILE_ID_3, providerId: PROVIDER_ID, address: '0x567890abcdef1234567890abcdef1234567890ab', status: 'ACTIVE', isPrimary: true },
     ]);
 
-    // Chèn rewards mẫu
     await Reward.bulkCreate([
-        { studentId: 12345, tokensAwarded: 100, reasonCode: 'HOMEWORK', relatedId: 'HW001', transaction_type: 'EARN' },
-        { studentId: 67890, tokensAwarded: 50, reasonCode: 'QUIZ', relatedId: 'QZ001', transaction_type: 'EARN' },
-        { studentId: 13579, tokensAwarded: 200, reasonCode: 'PROJECT', relatedId: 'PJ001', transaction_type: 'EARN' }
+        { studentId: 12345n, tokensAwarded: 100n, reasonCode: 'HOMEWORK', relatedId: 'HW001', transaction_type: 'EARN' },
+        { studentId: 67890n, tokensAwarded: 50n, reasonCode: 'QUIZ', relatedId: 'QZ001', transaction_type: 'EARN' },
+        { studentId: 13579n, tokensAwarded: 200n, reasonCode: 'PROJECT', relatedId: 'PJ001', transaction_type: 'EARN' },
     ]);
 
-    // Chèn gifts mẫu
     await Gift.bulkCreate([
-        { name: 'Notebook', description: 'Sổ tay cao cấp', tokenPrice: 100, stockQuantity: 50, category: 'stationery' },
-        { name: 'Pen', description: 'Bút bi chất lượng', tokenPrice: 50, stockQuantity: 100, category: 'stationery' },
-        { name: 'Backpack', description: 'Ba lô học sinh', tokenPrice: 500, stockQuantity: 20, category: 'accessories' }
+        { senderId: PROFILE_ID_1, recipientId: PROFILE_ID_2, cryptoAccountId: ACCOUNT_ID_1, amount: 1000000000000000000n, tokenSymbol: 'ETH', message: 'Chúc mừng sinh nhật!', status: 'COMPLETED', txHash: '0xgift000000000000000000000000000000000000000000000000000000001' },
+        { senderId: PROFILE_ID_2, recipientId: PROFILE_ID_3, cryptoAccountId: ACCOUNT_ID_2, amount: 500000000000000000n, tokenSymbol: 'ETH', message: 'Quà tặng từ lớp 10A!', status: 'PENDING' },
     ]);
 
-    // Chèn token deposits mẫu
     await TokenDeposit.bulkCreate([
-        { userId: 12345, walletAddress: '0x1234567890abcdef1234567890abcdef12345678', txHash: '0xabc123...', tokenAddress: '0xtoken123', fromAddress: '0xfrom456', toAddress: '0xto789', amountRaw: '1000000000000000000', amountTokens: 1000, blockNumber: 12345, status: 'confirmed' },
-        { userId: 67890, walletAddress: '0xabcdef1234567890abcdef1234567890abcdef12', txHash: '0xdef456...', tokenAddress: '0xtoken123', fromAddress: '0xfrom789', toAddress: '0xto123', amountRaw: '500000000000000000', amountTokens: 500, blockNumber: 12346, 'status': 'confirmed' }
+        { profileId: PROFILE_ID_1, cryptoAccountId: ACCOUNT_ID_1, txHash: '0xabc123def456789abc123def456789abc123def456789abc123def456789abcd', fromAddress: '0xfrom000000000000000000000000000000000001', amount: 1000000000000000000n, tokenSymbol: 'ETH', status: 'CONFIRMED', blockNumber: 12345n, confirmations: 12 },
+        { profileId: PROFILE_ID_2, cryptoAccountId: ACCOUNT_ID_2, txHash: '0xdef456789abc123def456789abc123def456789abc123def456789abcdef01', fromAddress: '0xfrom000000000000000000000000000000000002', amount: 500000000000000000n, tokenSymbol: 'ETH', status: 'CONFIRMED', blockNumber: 12346n, confirmations: 18 },
     ]);
 
-    // Chèn token withdrawals mẫu
     await TokenWithdrawal.bulkCreate([
-        { userId: 12345, walletAddress: '0x1234567890abcdef1234567890abcdef12345678', amount: 200, status: 'requested' },
-        { userId: 13579, walletAddress: '0x567890abcdef1234567890abcdef1234567890ab', amount: 100, status: 'requested' }
+        { profileId: PROFILE_ID_1, cryptoAccountId: ACCOUNT_ID_1, toAddress: '0xto000000000000000000000000000000000001', amount: 200000000000000000n, tokenSymbol: 'ETH', status: 'PENDING' },
+        { profileId: PROFILE_ID_3, cryptoAccountId: ACCOUNT_ID_3, toAddress: '0xto000000000000000000000000000000000003', amount: 100000000000000000n, tokenSymbol: 'ETH', status: 'PENDING' },
     ]);
 
     console.log('✅ Hoàn tất chèn dữ liệu mẫu!');

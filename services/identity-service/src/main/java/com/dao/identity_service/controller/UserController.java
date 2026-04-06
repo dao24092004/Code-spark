@@ -16,9 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -27,9 +28,6 @@ public class UserController {
 
     private final UserService userService;
 
-    /**
-     * Lấy thông tin người dùng hiện tại
-     */
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserDto>> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -40,32 +38,22 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("User profile retrieved successfully", userDto));
     }
 
-    /**
-     * Lấy thông tin người dùng theo ID
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_READ') or @userService.findById(#id).orElse(new com.dao.identity_service.entity.User()).username == authentication.name")
-    public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable UUID id) {
         UserDto user = userService.findUserById(id);
         return ResponseEntity.ok(ApiResponse.success("User retrieved successfully", user));
     }
 
-    /**
-     * Lấy danh sách tất cả người dùng (hỗ trợ pagination query params)
-     */
     @GetMapping
     @PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<ApiResponse<?>> getAllUsers(
             @PageableDefault(size = 1000) Pageable pageable
     ) {
-        // Luôn sử dụng pagination để trả về Page với metadata
         Page<UserDto> users = userService.findAllUsers(pageable);
         return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 
-    /**
-     * Lấy danh sách người dùng có phân trang
-     */
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsersPaged(
@@ -75,65 +63,47 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 
-    /**
-     * Cập nhật thông tin người dùng
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_WRITE') or @userService.findById(#id).orElse(new com.dao.identity_service.entity.User()).username == authentication.name")
     public ResponseEntity<ApiResponse<UserDto>> updateUser(
-            @PathVariable Long id, 
+            @PathVariable UUID id, 
             @Valid @RequestBody UpdateUserRequest request
     ) {
         UserDto updatedUser = userService.updateUser(id, request);
         return ResponseEntity.ok(ApiResponse.success("User updated successfully", updatedUser));
     }
 
-    /**
-     * Gán vai trò cho người dùng
-     */
     @PutMapping("/{id}/roles")
     @PreAuthorize("hasAuthority('USER_WRITE')")
     public ResponseEntity<ApiResponse<UserDto>> assignRoles(
-            @PathVariable Long id, 
+            @PathVariable UUID id, 
             @RequestBody Set<String> roleNames
     ) {
         UserDto user = userService.assignRoles(id, roleNames);
         return ResponseEntity.ok(ApiResponse.success("Roles assigned successfully", user));
     }
 
-    /**
-     * Kích hoạt tài khoản người dùng
-     */
     @PutMapping("/{id}/enable")
     @PreAuthorize("hasAuthority('USER_WRITE')")
-    public ResponseEntity<ApiResponse<UserDto>> enableUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserDto>> enableUser(@PathVariable UUID id) {
         UserDto user = userService.enableUser(id);
         return ResponseEntity.ok(ApiResponse.success("User enabled successfully", user));
     }
 
-    /**
-     * Vô hiệu hóa tài khoản người dùng
-     */
     @PutMapping("/{id}/disable")
     @PreAuthorize("hasAuthority('USER_WRITE')")
-    public ResponseEntity<ApiResponse<UserDto>> disableUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserDto>> disableUser(@PathVariable UUID id) {
         UserDto user = userService.disableUser(id);
         return ResponseEntity.ok(ApiResponse.success("User disabled successfully", user));
     }
 
-    /**
-     * Xóa người dùng
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_DELETE')")
-    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.success("User deleted successfully"));
     }
 
-    /**
-     * Đổi mật khẩu người dùng hiện tại
-     */
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<String>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request

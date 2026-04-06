@@ -13,13 +13,14 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import java.util.UUID;
+
 public class UserPrincipal implements OidcUser, OAuth2User, UserDetails {
 
     private final User user;
     private Map<String, Object> attributes;
     private OidcIdToken idToken;
     private OidcUserInfo userInfo;
-
 
     public UserPrincipal(User user) {
         this.user = user;
@@ -40,7 +41,7 @@ public class UserPrincipal implements OidcUser, OAuth2User, UserDetails {
         return user;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return user.getId();
     }
 
@@ -81,8 +82,8 @@ public class UserPrincipal implements OidcUser, OAuth2User, UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
+        return user.getUserRoles().stream()
+                .map(ur -> new SimpleGrantedAuthority(ur.getRole().getName()))
                 .collect(Collectors.toSet());
     }
 

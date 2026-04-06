@@ -14,7 +14,8 @@ public class ExamResultResponse {
     private Long id;
     private UUID examId;
     private UUID submissionId;
-    private UUID userId;
+    // Sửa: userId từ UUID → Long
+    private Long userId;
     private double score;
     private LocalDateTime createdAt;
 }

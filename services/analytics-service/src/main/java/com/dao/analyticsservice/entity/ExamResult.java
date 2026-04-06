@@ -27,7 +27,8 @@ public class ExamResult {
 
     private UUID submissionId;
 
-    private UUID userId;
+    // Sửa từ UUID → Long để khớp với identity-service
+    private Long userId;
 
     private double score;
 

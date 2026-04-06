@@ -22,9 +22,8 @@ public class ProgressController {
      * API để cập nhật tiến độ của học sinh (khi họ xem xong một bài học).
      */
     @PostMapping("/progress/student/{studentId}/course/{courseId}/material/{materialId}")
-    // @PreAuthorize - BỎ để user có thể update progress
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
-        @PathVariable Long studentId,
+        @PathVariable UUID studentId,
         @PathVariable UUID courseId,
         @PathVariable UUID materialId
 ) {
@@ -32,13 +31,9 @@ public class ProgressController {
     return ResponseEntity.ok(ApiResponse.success("Progress updated successfully", updatedProgress));
 }
 
-    /**
-     * API để học sinh xem tiến độ của mình trong một khóa học.
-     */
     @GetMapping("/progress/student/{studentId}/course/{courseId}")
-    // @PreAuthorize - BỎ để user có thể xem progress
     public ResponseEntity<ApiResponse<ProgressResponse>> getStudentProgress(
-        @PathVariable Long studentId,
+        @PathVariable UUID studentId,
         @PathVariable UUID courseId
 ) {
     ProgressResponse progress = progressService.getStudentProgressInCourse(studentId, courseId);

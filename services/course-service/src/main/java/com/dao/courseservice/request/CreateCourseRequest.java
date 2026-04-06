@@ -1,26 +1,21 @@
 package com.dao.courseservice.request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.UUID;
-import jakarta.validation.constraints.NotNull;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
-/**
- * DTO chứa dữ liệu để tạo một khóa học mới (UC29).
- * Các annotation validation đảm bảo dữ liệu đầu vào là hợp lệ.
- */
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreateCourseRequest {
 
-    @NotNull(message = "ID is required")
     private UUID id;
 
     @NotBlank(message = "Title is required")
@@ -28,7 +23,7 @@ public class CreateCourseRequest {
     private String title;
 
     @NotBlank(message = "Organization ID is required")
-    private String organizationId;
+    private UUID organizationId;
 
     @NotBlank(message = "Description is required")
     @Size(max = 2000, message = "Description must not exceed 2000 characters")

@@ -11,16 +11,18 @@ import com.dao.analyticsservice.dto.response.TopCourseResponse;
 import com.dao.analyticsservice.dto.response.TopPerformerResponse;
 
 import java.util.List;
-import java.util.UUID;
 
 public interface AnalyticsService {
-    List<ExamResultResponse> getExamResults(UUID examId, UUID userId);
+    List<ExamResultResponse> getExamResults(Long examId, Long userId);
     CheatingStatsResponse getCheatingStats(UUID examId);
-    DashboardResponse getDashboardData(UUID userId);
-    List<RecommendationResponse> getRecommendations(UUID userId);
+    // Loại bỏ Dashboard - gộp vào Overview
+    List<RecommendationResponse> getRecommendations(Long userId);
     AnalyticsOverviewResponse getAnalyticsOverview();
     List<KpiMetricResponse> getKpiMetrics();
     List<ScoreTrendPoint> getScoreTrend();
     List<TopPerformerResponse> getTopPerformers(int limit);
     List<TopCourseResponse> getTopCourses(int limit);
+
+    // Import UUID for compatibility
+    java.util.UUID UUID();
 }

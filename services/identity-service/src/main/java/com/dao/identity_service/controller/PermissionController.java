@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/permissions")
@@ -51,7 +52,7 @@ public class PermissionController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_READ')")
-    public ResponseEntity<ApiResponse<PermissionDto>> getPermissionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<PermissionDto>> getPermissionById(@PathVariable UUID id) {
         PermissionDto permission = permissionService.findPermissionById(id);
         return ResponseEntity.ok(ApiResponse.success("Permission retrieved successfully", permission));
     }
@@ -94,7 +95,7 @@ public class PermissionController {
      */
     @PostMapping("/by-ids")
     @PreAuthorize("hasAuthority('ROLE_READ')")
-    public ResponseEntity<ApiResponse<List<PermissionDto>>> getPermissionsByIds(@RequestBody Set<Long> ids) {
+    public ResponseEntity<ApiResponse<List<PermissionDto>>> getPermissionsByIds(@RequestBody Set<UUID> ids) {
         List<PermissionDto> permissions = permissionService.findPermissionsByIds(ids);
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved successfully", permissions));
     }
@@ -116,7 +117,7 @@ public class PermissionController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_WRITE')")
     public ResponseEntity<ApiResponse<PermissionDto>> updatePermission(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody CreatePermissionRequest request
     ) {
         PermissionDto updatedPermission = permissionService.updatePermission(id, request);
@@ -128,7 +129,7 @@ public class PermissionController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_DELETE')")
-    public ResponseEntity<ApiResponse<String>> deletePermission(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<String>> deletePermission(@PathVariable UUID id) {
         permissionService.deletePermission(id);
         return ResponseEntity.ok(ApiResponse.success("Permission deleted successfully"));
     }

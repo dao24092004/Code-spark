@@ -42,7 +42,7 @@ public class CustomOidcUserService extends OidcUserService {
             user.setLastName(oidcUser.getFamilyName());
             user.setAvatarUrl(oidcUser.getPicture());
             user.setProvider(AuthProvider.GOOGLE);
-            user.setEnabled(true); // Or handle email verification
+            user.setIsEnabled(true); // Or handle email verification
             user = userRepository.save(user);
         }
         return new UserPrincipal(user, oidcUser.getAttributes(), oidcUser.getIdToken());

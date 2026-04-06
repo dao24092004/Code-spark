@@ -33,7 +33,7 @@ const organizationService = {
       await OrganizationMember.create({
         organizationId: newOrganization.id,
         userId: newOrganization.ownerId,
-        orgRole: 'org_admin'
+        status: 'ACTIVE'
       }, { transaction: t });
       await t.commit();
       return newOrganization;
@@ -182,7 +182,7 @@ const organizationService = {
       const newMember = await OrganizationMember.create({
         organizationId: orgId,
         userId: userId,
-        role: role
+        status: 'ACTIVE'
       });
       return newMember;
     } catch (error) {
@@ -225,7 +225,7 @@ const organizationService = {
         const userDetails = userMap.get(member.userId);
         const profileDetails = profileMap.get(member.userId);
         return {
-          memberId: member.id, role: member.role, joinedAt: member.joined_at,
+          memberId: member.id, status: member.status, joinedAt: member.joined_at,
 
           user: {
             userId: member.userId,
@@ -256,9 +256,6 @@ const organizationService = {
       if (!member) throw new Error('MemberNotFound');
 
       const payload = {};
-      // support external field name 'role' and map to column 'role'
-      if (update.role) payload.role = update.role;
-
       if (update.status) payload.status = update.status;
 
       if (Object.keys(payload).length === 0) {

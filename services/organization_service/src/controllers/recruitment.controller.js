@@ -71,9 +71,9 @@ const recruitmentController = {
       const questionData = req.body; // Lấy { content, questionType, answers: [] }
 
       // 1. Validation
-      if (!questionData.content || !questionData.answers || !Array.isArray(questionData.answers) || questionData.answers.length === 0) {
+      if ((!questionData.content && !questionData.questionText) || !questionData.answers || !Array.isArray(questionData.answers) || questionData.answers.length === 0) {
         return res.status(400).json({
-          message: 'Nội dung (content) và mảng câu trả lời (answers) là bắt buộc.'
+          message: 'Nội dung (content/questionText) và mảng câu trả lời (answers) là bắt buộc.'
         });
       }
 
@@ -126,13 +126,10 @@ const recruitmentController = {
   async submitTest(req, res) {
     try {
       const { testId } = req.params;
-      
-      // --- SỬA LỖI Ở ĐÂY ---
-      // Lấy ID của ứng viên TỪ TOKEN.
-      // Dựa vào log của bạn, ID nằm trong trường 'userId'
-      const candidateId = req.user.userId; 
-      // --- KẾT THÚC SỬA LỖI ---
-      
+
+      // Lấy ID của ứng viên TỪ TOKEN (UUID)
+      const userId = req.user.userId;
+
       const { answers } = req.body;
 
       // 1. Validation
@@ -141,19 +138,17 @@ const recruitmentController = {
           message: 'Mảng câu trả lời (answers) là bắt buộc.'
         });
       }
-      
-      // Kiểm tra (lần này sẽ thành công)
-      if (!candidateId) {
+
+      if (!userId) {
          return res.status(401).json({
-          message: 'Không tìm thấy thông tin ứng viên (userId) từ token.'
+          message: 'Không tìm thấy thông tin người dùng (userId) từ token.'
         });
       }
 
       // 2. Gọi Service
-      // Chuyển candidateId thành số (INT) vì DB của bạn lưu là BIGINT
       const submissionResult = await recruitmentService.submitTest(
-        testId, 
-        parseInt(candidateId, 10), // Chuyển '3' (chuỗi) thành 3 (số)
+        testId,
+        userId, // UUID - không cần parseInt nữa
         answers
       );
 

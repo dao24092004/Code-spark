@@ -1,10 +1,20 @@
- // file: src/models/question.model.js
+// file: src/models/question.model.js
+// exam_db: questions table — shared with exam-service (Java)
+// ERD: questions(id uuid PK, organization_id uuid FK,
+//        type, content jsonb, difficulty, explanation, score, text,
+//        created_at, updated_at)
 module.exports = (sequelize, DataTypes) => {
   const Question = sequelize.define('Question', {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+    },
+    // Organization (cross-db: organization_db)
+    organizationId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'organization_id'
     },
     type: {
       type: DataTypes.STRING(50),
@@ -42,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
       field: 'updated_at'
     }
   }, {
-    tableName: 'questions', // CHANGED: Use exam-service's table
+    tableName: 'questions',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',

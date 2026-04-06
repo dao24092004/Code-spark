@@ -2,7 +2,6 @@ package com.dao.examservice.dto.response;
 
 import com.dao.examservice.entity.Question;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 public class QuestionResponse {
@@ -13,7 +12,6 @@ public class QuestionResponse {
     public String explanation;
     public Integer score;
     public String text;
-    public Set<String> tags;
     public Instant createdAt;
     public Instant updatedAt;
 }

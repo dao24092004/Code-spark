@@ -1,19 +1,48 @@
 // src/models/recruitmentSubmission.model.js
 module.exports = (sequelize, DataTypes) => {
   const RecruitmentSubmission = sequelize.define('RecruitmentSubmission', {
-    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
-    testId: { type: DataTypes.BIGINT, allowNull: false, field: 'test_id' },
-    candidateId: { type: DataTypes.BIGINT, allowNull: false, field: 'candidate_id' },
-    organizationId: { type: DataTypes.BIGINT, allowNull: false, field: 'organization_id' },
-    score: { type: DataTypes.FLOAT, allowNull: false },
-    startedAt: { type: DataTypes.DATE, field: 'started_at' },
-    completedAt: { type: DataTypes.DATE, field: 'completed_at' },
-    status: { type: DataTypes.STRING(50), allowNull: false, defaultValue: 'submitted' }
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
+    },
+    testId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'test_id'
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'user_id'
+    },
+    answers: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      get() {
+        const rawValue = this.getDataValue('answers');
+        return rawValue ? JSON.parse(rawValue) : null;
+      },
+      set(value) {
+        this.setDataValue('answers', value ? JSON.stringify(value) : null);
+      }
+    },
+    score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+    submittedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'submitted_at'
+    }
   }, {
     tableName: 'recruitment_submissions',
     timestamps: true,
-    createdAt: 'completed_at', // Dùng completed_at làm createdAt
-    updatedAt: false
+    createdAt: 'submitted_at',
+    updatedAt: false // Chỉ có submitted_at theo ERD
   });
+
   return RecruitmentSubmission;
 };

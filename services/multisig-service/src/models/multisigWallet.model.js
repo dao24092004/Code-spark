@@ -1,36 +1,56 @@
-module.exports = (sequelize, Sequelize) => {
+// file: src/models/multisigWallet.model.js
+// crypto_db: multisig_wallets table (shared with copyright-service, token-reward-service)
+// ERD: multisig_wallets(id uuid PK, crypto_account_id uuid,
+//         address UNIQUE, name, description, required_confirmations,
+//         total_confirmations, is_active, created_at, updated_at)
+
+module.exports = (sequelize, DataTypes) => {
     const MultisigWallet = sequelize.define('MultisigWallet', {
         id: {
-            type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV4,
-            primaryKey: true
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true,
         },
-        contractAddress: {
-            type: Sequelize.STRING,
+        cryptoAccountId: {
+            type: DataTypes.UUID,
             allowNull: false,
-            unique: true
+            field: 'crypto_account_id'
+        },
+        address: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            unique: true,
         },
         name: {
-            type: Sequelize.STRING,
-            allowNull: false
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
         description: {
-            type: Sequelize.TEXT
+            type: DataTypes.TEXT,
+            allowNull: true,
         },
-        // Giả sử creatorId là 1 UUID từ identity-service
-        creatorId: {
-            type: Sequelize.UUID, 
-            allowNull: true // Cho phép null nếu link ví
+        requiredConfirmations: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            field: 'required_confirmations'
         },
-        owners: {
-            type: Sequelize.ARRAY(Sequelize.STRING), // Lưu mảng địa chỉ owners
-            allowNull: false
+        totalConfirmations: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            field: 'total_confirmations'
         },
-        threshold: {
-            type: Sequelize.INTEGER,
-            allowNull: false
-        }
+        isActive: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+            field: 'is_active'
+        },
+    }, {
+        tableName: 'multisig_wallets',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
     });
+
     return MultisigWallet;
 };
-

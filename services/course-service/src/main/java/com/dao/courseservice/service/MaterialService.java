@@ -17,20 +17,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-//================================================================================
-// 1. INTERFACE
-//================================================================================
-
 public interface MaterialService {
     MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request);
     List<MaterialResponse> getMaterialsForCourse(UUID courseId);
     void deleteMaterial(UUID materialId);
     MaterialResponse updateMaterial(UUID materialId, com.dao.courseservice.request.UpdateMaterialRequest request);
 }
-
-//================================================================================
-// 2. IMPLEMENTATION
-//================================================================================
 
 @Service
 @RequiredArgsConstructor
@@ -40,25 +32,21 @@ class MaterialServiceImpl implements MaterialService {
 
     private final MaterialRepository materialRepository;
     private final CourseRepository courseRepository;
-    private final MaterialMapper materialMapper; // ✅ Đã thay CourseMapper → MaterialMapper
+    private final MaterialMapper materialMapper;
 
     @Override
     public MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request) {
         log.info("Adding material '{}' to course {}", request.getTitle(), courseId);
 
-        // 1. Kiểm tra khóa học tồn tại
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findActiveById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
 
-        // 2. Tạo entity từ request
         Material material = materialMapper.toEntity(request);
         material.setCourse(course);
 
-        // 3. Lưu vào DB
         Material savedMaterial = materialRepository.save(material);
         log.info("Successfully added material with id {}", savedMaterial.getId());
 
-        // 4. Trả về response
         return materialMapper.toMaterialResponse(savedMaterial);
     }
 
@@ -66,10 +54,6 @@ class MaterialServiceImpl implements MaterialService {
     @Transactional(readOnly = true)
     public List<MaterialResponse> getMaterialsForCourse(UUID courseId) {
         log.info("Fetching materials for course {}", courseId);
-
-        if (!courseRepository.existsById(courseId)) {
-            throw new ResourceNotFoundException("Course", "id", courseId);
-        }
 
         return materialRepository.findByCourseIdOrderByDisplayOrderAsc(courseId).stream()
                 .map(materialMapper::toMaterialResponse)
@@ -80,18 +64,19 @@ class MaterialServiceImpl implements MaterialService {
     public void deleteMaterial(UUID materialId) {
         log.info("Deleting material with id: {}", materialId);
 
-        if (!materialRepository.existsById(materialId)) {
-            throw new ResourceNotFoundException("Material", "id", materialId);
-        }
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
 
-        materialRepository.deleteById(materialId);
+        materialRepository.delete(material);
+
         log.info("Successfully deleted material with id: {}", materialId);
     }
 
     @Override
     public MaterialResponse updateMaterial(UUID materialId, com.dao.courseservice.request.UpdateMaterialRequest request) {
         log.info("Updating material {}", materialId);
-        Material material = materialRepository.findById(materialId)
+
+        Material material = materialRepository.findActiveById(materialId)
                 .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
 
         if (request.getTitle() != null) material.setTitle(request.getTitle());

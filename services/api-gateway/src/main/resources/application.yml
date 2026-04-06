@@ -95,7 +95,7 @@ spring:
           filters:
             - StripPrefix=0
         - id: proctoring-socketio
-          uri: ws://localhost:8082
+          uri: http://localhost:8082
           predicates:
             - Path=/socket.io/**
           filters:
@@ -149,6 +149,7 @@ spring:
             - Path=/api/v1/ai/**
           filters:
             - StripPrefix=0
+            - PreserveHostHeader
         - id: file-service
           uri: lb://file-service
           predicates:

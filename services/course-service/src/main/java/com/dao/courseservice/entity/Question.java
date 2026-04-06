@@ -1,49 +1,49 @@
 package com.dao.courseservice.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
-import lombok.ToString;
-
-
-@Getter // Thêm @Getter
-@Setter // Thêm @Setter
+@Entity
+@Table(name = "cm_questions", indexes = {
+    @Index(name = "idx_cm_questions_quiz", columnList = "quiz_id"),
+    @Index(name = "idx_cm_questions_type", columnList = "type"),
+    @Index(name = "idx_cm_questions_order", columnList = "display_order")
+})
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "cm_questions")
 public class Question {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ToString.Exclude // Bỏ qua trường này khi tạo phương thức toString()
-    @EqualsAndHashCode.Exclude // Bỏ qua trường này khi tạo equals() và hashCode()
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
-    
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String type;
 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<QuestionOption> options;
-    private Integer displayOrder;
+    @Column(name = "display_order")
+    @Builder.Default
+    private Integer displayOrder = 0;
 
-    @org.hibernate.annotations.CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private java.time.LocalDateTime createdAt;
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
+    private Set<QuestionOption> options = new java.util.HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

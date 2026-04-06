@@ -7,7 +7,6 @@ import com.dao.analyticsservice.dto.client.PageResponse;
 import com.dao.analyticsservice.dto.client.UserSummaryDto;
 import com.dao.analyticsservice.dto.response.AnalyticsOverviewResponse;
 import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
-import com.dao.analyticsservice.dto.response.DashboardResponse;
 import com.dao.analyticsservice.dto.response.ExamResultResponse;
 import com.dao.analyticsservice.dto.response.KpiMetricResponse;
 import com.dao.analyticsservice.dto.response.RecommendationResponse;
@@ -20,6 +19,8 @@ import com.dao.analyticsservice.repository.ExamResultRepository;
 import com.dao.analyticsservice.repository.ProctoringEventRepository;
 import com.dao.common.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final ExamResultRepository examResultRepository;
@@ -42,10 +44,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final CourseServiceClient courseServiceClient;
 
     @Override
-    public List<ExamResultResponse> getExamResults(UUID examId, UUID userId) {
+    public List<ExamResultResponse> getExamResults(Long examId, Long userId) {
         List<ExamResult> results;
         if (examId != null) {
-            results = examResultRepository.findByExamId(examId);
+            results = examResultRepository.findByExamId(UUID.fromString(examId.toString()));
         } else if (userId != null) {
             results = examResultRepository.findByUserId(userId);
         } else {
@@ -66,7 +68,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         List<ProctoringEvent> events = proctoringEventRepository.findByExamId(examId);
 
         long suspiciousEventsCount = events.stream()
-                .filter(event -> event.getEventType().contains("suspicious"))
+                .filter(event -> event.getEventType() != null &&
+                                 event.getEventType().toLowerCase().contains("suspicious"))
                 .count();
 
         Map<String, Long> eventTypeDistribution = events.stream()
@@ -84,25 +87,27 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     @Override
-    public DashboardResponse getDashboardData(UUID userId) {
-        return new DashboardResponse(
-                userId,
-                "USER",
-                Map.of(
-                        "totalExams", examResultRepository.countDistinctByExamIdIsNotNull(),
-                        "averageScore", Optional.ofNullable(examResultRepository.findAverageScore()).orElse(0.0)
-                ),
-                getExamResults(null, userId),
-                getRecommendations(userId)
-        );
-    }
+    public List<RecommendationResponse> getRecommendations(Long userId) {
+        // IMPLEMENTED: Lấy recommendations thực từ course-service
+        try {
+            // Lấy các khóa học phổ biến
+            ApiResponse<PageResponse<CourseSummaryDto>> coursesResponse = courseServiceClient.getCourses(0, 5);
+            if (coursesResponse != null && coursesResponse.isSuccess() && coursesResponse.getData() != null) {
+                return coursesResponse.getData().getContent().stream()
+                        .map(course -> new RecommendationResponse(
+                                course.id() != null ? course.id().getMostSignificantBits() : 0L,
+                                course.title(),
+                                "Recommended based on popularity",
+                                0.8
+                        ))
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.warn("Error fetching course recommendations: {}", e.getMessage());
+        }
 
-    @Override
-    public List<RecommendationResponse> getRecommendations(UUID userId) {
-        return List.of(
-                new RecommendationResponse(1L, "Advanced Java", "Based on recent performance", 0.8),
-                new RecommendationResponse(2L, "Spring Boot Microservices", "Popular course", 0.7)
-        );
+        // Fallback: Trả về empty list thay vì hardcoded data
+        return Collections.emptyList();
     }
 
     @Override
@@ -115,19 +120,17 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
             long totalUsers = 0;
             long totalCourses = 0;
-            
+
             try {
                 totalUsers = fetchUsers().size();
             } catch (Exception e) {
-                // Log error but continue with default value
-                System.err.println("Error fetching users: " + e.getMessage());
+                log.warn("Error fetching users: {}", e.getMessage());
             }
-            
+
             try {
                 totalCourses = fetchTotalCourses();
             } catch (Exception e) {
-                // Log error but continue with default value
-                System.err.println("Error fetching courses: " + e.getMessage());
+                log.warn("Error fetching courses: {}", e.getMessage());
             }
 
             return AnalyticsOverviewResponse.builder()
@@ -139,11 +142,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     .averageScore(round(averageScore))
                     .build();
         } catch (Exception e) {
-            // Log the full error for debugging
-            System.err.println("Error in getAnalyticsOverview: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Return default values if there's any error
+            log.error("Error in getAnalyticsOverview: ", e);
             return AnalyticsOverviewResponse.builder()
                     .totalUsers(0)
                     .activeUsers(0)
@@ -159,14 +158,27 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public List<KpiMetricResponse> getKpiMetrics() {
         AnalyticsOverviewResponse overview = getAnalyticsOverview();
 
-        long last7DaysAttempts = examResultRepository.countByCreatedAtBetween(LocalDateTime.now().minusDays(7), LocalDateTime.now());
-        long previous7DaysAttempts = examResultRepository.countByCreatedAtBetween(LocalDateTime.now().minusDays(14), LocalDateTime.now().minusDays(7));
+        // Sử dụng optimized queries
+        LocalDateTime last7Days = LocalDateTime.now().minusDays(7);
+        LocalDateTime previous7Days = LocalDateTime.now().minusDays(14);
+
+        long last7DaysAttempts = examResultRepository.countExamAttemptsBetween(previous7Days, last7Days);
+        long previous7DaysAttempts = examResultRepository.countExamAttemptsBetween(
+                LocalDateTime.now().minusDays(14),
+                LocalDateTime.now().minusDays(7));
 
         double attemptChange = calculateChangePercentage(previous7DaysAttempts, last7DaysAttempts);
 
-        Double lastWeekAvgScore = averageScoreForRange(LocalDate.now().minusDays(7), LocalDate.now());
-        Double prevWeekAvgScore = averageScoreForRange(LocalDate.now().minusDays(14), LocalDate.now().minusDays(7));
-        double scoreChange = calculateChangePercentage(prevWeekAvgScore, lastWeekAvgScore);
+        Double lastWeekAvgScore = examResultRepository.findAverageScoreBetween(
+                LocalDate.now().minusDays(7).atStartOfDay(),
+                LocalDate.now().atStartOfDay());
+        Double prevWeekAvgScore = examResultRepository.findAverageScoreBetween(
+                LocalDate.now().minusDays(14).atStartOfDay(),
+                LocalDate.now().minusDays(7).atStartOfDay());
+
+        double scoreChange = calculateChangePercentage(
+                prevWeekAvgScore != null ? prevWeekAvgScore : 0.0,
+                lastWeekAvgScore != null ? lastWeekAvgScore : 0.0);
 
         double activeRate = overview.getTotalUsers() == 0
                 ? 0
@@ -204,60 +216,80 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public List<ScoreTrendPoint> getScoreTrend() {
         LocalDate today = LocalDate.now();
         LocalDate start = today.minusDays(29);
-        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(start.atStartOfDay(), today.plusDays(1).atStartOfDay());
 
-        Map<LocalDate, List<ExamResult>> grouped = results.stream()
-                .collect(Collectors.groupingBy(er -> er.getCreatedAt().toLocalDate()));
+        // Sử dụng optimized query
+        List<Object[]> results = examResultRepository.getScoreTrendByDate(
+                start.atStartOfDay(),
+                today.plusDays(1).atStartOfDay());
 
+        // Fill missing dates with 0
         return start.datesUntil(today.plusDays(1))
                 .map(date -> {
-                    List<ExamResult> dayResults = grouped.getOrDefault(date, Collections.emptyList());
-                    double avg = dayResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
-                    return new ScoreTrendPoint(date, round(avg), dayResults.size());
+                    double avg = 0.0;
+                    long count = 0;
+                    for (Object[] row : results) {
+                        if (row[0] != null && row[0].toString().equals(date.toString())) {
+                            avg = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+                            count = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+                            break;
+                        }
+                    }
+                    return new ScoreTrendPoint(date, round(avg), count);
                 })
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<TopPerformerResponse> getTopPerformers(int limit) {
-        Map<UUID, List<ExamResult>> byUser = examResultRepository.findAll().stream()
-                .collect(Collectors.groupingBy(ExamResult::getUserId));
+        // Sử dụng optimized query với pagination
+        List<Object[]> results = examResultRepository.getUserStatisticsGrouped(PageRequest.of(0, limit));
 
-        return byUser.entrySet().stream()
-                .map(entry -> {
-                    UUID userId = entry.getKey();
-                    List<ExamResult> userResults = entry.getValue();
-                    double avgScore = userResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
-                    long attempts = userResults.size();
-                    String displayName = userId != null ? userId.toString() : "Unknown";
+        return results.stream()
+                .map(row -> {
+                    Long userId = (Long) row[0];
+                    Double avgScore = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+                    Long attempts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+
+                    String displayName = "Unknown";
+                    try {
+                        ApiResponse<UserSummaryDto> userResponse = identityServiceClient.getUserById(userId);
+                        if (userResponse != null && userResponse.isSuccess() && userResponse.getData() != null) {
+                            displayName = userResponse.getData().fullName() != null ?
+                                    userResponse.getData().fullName() : "User " + userId;
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error fetching user {}: {}", userId, e.getMessage());
+                    }
+
                     return new TopPerformerResponse(userId, displayName, round(avgScore), attempts);
                 })
-                .sorted(Comparator.comparingDouble(TopPerformerResponse::averageScore).reversed())
-                .limit(limit)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<TopCourseResponse> getTopCourses(int limit) {
-        Map<UUID, List<ExamResult>> byExam = examResultRepository.findAll().stream()
-                .collect(Collectors.groupingBy(ExamResult::getExamId));
+        // Sử dụng optimized query với pagination
+        List<Object[]> results = examResultRepository.getExamStatisticsGrouped(PageRequest.of(0, limit));
 
-        return byExam.entrySet().stream()
-                .map(entry -> {
-                    UUID courseId = entry.getKey();
-                    List<ExamResult> examResults = entry.getValue();
-                    double avgScore = examResults.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
+        return results.stream()
+                .map(row -> {
+                    UUID courseId = (UUID) row[0];
+                    Double avgScore = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+                    Long attempts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
 
                     String title = "Khóa học " + courseId;
-                    ApiResponse<CourseSummaryDto> courseResponse = courseServiceClient.getCourseById(courseId);
-                    if (courseResponse != null && courseResponse.isSuccess() && courseResponse.getData() != null) {
-                        title = courseResponse.getData().title();
+                    try {
+                        ApiResponse<CourseSummaryDto> courseResponse = courseServiceClient.getCourseById(courseId);
+                        if (courseResponse != null && courseResponse.isSuccess() && courseResponse.getData() != null) {
+                            title = courseResponse.getData().title() != null ?
+                                    courseResponse.getData().title() : title;
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error fetching course {}: {}", courseId, e.getMessage());
                     }
 
-                    return new TopCourseResponse(courseId, title, examResults.size(), round(avgScore));
+                    return new TopCourseResponse(courseId, title, attempts, round(avgScore));
                 })
-                .sorted(Comparator.comparingLong(TopCourseResponse::enrollmentCount).reversed())
-                .limit(limit)
                 .collect(Collectors.toList());
     }
 
@@ -285,22 +317,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     private String determineTrend(double value, double baseline) {
-        if (value > baseline) {
-            return "up";
-        }
-        if (value < baseline) {
-            return "down";
-        }
+        if (value > baseline) return "up";
+        if (value < baseline) return "down";
         return "stable";
     }
 
     private double round(double value) {
         return Math.round(value * 10.0) / 10.0;
-    }
-
-    private double averageScoreForRange(LocalDate startInclusive, LocalDate endExclusive) {
-        List<ExamResult> results = examResultRepository.findByCreatedAtBetween(startInclusive.atStartOfDay(), endExclusive.atStartOfDay());
-        return results.stream().mapToDouble(ExamResult::getScore).average().orElse(0.0);
     }
 
     private ExamResultResponse mapToExamResultResponse(ExamResult examResult) {

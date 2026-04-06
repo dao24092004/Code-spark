@@ -1,5 +1,6 @@
 package com.dao.examservice.controller;
 
+import com.dao.common.dto.ApiResponse;
 import com.dao.examservice.dto.request.ExamConfigRequest;
 import com.dao.examservice.dto.request.ExamCreationRequest;
 import com.dao.examservice.dto.request.ExamScheduleRequest;
@@ -13,7 +14,15 @@ import com.dao.examservice.entity.Exam;
 import com.dao.examservice.service.ExamService;
 import com.dao.examservice.service.QuestionService;
 import com.dao.examservice.repository.ExamQuestionRepository;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,151 +33,176 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/exams")
+@RequestMapping("/api/v1/exams")
+@RequiredArgsConstructor
+@Slf4j
 public class ExamController {
 
     private final ExamService examService;
     private final QuestionService questionService;
     private final ExamQuestionRepository examQuestionRepository;
 
-    public ExamController(ExamService examService, QuestionService questionService, ExamQuestionRepository examQuestionRepository) {
-        this.examService = examService;
-        this.questionService = questionService;
-        this.examQuestionRepository = examQuestionRepository;
-    }
-
-    // POST /exams: create exam
     @PostMapping
-    public ResponseEntity<ExamResponse> create(@RequestBody ExamCreationRequest request) {
+    public ResponseEntity<ApiResponse<ExamResponse>> create(@Valid @RequestBody ExamCreationRequest request) {
+        log.info("Creating exam: {}", request.title);
         Exam exam = examService.createExam(request);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Exam created successfully", toResponse(exam)));
     }
 
-    // PUT /exams/{id}/config: update config
     @PutMapping("/{id}/config")
-    public ResponseEntity<ExamResponse> config(@PathVariable UUID id, @RequestBody ExamConfigRequest request) {
+    public ResponseEntity<ApiResponse<ExamResponse>> config(@PathVariable UUID id, @Valid @RequestBody ExamConfigRequest request) {
+        log.info("Updating exam config: {}", id);
         Exam exam = examService.updateConfig(id, request);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.ok(ApiResponse.success("Exam config updated successfully", toResponse(exam)));
     }
 
-    // PUT /exams/{id}: update exam basic info
     @PutMapping("/{id}")
-    public ResponseEntity<ExamResponse> update(@PathVariable UUID id, @RequestBody ExamUpdateRequest request) {
+    public ResponseEntity<ApiResponse<ExamResponse>> update(@PathVariable UUID id, @Valid @RequestBody ExamUpdateRequest request) {
+        log.info("Updating exam: {}", id);
         Exam exam = examService.updateExam(id, request);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.ok(ApiResponse.success("Exam updated successfully", toResponse(exam)));
     }
 
-    // GET /exams/{id}: get exam
     @GetMapping("/{id}")
-    public ResponseEntity<ExamResponse> get(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ExamResponse>> get(@PathVariable UUID id) {
         Exam exam = examService.get(id);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.ok(ApiResponse.success(toResponse(exam)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        log.info("Soft deleting exam: {}", id);
         examService.delete(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success("Exam deleted successfully"));
     }
 
-    // PUT /exams/{id}/status: update exam status (publish/unpublish)
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<ApiResponse<Void>> hardDelete(@PathVariable UUID id) {
+        log.warn("Hard deleting exam: {}", id);
+        examService.hardDelete(id);
+        return ResponseEntity.ok(ApiResponse.success("Exam hard deleted successfully"));
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<ExamResponse>> restore(@PathVariable UUID id) {
+        log.info("Restoring exam: {}", id);
+        Exam exam = examService.restore(id);
+        return ResponseEntity.ok(ApiResponse.success("Exam restored successfully", toResponse(exam)));
+    }
+
     @PutMapping("/{id}/status")
-    public ResponseEntity<ExamResponse> updateStatus(@PathVariable UUID id, @RequestBody ExamStatusUpdateRequest request) {
+    public ResponseEntity<ApiResponse<ExamResponse>> updateStatus(@PathVariable UUID id, @RequestBody ExamStatusUpdateRequest request) {
+        log.info("Updating exam status: {} to {}", id, request.status);
         Exam exam = examService.updateStatus(id, request.status);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.ok(ApiResponse.success("Exam status updated successfully", toResponse(exam)));
     }
 
-    // POST /exams/{id}/schedule: schedule & register
     @PostMapping("/{id}/schedule")
-    public ResponseEntity<ExamResponse> schedule(@PathVariable UUID id, @RequestBody ExamScheduleRequest request) {
+    public ResponseEntity<ApiResponse<ExamResponse>> schedule(@PathVariable UUID id, @RequestBody ExamScheduleRequest request) {
+        log.info("Scheduling exam: {}", id);
         Exam exam = examService.scheduleAndRegister(id, request);
-        return ResponseEntity.ok(toResponse(exam));
+        return ResponseEntity.ok(ApiResponse.success("Exam scheduled successfully", toResponse(exam)));
     }
 
-    // POST /exams/{id}/generate-questions: generate and SAVE random questions to exam
     @PostMapping("/{id}/generate-questions")
-    public ResponseEntity<GeneratedQuestionsResponse> generate(@PathVariable UUID id, @RequestBody com.dao.examservice.dto.request.GenerateQuestionsRequest request) {
-        // ✨ FIXED: Now saves questions to exam_questions table instead of just returning IDs
+    public ResponseEntity<ApiResponse<GeneratedQuestionsResponse>> generate(@PathVariable UUID id, @RequestBody com.dao.examservice.dto.request.GenerateQuestionsRequest request) {
+        log.info("Generating questions for exam: {}", id);
         List<UUID> questionIds = examService.generateAndSaveQuestions(id, request);
-        
+
         GeneratedQuestionsResponse r = new GeneratedQuestionsResponse();
         r.questionIds = new ArrayList<>(questionIds);
-        return ResponseEntity.ok(r);
+        return ResponseEntity.ok(ApiResponse.success("Questions generated successfully", r));
     }
 
-    // GET /exams/{id}/questions: get all questions for an exam
     @GetMapping("/{id}/questions")
-    public ResponseEntity<List<QuestionResponse>> getExamQuestions(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getExamQuestions(@PathVariable UUID id) {
         List<com.dao.examservice.entity.ExamQuestion> examQuestions = examService.getExamQuestions(id);
-        
-        // Map to QuestionResponse
+
         List<QuestionResponse> responses = examQuestions.stream()
                 .map(eq -> toQuestionResponse(eq.getQuestion()))
                 .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(responses);
+
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    // Helper method to convert Question entity to QuestionResponse
-    private QuestionResponse toQuestionResponse(com.dao.examservice.entity.Question q) {
-        QuestionResponse r = new QuestionResponse();
-        r.id = q.getId();
-        r.type = q.getType();
-        r.content = q.getContent();
-        r.difficulty = q.getDifficulty();
-        r.explanation = q.getExplanation();
-        r.score = q.getScore();
-        r.text = q.getText();
-        r.tags = q.getTags();
-        r.createdAt = q.getCreatedAt();
-        r.updatedAt = q.getUpdatedAt();
-        return r;
-    }
-
-    // GET /exams/schedules: list exams in time window
     @GetMapping("/schedules")
-    public ResponseEntity<List<ExamResponse>> schedules(
+    public ResponseEntity<ApiResponse<List<ExamResponse>>> schedules(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end) {
         List<Exam> list = examService.getSchedules(start, end);
-        return ResponseEntity.ok(list.stream().map(this::toResponse).collect(Collectors.toList()));
+        return ResponseEntity.ok(ApiResponse.success(list.stream().map(this::toResponse).collect(Collectors.toList())));
     }
 
-    // GET /exams/subjects: get all unique subjects/tags from questions
+    @GetMapping("/schedules/paged")
+    public ResponseEntity<ApiResponse<Page<ExamResponse>>> schedulesPaged(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant end,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "startAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Exam> examPage = examService.getSchedules(start, end, pageable);
+        Page<ExamResponse> responsePage = examPage.map(this::toResponse);
+
+        return ResponseEntity.ok(ApiResponse.success(responsePage));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<ExamResponse>>> search(
+            @RequestParam(required = false) Exam.ExamStatus status,
+            @RequestParam(required = false) String title,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Exam> examPage = examService.searchExams(status, title, pageable);
+        Page<ExamResponse> responsePage = examPage.map(this::toResponse);
+
+        return ResponseEntity.ok(ApiResponse.success(responsePage));
+    }
+
     @GetMapping("/subjects")
-    public ResponseEntity<List<String>> getAllSubjects() {
+    public ResponseEntity<ApiResponse<List<String>>> getAllSubjects() {
         List<String> subjects = questionService.getAllSubjects();
-        return ResponseEntity.ok(subjects);
+        return ResponseEntity.ok(ApiResponse.success(subjects));
     }
 
     // ==================== Enum/Lookup Endpoints ====================
 
-    // GET /exams/types: get all exam types (practice, quiz, midterm, etc.)
     @GetMapping("/types")
-    public ResponseEntity<List<EnumOptionResponse>> getAllExamTypes() {
+    public ResponseEntity<ApiResponse<List<EnumOptionResponse>>> getAllExamTypes() {
         List<EnumOptionResponse> types = examService.getAllExamTypes();
-        return ResponseEntity.ok(types);
+        return ResponseEntity.ok(ApiResponse.success(types));
     }
 
-    // GET /exams/difficulties: get all exam difficulties (easy, medium, hard)
     @GetMapping("/difficulties")
-    public ResponseEntity<List<EnumOptionResponse>> getAllExamDifficulties() {
+    public ResponseEntity<ApiResponse<List<EnumOptionResponse>>> getAllExamDifficulties() {
         List<EnumOptionResponse> difficulties = examService.getAllExamDifficulties();
-        return ResponseEntity.ok(difficulties);
+        return ResponseEntity.ok(ApiResponse.success(difficulties));
     }
 
-    // GET /exams/statuses: get all exam statuses (draft, published, etc.)
     @GetMapping("/statuses")
-    public ResponseEntity<List<EnumOptionResponse>> getAllExamStatuses() {
+    public ResponseEntity<ApiResponse<List<EnumOptionResponse>>> getAllExamStatuses() {
         List<EnumOptionResponse> statuses = examService.getAllExamStatuses();
-        return ResponseEntity.ok(statuses);
+        return ResponseEntity.ok(ApiResponse.success(statuses));
     }
 
     private ExamResponse toResponse(Exam e) {
         ExamResponse r = new ExamResponse();
         r.id = e.getId();
-        r.courseId = e.getOrgId();
-        r.orgId = e.getOrgId();
+        r.courseId = e.getCourseId();
         r.title = e.getTitle();
         r.description = e.getDescription();
         r.startAt = e.getStartAt();
@@ -180,9 +214,24 @@ public class ExamController {
         r.createdBy = e.getCreatedBy();
         r.status = e.getStatus().name();
         r.createdAt = e.getCreatedAt();
-        r.tags = e.getTags();
-        long count = examQuestionRepository.countByExamId(e.getId());
-        r.assignedQuestionCount = Math.toIntExact(count);
+        r.updatedAt = e.getUpdatedAt();
+        // orgId, examType, difficulty removed per ERD schema
+        // Use optimized count query instead of N+1
+        r.assignedQuestionCount = Math.toIntExact(examQuestionRepository.countByExamId(e.getId()));
+        return r;
+    }
+
+    private QuestionResponse toQuestionResponse(com.dao.examservice.entity.Question q) {
+        QuestionResponse r = new QuestionResponse();
+        r.id = q.getId();
+        r.type = q.getType();
+        r.content = q.getContent();
+        r.difficulty = q.getDifficulty();
+        r.explanation = q.getExplanation();
+        r.score = q.getScore();
+        r.text = q.getText();
+        r.createdAt = q.getCreatedAt();
+        r.updatedAt = q.getUpdatedAt();
         return r;
     }
 }

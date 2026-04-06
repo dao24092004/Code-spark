@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const { 
+const {
   profileDbSequelize,
-  organizationDbSequelize, // THÊM MỚI
+  organizationDbSequelize,
   identityDbSequelize,
   courseDbSequelize
 } = require('../config/db');
@@ -13,31 +13,44 @@ const db = {};
 db.Sequelize = Sequelize;
 db.DataTypes = DataTypes;
 
-// Export sequelize instance để service có thể dùng transaction
+// Export sequelize instance
 db.sequelize = organizationDbSequelize;
 
-// === Import các model (từ các file riêng lẻ) ===
+// === Import các model ===
 
-// Nhóm 1 - SỬ DỤNG organizationDbSequelize
+// Nhóm Organization
 db.Organization = require('./organization.model.js')(organizationDbSequelize, DataTypes);
 db.OrganizationMember = require('./organizationMember.model.js')(organizationDbSequelize, DataTypes);
+db.OrganizationInvitation = require('./organizationInvitation.model.js')(organizationDbSequelize, DataTypes);
 
-// Nhóm 3 - SỬ DỤNG organizationDbSequelize
+// Nhóm Recruitment
 db.RecruitmentTest = require('./recruitmentTest.model.js')(organizationDbSequelize, DataTypes);
 db.RecruitmentQuestion = require('./recruitmentQuestion.model.js')(organizationDbSequelize, DataTypes);
 db.RecruitmentAnswer = require('./recruitmentAnswer.model.js')(organizationDbSequelize, DataTypes);
 db.RecruitmentSubmission = require('./recruitmentSubmission.model.js')(organizationDbSequelize, DataTypes);
 
-
 // === ĐỊNH NGHĨA CÁC MỐI QUAN HỆ ===
 
-// --- Quan hệ Nhóm 1 ---
-// Organization <-> OrganizationMember
-db.Organization.hasMany(db.OrganizationMember, { foreignKey: 'organizationId' });
-db.OrganizationMember.belongsTo(db.Organization, { foreignKey: 'organizationId' });
+// --- Organization relationships ---
+db.Organization.hasMany(db.OrganizationMember, {
+  foreignKey: 'organizationId',
+  as: 'members'
+});
+db.OrganizationMember.belongsTo(db.Organization, {
+  foreignKey: 'organizationId',
+  as: 'organization'
+});
 
-// --- Quan hệ Nhóm 3 ---
-// Organization <-> RecruitmentTest
+db.Organization.hasMany(db.OrganizationInvitation, {
+  foreignKey: 'organizationId',
+  as: 'invitations'
+});
+db.OrganizationInvitation.belongsTo(db.Organization, {
+  foreignKey: 'organizationId',
+  as: 'organization'
+});
+
+// --- Recruitment relationships ---
 db.Organization.hasMany(db.RecruitmentTest, {
   foreignKey: 'organizationId',
   as: 'recruitmentTests'
@@ -47,49 +60,31 @@ db.RecruitmentTest.belongsTo(db.Organization, {
   as: 'organization'
 });
 
-// Test <-> Question
-// Một Test CÓ NHIỀU (hasMany) Câu hỏi
-db.RecruitmentTest.hasMany(db.RecruitmentQuestion, { 
+db.RecruitmentTest.hasMany(db.RecruitmentQuestion, {
   foreignKey: 'testId',
-  as: 'questions' 
+  as: 'questions'
 });
-db.RecruitmentQuestion.belongsTo(db.RecruitmentTest, { 
+db.RecruitmentQuestion.belongsTo(db.RecruitmentTest, {
   foreignKey: 'testId',
   as: 'test'
 });
 
-// Question <-> Answer
-// Một Câu hỏi CÓ NHIỀU (hasMany) Câu trả lời
-db.RecruitmentQuestion.hasMany(db.RecruitmentAnswer, { 
+db.RecruitmentQuestion.hasMany(db.RecruitmentAnswer, {
   foreignKey: 'questionId',
   as: 'answers'
 });
-db.RecruitmentAnswer.belongsTo(db.RecruitmentQuestion, { 
+db.RecruitmentAnswer.belongsTo(db.RecruitmentQuestion, {
   foreignKey: 'questionId',
   as: 'question'
 });
 
-// Test <-> Submission
-// Một Test CÓ NHIỀU (hasMany) Lượt nộp bài
-db.RecruitmentTest.hasMany(db.RecruitmentSubmission, { 
+db.RecruitmentTest.hasMany(db.RecruitmentSubmission, {
   foreignKey: 'testId',
   as: 'submissions'
 });
-db.RecruitmentSubmission.belongsTo(db.RecruitmentTest, { 
+db.RecruitmentSubmission.belongsTo(db.RecruitmentTest, {
   foreignKey: 'testId',
   as: 'test'
 });
-
-// Organization <-> Submission
-// Một Tổ chức CÓ NHIỀU (hasMany) Lượt nộp bài
-db.Organization.hasMany(db.RecruitmentSubmission, {
-  foreignKey: 'organizationId',
-  as: 'submissions'
-});
-db.RecruitmentSubmission.belongsTo(db.Organization, {
-  foreignKey: 'organizationId',
-  as: 'organization'
-});
-// --- KẾT THÚC QUAN HỆ ---
 
 module.exports = db;

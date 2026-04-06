@@ -161,25 +161,19 @@ const organizationController = {
     try {
       // 1. Lấy ID tổ chức từ URL
       const { orgId } = req.params;
-      
-      // 2. Lấy thông tin user và vai trò từ body
-      const { userId, role } = req.body;
+
+      // 2. Lấy userId từ body
+      const { userId } = req.body;
 
       // 3. Validation
-      if (!userId || !role) {
+      if (!userId) {
         return res.status(400).json({
-          message: 'userId (ID của user) và role (vai trò) là bắt buộc.'
+          message: 'userId (ID của user) là bắt buộc.'
         });
       }
 
-      const allowed = ['ADMIN','USER','MANAGER'];
-      const normRole = String(role).toUpperCase();
-      if (!allowed.includes(normRole)) {
-        return res.status(400).json({ message: `role không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}` });
-      }
-
       // 4. Gọi Service
-      const newMember = await organizationService.addMemberToOrganization(orgId, userId, normRole);
+      const newMember = await organizationService.addMemberToOrganization(orgId, userId);
 
       // 5. Trả về thành công
       res.status(201).json({
@@ -189,7 +183,7 @@ const organizationController = {
 
     } catch (error) {
       console.error('Lỗi Controller [addMember]:', error.message);
-      
+
       // 6. Xử lý lỗi 404
       if (error.message === 'OrganizationNotFound') {
         return res.status(404).json({ message: 'Lỗi: Không tìm thấy tổ chức này.' });
@@ -197,16 +191,16 @@ const organizationController = {
       if (error.message === 'UserNotFound') {
         return res.status(404).json({ message: 'Lỗi: Không tìm thấy người dùng này.' });
       }
-      
+
       // Lỗi 409 (Conflict) nếu đã tồn tại
       if (error.message === 'UserAlreadyMember') {
         return res.status(409).json({ message: 'Lỗi: Người dùng này đã là thành viên của tổ chức.' });
       }
-      
+
       // Lỗi 500 chung
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Lỗi máy chủ nội bộ.',
-        error: error.message 
+        error: error.message
       });
     }
   },
@@ -235,23 +229,22 @@ const organizationController = {
   },
   /**
    * API: PATCH /api/v1/organization/:orgId/members/:userId
-   * Cập nhật vai trò/trạng thái thành viên
+   * Cập nhật trạng thái thành viên
    */
   async updateMember(req, res) {
     try {
       const { orgId, userId } = req.params;
-      const { role, status } = req.body || {};
+      const { status } = req.body || {};
 
       const update = {};
-      if (role !== undefined) {
-        const allowed = ['ADMIN','USER','MANAGER'];
-        const normRole = String(role).toUpperCase();
-        if (!allowed.includes(normRole)) {
-          return res.status(400).json({ message: `role không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}` });
+      if (status !== undefined) {
+        const allowed = ['PENDING', 'ACTIVE', 'SUSPENDED'];
+        const normStatus = String(status).toUpperCase();
+        if (!allowed.includes(normStatus)) {
+          return res.status(400).json({ message: `status không hợp lệ. Chỉ chấp nhận: ${allowed.join(', ')}` });
         }
-        update.role = normRole;
+        update.status = normStatus;
       }
-      if (status !== undefined) update.status = status;
 
       const updated = await organizationService.updateMember(orgId, userId, update);
       return res.status(200).json({

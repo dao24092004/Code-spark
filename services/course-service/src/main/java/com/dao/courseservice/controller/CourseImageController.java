@@ -24,21 +24,22 @@ public class CourseImageController {
     private final S3FileService s3FileService;
 
     @PostMapping("/{courseId}/images/upload")
-    @PreAuthorize("isAuthenticated()") // (Nên check quyền 'COURSE_WRITE')
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     public ResponseEntity<ApiResponse<String>> uploadCourseImage(
         @PathVariable UUID courseId,
         @RequestParam("file") MultipartFile file
     ) {
         try {
+            // Kiểm tra khóa học tồn tại (sử dụng soft delete)
+            Course course = courseRepository.findActiveById(courseId)
+                    .orElseThrow(() -> new RuntimeException("Course not found"));
+
             // Upload to S3/MinIO
             String publicUrl = s3FileService.uploadFile(file, "thumbnails");
 
             // Update course thumbnailUrl
-            Course course = courseRepository.findById(courseId).orElse(null);
-            if (course != null) {
-                course.setThumbnailUrl(publicUrl);
-                courseRepository.save(course);
-            }
+            course.setThumbnailUrl(publicUrl);
+            courseRepository.save(course);
 
             return ResponseEntity.ok(ApiResponse.success("Image uploaded", publicUrl));
         } catch (IOException ex) {
@@ -48,11 +49,14 @@ public class CourseImageController {
     }
 
     @DeleteMapping("/{courseId}/images/{imageId}")
-    @PreAuthorize("isAuthenticated()") // (Nên check quyền 'COURSE_WRITE')
+    @PreAuthorize("hasAuthority('COURSE_WRITE')")
     public ResponseEntity<ApiResponse<Void>> deleteCourseImage(
         @PathVariable UUID courseId,
         @PathVariable UUID imageId
     ) {
+        // Kiểm tra khóa học tồn tại (sử dụng soft delete)
+        courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new RuntimeException("Course not found"));
         // Logic (trong Service):
         // 1. Xóa file trên S3/MinIO.
         // 2. Xóa hàng trong bảng `cm_course_images`.
