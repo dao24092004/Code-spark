@@ -69,7 +69,7 @@ public class CourseController {
      * Cho phép truy cập công khai để user có thể xem courses.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('COURSE_READ')")
+    @PreAuthorize("hasAuthority('ROLE_READ')")
     public ResponseEntity<ApiResponse<Page<CourseResponse>>> getAllCourses(
             @PageableDefault(size = 20, page = 0) Pageable pageable,
             @RequestParam(required = false) String keyword,

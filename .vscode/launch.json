@@ -1,6 +1,5 @@
 {
     "configurations": [
-        
         {
             "type": "java",
             "name": "OnlineExamServiceApplication",
@@ -138,7 +137,8 @@
             "mainClass": "com.dao.examservice.ExamServiceApplication",
             "projectName": "exam-service",
             "args": "",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=58761 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=exam-service"
         },
         {
             "type": "java",
@@ -148,7 +148,8 @@
             "mainClass": "com.dao.courseservice.CourseServiceApplication",
             "projectName": "course-service",
             "args": "",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=54650 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=course-service"
         },
         {
             "type": "java",
@@ -157,6 +158,16 @@
             "cwd": "${workspaceFolder}",
             "mainClass": "com.dao.analyticsservice.AnalyticsServiceApplication",
             "projectName": "analytics-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-UserServiceApplication<user-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.dao.user_service.UserServiceApplication",
+            "projectName": "user-service",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
