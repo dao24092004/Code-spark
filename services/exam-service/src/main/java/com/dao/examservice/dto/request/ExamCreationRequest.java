@@ -4,6 +4,8 @@ import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.dao.examservice.entity.Exam;
+
 public class ExamCreationRequest {
 
     public UUID courseId;
@@ -45,4 +47,14 @@ public class ExamCreationRequest {
     @Min(value = 1, message = "Difficulty must be at least 1")
     @Max(value = 10, message = "Difficulty cannot exceed 10")
     public Integer difficulty;
+
+    public Exam.ExamStatus examStatus;
+
+    public Boolean randomizeQuestionOrder;
+
+    public Boolean randomizeOptionOrder;
+
+    public Boolean showCorrectAnswers;
+
+    public Boolean partialScoringEnabled;
 }
