@@ -2,7 +2,6 @@ package com.dao.analyticsservice.service;
 
 import com.dao.analyticsservice.dto.response.AnalyticsOverviewResponse;
 import com.dao.analyticsservice.dto.response.CheatingStatsResponse;
-import com.dao.analyticsservice.dto.response.DashboardResponse;
 import com.dao.analyticsservice.dto.response.ExamResultResponse;
 import com.dao.analyticsservice.dto.response.KpiMetricResponse;
 import com.dao.analyticsservice.dto.response.RecommendationResponse;
@@ -11,6 +10,7 @@ import com.dao.analyticsservice.dto.response.TopCourseResponse;
 import com.dao.analyticsservice.dto.response.TopPerformerResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface AnalyticsService {
     List<ExamResultResponse> getExamResults(Long examId, Long userId);
@@ -22,7 +22,4 @@ public interface AnalyticsService {
     List<ScoreTrendPoint> getScoreTrend();
     List<TopPerformerResponse> getTopPerformers(int limit);
     List<TopCourseResponse> getTopCourses(int limit);
-
-    // Import UUID for compatibility
-    java.util.UUID UUID();
 }

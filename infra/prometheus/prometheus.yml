@@ -1,38 +1,177 @@
 global:
   scrape_interval: 15s
+  # Tối ưu cho JVM metrics - scrape thường xuyên hơn để catch GC issues
+  evaluation_interval: 15s
 
 scrape_configs:
+  # Prometheus self-monitoring
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
 
-  # Cấu hình các microservice theo best practice
-  # Sử dụng service name (dùng cho docker-compose) và labels
-
-  - job_name: 'api-gateway'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: [ 'api-gateway:8080' ] # Giả sử cổng 8080
-        labels:
-          application: 'API Gateway'
+  # ============================================================
+  # JVM-TUNED MICROSERVICES MONITORING
+  # ============================================================
+  # Tất cả services đã được JVM tuned với ZGC và Prometheus metrics
+  # Metrics endpoint: /actuator/prometheus
 
   - job_name: 'discovery-service'
     metrics_path: '/actuator/prometheus'
+    scrape_interval: 30s
     static_configs:
-      - targets: [ 'discovery-service:9999' ] # Cổng mặc định của Eureka
+      - targets: ['discovery-service:9999']
         labels:
           application: 'Discovery Service'
+          tier: 'infrastructure'
+          jvm_heap_max: '384m'
+          jvm_gc: 'ZGC'
 
   - job_name: 'config-server'
     metrics_path: '/actuator/prometheus'
+    scrape_interval: 30s
     static_configs:
-      - targets: [ 'config-server:8888' ] # Cổng mặc định của Spring Cloud Config
+      - targets: ['config-server:8888']
         labels:
           application: 'Config Server'
+          tier: 'infrastructure'
+          jvm_heap_max: '384m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          application: 'API Gateway'
+          tier: 'edge'
+          jvm_heap_max: '512m'
+          jvm_gc: 'ZGC'
 
   - job_name: 'identity-service'
     metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
     static_configs:
-      - targets: [ 'identity-service:9000' ] # Giả sử cổng 9000
+      - targets: ['identity-service:9000']
         labels:
           application: 'Identity Service'
+          tier: 'core'
+          jvm_heap_max: '1024m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['user-service:9001']
+        labels:
+          application: 'User Service'
+          tier: 'core'
+          jvm_heap_max: '512m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'profile-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['profile-service:9002']
+        labels:
+          application: 'Profile Service'
+          tier: 'core'
+          jvm_heap_max: '768m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'course-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['course-service:9004']
+        labels:
+          application: 'Course Service'
+          tier: 'business'
+          jvm_heap_max: '1024m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'exam-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['exam-service:9005']
+        labels:
+          application: 'Exam Service'
+          tier: 'business'
+          jvm_heap_max: '1536m'
+          jvm_gc: 'ZGC'
+          priority: 'high'
+
+  - job_name: 'file-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['file-service:9003']
+        labels:
+          application: 'File Service'
+          tier: 'support'
+          jvm_heap_max: '512m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'notification-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['notification-service:9009']
+        labels:
+          application: 'Notification Service'
+          tier: 'support'
+          jvm_heap_max: '384m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'analytics-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['analytics-service:9004']
+        labels:
+          application: 'Analytics Service'
+          tier: 'analytics'
+          jvm_heap_max: '768m'
+          jvm_gc: 'ZGC'
+
+  - job_name: 'admin-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['admin-service:9008']
+        labels:
+          application: 'Admin Service'
+          tier: 'admin'
+          jvm_heap_max: '384m'
+          jvm_gc: 'ZGC'
+
+  # ============================================================
+  # JVM METRICS ALERTING RULES
+  # ============================================================
+  # Các metrics quan trọng để monitor:
+  # - jvm_memory_used_bytes{area="heap"}
+  # - jvm_gc_pause_seconds_sum
+  # - jvm_gc_pause_seconds_count
+  # - process_memory_rss_bytes (container memory)
+
+  # ============================================================
+  # RECORDING RULES (for faster dashboards)
+  # ============================================================
+  - job_name: 'jvm-metrics'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: [
+          'api-gateway:8080',
+          'identity-service:9000',
+          'user-service:9001',
+          'profile-service:9002',
+          'course-service:9004',
+          'exam-service:9005',
+          'analytics-service:9004'
+        ]
+        labels:
+          group: 'critical-services'
