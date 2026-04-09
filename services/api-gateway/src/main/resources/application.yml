@@ -40,48 +40,12 @@ spring:
             - Path=/exam/**
           filters:
             - StripPrefix=1
-        # Route cho materials (MaterialController không có v1)
-        - id: course-service-materials
-          uri: lb://course-service
-          predicates:
-            - Path=/api/v1/courses/*/materials
-          filters:
-            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/materials, /api/courses/$\{courseId}/materials
-        # Route cho quizzes (QuizController không có v1 cho các endpoint /api/courses/{id}/quizzes)
-        - id: course-service-quizzes-by-course
-          uri: lb://course-service
-          predicates:
-            - Path=/api/v1/courses/*/quizzes
-          filters:
-            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/quizzes, /api/courses/$\{courseId}/quizzes
-        # Route cho quiz details & submit (QuizController dùng /api/quizzes/**)
-        - id: course-service-quiz-details
-          uri: lb://course-service
-          predicates:
-            - Path=/api/v1/quizzes/** 
-          filters:
-            - RewritePath=/api/v1/quizzes(?<segment>/?.*), /api/quizzes$\{segment}
-        # Route cho upload materials (không có v1)
-        - id: course-service-materials-upload
-          uri: lb://course-service
-          predicates:
-            - Path=/api/v1/courses/*/materials/upload
-          filters:
-            - RewritePath=/api/v1/courses/(?<courseId>[^/]+)/materials/upload, /api/courses/$\{courseId}/materials/upload
-        # Route cho progress (ProgressController không có v1)
-        - id: course-service-progress
-          uri: lb://course-service
-          predicates:
-            - Path=/api/v1/progress/**
-          filters:
-            - RewritePath=/api/v1/progress(?<segment>/?.*), /api/progress$\{segment}
-        # Route cho courses và các endpoint khác (CourseController có v1)
         - id: course-service
           uri: lb://course-service
           predicates:
-            - Path=/api/v1/courses,/api/v1/courses/**,/api/progress/**,/api/rewards/**
+            - Path=/course/**
           filters:
-            - StripPrefix=0        
+            - StripPrefix=1
         - id: token-reward-service
           uri: http://localhost:9009
           predicates:
@@ -111,14 +75,14 @@ spring:
           predicates:
             - Path=/api/exam/**
           filters:
-            - RewritePath=/api/exam(?<segment>/?.*), /api$\{segment}  # Rewrite "/api/exam/..." → "/api/..." 
+            - RewritePath=/api/exam(?<segment>/?.*), /api$\{segment} # Rewrite "/api/exam/..." → "/api/..."
         - id: multisig-service
           uri: http://localhost:3003
           predicates:
             - Path=/api/v1/multisig/**
           filters:
             - StripPrefix=0
-        
+
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -126,7 +90,7 @@ spring:
           filters:
             - StripPrefix=1
         - id: organization-service
-          uri: http://localhost:8008  
+          uri: http://localhost:8008
           predicates:
             - Path=/api/organization,/api/organization/**
           filters:

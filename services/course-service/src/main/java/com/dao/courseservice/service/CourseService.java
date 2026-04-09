@@ -14,6 +14,8 @@ import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.response.CourseMemberDto;
 import com.dao.courseservice.response.UserDto;
+import com.dao.common.notification.NotificationMessage;
+import com.dao.common.notification.NotificationProducerService;
 import com.dao.courseservice.client.IdentityServiceClient;
 
 import lombok.RequiredArgsConstructor;
@@ -72,6 +74,7 @@ class CourseServiceImpl implements CourseService {
     private final IdentityServiceClient identityServiceClient;
     private final com.dao.courseservice.repository.QuizRepository quizRepository;
     private final WebClient.Builder webClientBuilder;
+    private final NotificationProducerService notificationService;
 
     @Value("${app.services.api-gateway.url}")
     private String apiGatewayUrl;
@@ -112,6 +115,13 @@ class CourseServiceImpl implements CourseService {
 
         Course savedCourse = courseRepository.saveAndFlush(course);
         log.info("Successfully created course with id: {}", savedCourse.getId());
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId(userId.toString());
+        msg.setTitle("Course Created");
+        msg.setContent("Your course '" + savedCourse.getTitle() + "' has been created successfully.");
+        msg.setType("INFO");
+        msg.setSeverity("low");
+        notificationService.sendNotification(msg);
 
         return courseMapper.toCourseResponse(savedCourse);
     }
@@ -122,7 +132,8 @@ class CourseServiceImpl implements CourseService {
         log.info("Fetching roster for course {}", courseId);
 
         List<Progress> progressList = progressRepository.findByCourseId(courseId);
-        if (progressList.isEmpty()) return List.of();
+        if (progressList.isEmpty())
+            return List.of();
 
         List<UUID> userIds = progressList.stream()
                 .map(Progress::getStudentId)
@@ -142,8 +153,7 @@ class CourseServiceImpl implements CourseService {
                     user != null ? user.getLastName() : "N/A",
                     user != null ? user.getAvatarUrl() : null,
                     user != null ? user.getEmail() : null,
-                    progress.getPercentComplete()
-            );
+                    progress.getPercentComplete());
         }).collect(Collectors.toList());
     }
 
@@ -192,7 +202,7 @@ class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @CacheEvict(value = {"courses", "courseDetails", "popularCourses"}, allEntries = true)
+    @CacheEvict(value = { "courses", "courseDetails", "popularCourses" }, allEntries = true)
     public CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request) {
         log.info("Updating course with id: {}", courseId);
 
@@ -212,7 +222,7 @@ class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @CacheEvict(value = {"courses", "courseDetails", "popularCourses"}, allEntries = true)
+    @CacheEvict(value = { "courses", "courseDetails", "popularCourses" }, allEntries = true)
     public void deleteCourse(UUID courseId) {
         log.info("Deleting course with id: {}", courseId);
 
@@ -256,8 +266,7 @@ class CourseServiceImpl implements CourseService {
                             user != null ? user.getLastName() : "N/A",
                             user != null ? user.getAvatarUrl() : null,
                             user != null ? user.getEmail() : null,
-                            progress.getPercentComplete()
-                    );
+                            progress.getPercentComplete());
                 })
                 .collect(Collectors.toList());
 
@@ -268,7 +277,8 @@ class CourseServiceImpl implements CourseService {
         final Pattern WHITESPACE = Pattern.compile("[\\s]");
         final Pattern NONLATIN = Pattern.compile("[^\\w-]");
 
-        if (input == null) return "";
+        if (input == null)
+            return "";
         String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
@@ -287,8 +297,7 @@ class CourseServiceImpl implements CourseService {
                 String likeKeyword = "%" + criteria.getKeyword().toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("title")), likeKeyword),
-                        cb.like(cb.lower(root.get("description")), likeKeyword)
-                ));
+                        cb.like(cb.lower(root.get("description")), likeKeyword)));
             }
 
             if (criteria.getOrganizationId() != null) {
