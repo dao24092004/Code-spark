@@ -1,5 +1,4 @@
-package com.dao.client;
-
+package com.dao.common.client;
 import com.dao.common.dto.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;

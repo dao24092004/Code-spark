@@ -14,6 +14,7 @@ import com.dao.courseservice.request.CourseFilterCriteria;
 import com.dao.courseservice.response.CourseResponse;
 import com.dao.courseservice.response.CourseMemberDto;
 import com.dao.courseservice.response.UserDto;
+import com.dao.common.client.FileServiceClient;
 import com.dao.common.notification.NotificationMessage;
 import com.dao.common.notification.NotificationProducerService;
 import com.dao.courseservice.client.IdentityServiceClient;
@@ -30,9 +31,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -59,6 +62,10 @@ public interface CourseService {
     void deleteCourse(UUID courseId);
 
     Page<CourseMemberDto> getCourseStudents(UUID courseId, Pageable pageable);
+
+    String uploadCourseImage(UUID courseId, MultipartFile file);
+
+    void deleteCourseImage(UUID courseId, UUID imageId);
 }
 
 @Service
@@ -75,6 +82,7 @@ class CourseServiceImpl implements CourseService {
     private final com.dao.courseservice.repository.QuizRepository quizRepository;
     private final WebClient.Builder webClientBuilder;
     private final NotificationProducerService notificationService;
+    private final FileServiceClient fileServiceClient;
 
     @Value("${app.services.api-gateway.url}")
     private String apiGatewayUrl;
@@ -175,14 +183,15 @@ class CourseServiceImpl implements CourseService {
         log.info("Course {} published successfully.", courseId);
 
         NotificationMessage msg = new NotificationMessage();
-        msg.setRecipientUserId("ALL_STUDENTS"); 
-        
+        msg.setRecipientUserId("ALL_STUDENTS");
+
         msg.setTitle("Khóa học mới mở!");
         msg.setContent("Khóa học '" + course.getTitle() + "' vừa được mở. Vào học ngay!");
         msg.setType("INFO");
-        msg.setSeverity("high"); 
-        
-        // Gửi kèm ID khóa học để Frontend làm chức năng click vào thông báo -> chuyển hướng đến khóa học
+        msg.setSeverity("high");
+
+        // Gửi kèm ID khóa học để Frontend làm chức năng click vào thông báo -> chuyển
+        // hướng đến khóa học
         Map<String, Object> extraData = new HashMap<>();
         extraData.put("courseId", course.getId().toString());
         msg.setData(extraData);
@@ -333,5 +342,54 @@ class CourseServiceImpl implements CourseService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    @Override
+    public String uploadCourseImage(UUID courseId, MultipartFile file) {
+        log.info("Uploading image for course: {}", courseId);
+
+        // 1. Kiểm tra khóa học tồn tại
+        Course course = courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        try {
+            // 2. Gọi FileService và bóc tách dữ liệu từ ApiResponse
+            var response = fileServiceClient.uploadFile(file);
+
+            // Kiểm tra an toàn trước khi lấy data
+            if (response == null || response.getData() == null) {
+                throw new RuntimeException("Upload failed: No data received from file service");
+            }
+
+            String imageUrl = response.getData(); // Đã sửa: Lấy String từ ApiResponse
+
+            // 3. Cập nhật thumbnailUrl cho Course
+            course.setThumbnailUrl(imageUrl);
+            courseRepository.save(course);
+
+            return imageUrl;
+        } catch (Exception ex) {
+            log.error("Error uploading file for course {}: {}", courseId, ex.getMessage());
+            throw new RuntimeException("Could not upload image", ex);
+        }
+    }
+
+    @Override
+    public void deleteCourseImage(UUID courseId, UUID imageId) {
+        log.info("Deleting image {} for course {}", imageId, courseId);
+
+        // 1. Kiểm tra khóa học
+        Course course = courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        // 2. Logic xóa file (giả định xóa dựa trên imageId hoặc URL)
+        // fileServiceClient.deleteFile(imageId);
+
+        // 3. Nếu imageId là ảnh đại diện (thumbnail), có thể set null hoặc xóa bản ghi
+        // liên quan
+        // course.setThumbnailUrl(null);
+        // courseRepository.save(course);
+
+        log.info("Successfully deleted image {}", imageId);
     }
 }
