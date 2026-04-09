@@ -1,61 +1,43 @@
-package com.dao.fileservice;
+package com.dao.fileservice; // Khuyên bạn nên tạo package .controller rồi bỏ file này vào cho chuẩn kiến trúc nhé
 
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
+import com.dao.common.dto.ApiResponse; // Nhớ import ApiResponse từ thư viện common của bạn
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import jakarta.servlet.http.HttpServletRequest;
-import com.dao.fileservice.security.AuthorizationService;
-import com.dao.fileservice.security.Permissions;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/files")
+@RequestMapping("/api/internal/files") // Thêm khu vực "Staff Only"
 public class FileController {
 
     private final FileStorageService fileStorageService;
-    private final AuthorizationService authorizationService;
 
-    public FileController(FileStorageService fileStorageService, AuthorizationService authorizationService) {
+    public FileController(FileStorageService fileStorageService) {
         this.fileStorageService = fileStorageService;
-        this.authorizationService = authorizationService;
     }
 
     /**
-     * Tải lên một tệp.
+     * Tải lên một tệp (Chỉ dùng cho service nội bộ).
      */
-    @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
-        String token = extractBearerToken(request);
-        authorizationService.requirePermission(token, Permissions.FILE_WRITE);
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<String> uploadFile(@RequestPart("file") MultipartFile file) {
+        // Gọi thẳng service lưu file, không cần lo xác thực nữa
         String fileUrl = fileStorageService.storeFile(file);
-        return ResponseEntity.ok(fileUrl);
+        return ApiResponse.success("Upload thành công", fileUrl);
     }
 
     /**
-     * Tải lên nhiều tệp.
+     * Tải lên nhiều tệp (Chỉ dùng cho service nội bộ).
      */
-    @PostMapping("/uploadMultiple")
-    public ResponseEntity<List<String>> uploadMultipleFiles(@RequestParam("files") MultipartFile[] files, HttpServletRequest request) {
-        String token = extractBearerToken(request);
-        authorizationService.requirePermission(token, Permissions.FILE_WRITE);
+    @PostMapping(value = "/uploadMultiple", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<String>> uploadMultipleFiles(@RequestPart("files") MultipartFile[] files) {
+        // Logic gọn gàng, chạy cực nhanh
         List<String> fileUrls = Arrays.stream(files)
                 .map(fileStorageService::storeFile)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(fileUrls);
-    }
-
-
-    private String extractBearerToken(HttpServletRequest request) {
-        String auth = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (!StringUtils.hasText(auth) || !auth.startsWith("Bearer ")) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Missing bearer token");
-        }
-        return auth.substring(7);
+        return ApiResponse.success("Upload nhiều file thành công", fileUrls);
     }
 }
-

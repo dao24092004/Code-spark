@@ -114,12 +114,7 @@ spring:
           filters:
             - StripPrefix=0
             - PreserveHostHeader
-        - id: file-service
-          uri: lb://file-service
-          predicates:
-            - Path=/files/**
-          filters:
-            - StripPrefix=1
+
   data:
     redis:
       host: localhost
