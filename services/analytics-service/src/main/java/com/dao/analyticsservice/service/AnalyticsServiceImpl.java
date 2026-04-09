@@ -254,14 +254,18 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     try {
                         ApiResponse<UserSummaryDto> userResponse = identityServiceClient.getUserById(userId);
                         if (userResponse != null && userResponse.isSuccess() && userResponse.getData() != null) {
-                            displayName = userResponse.getData().fullName() != null ?
-                                    userResponse.getData().fullName() : "User " + userId;
+                            UserSummaryDto user = userResponse.getData();
+                            String name = user.firstName() + (user.lastName() != null ? " " + user.lastName() : "");
+                            displayName = (!name.trim().isEmpty()) ? name : "User " + userId;
                         }
                     } catch (Exception e) {
                         log.warn("Error fetching user {}: {}", userId, e.getMessage());
                     }
 
-                    return new TopPerformerResponse(userId, displayName, round(avgScore), attempts);
+                    // Chuyển Long userId thành UUID
+                    UUID userUuid = new UUID(userId, userId);
+
+                    return new TopPerformerResponse(userUuid, displayName, round(avgScore), attempts);
                 })
                 .collect(Collectors.toList());
     }

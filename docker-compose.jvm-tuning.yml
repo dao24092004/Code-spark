@@ -1,0 +1,238 @@
+# ============================================================
+# CodeSpark JVM Tuning Docker Compose
+# ============================================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.jvm-tuning.yml up -d
+#
+# JVM Tuning Configuration:
+# - GC: ZGC (Z Garbage Collector) - Low latency for microservices
+# - Heap: Tuned per service based on dependencies
+# - Container Limits: Matched to JVM heap + native overhead
+# ============================================================
+
+x-jvm-template: &jvm_template
+  deploy:
+    resources:
+      limits:
+        memory: ${1}m
+      reservations:
+        memory: ${2}m
+  mem_limit: ${1}m
+  mem_reservation: ${2}m
+  environment:
+    - JAVA_OPTS=${3}
+
+services:
+  # ============================================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================================
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  postgres-db:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=128MB
+      -c work_mem=16MB
+
+  mongo-db:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    command: redis-server --maxmemory 384m --maxmemory-policy allkeys-lru
+
+  kafka:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  ganache:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ============================================================
+  # JVM-TUNED MICROSERVICES
+  # ============================================================
+
+  discovery-service:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom
+
+  config-server:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom
+
+  api-gateway:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
+    mem_limit: 768m
+    mem_reservation: 384m
+    environment:
+      - JAVA_OPTS=-Xms384m -Xmx512m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dnetty.tryReflectionEquals=false
+
+  identity-service:
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 768M
+    mem_limit: 1536m
+    mem_reservation: 768m
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.session.store-type=redis
+
+  user-service:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
+    mem_limit: 768m
+    mem_reservation: 384m
+    environment:
+      - JAVA_OPTS=-Xms384m -Xmx512m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.jpa.open-in-view=false
+
+  profile-service:
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+    mem_limit: 1024m
+    mem_reservation: 512m
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx768m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.jpa.open-in-view=false
+
+  course-service:
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 768M
+    mem_limit: 1536m
+    mem_reservation: 768m
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.ai.openai.timeout=60s -Dspring.jpa.open-in-view=false
+
+  exam-service:
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 1024M
+    mem_limit: 2048m
+    mem_reservation: 1024m
+    environment:
+      - JAVA_OPTS=-Xms768m -Xmx1536m -XX:+UseZGC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.kafka.consumer.max-poll-records=100 -Dspring.ai.openai.timeout=120s -Dspring.jpa.open-in-view=false
+
+  file-service:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
+    mem_limit: 768m
+    mem_reservation: 384m
+    environment:
+      - JAVA_OPTS=-Xms384m -Xmx512m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom
+
+  notification-service:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.kafka.consumer.max-poll-records=50
+
+  analytics-service:
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+    mem_limit: 1024m
+    mem_reservation: 512m
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx768m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom -Dspring.kafka.consumer.max-poll-records=200
+
+  admin-service:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    mem_limit: 512m
+    mem_reservation: 256m
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx384m -XX:+UseZGC -XX:MaxGCPauseMillis=100 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/heapdump.hprof -Djava.security.egd=file:/dev/./urandom
