@@ -5,7 +5,8 @@ package com.dao.courseservice.controller;
 import com.dao.common.dto.ApiResponse;
 import com.dao.courseservice.entity.Course;
 import com.dao.courseservice.repository.CourseRepository;
-import com.dao.courseservice.service.S3FileService;
+import com.dao.courseservice.service.CourseService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,8 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CourseImageController {
 
-    private final CourseRepository courseRepository;
-    private final S3FileService s3FileService;
+    private final CourseService courseService; // Inject Service thay vì Repository
 
     @PostMapping("/{courseId}/images/upload")
     @PreAuthorize("hasAuthority('COURSE_WRITE')")
@@ -29,23 +29,8 @@ public class CourseImageController {
         @PathVariable UUID courseId,
         @RequestParam("file") MultipartFile file
     ) {
-        try {
-            // Kiểm tra khóa học tồn tại (sử dụng soft delete)
-            Course course = courseRepository.findActiveById(courseId)
-                    .orElseThrow(() -> new RuntimeException("Course not found"));
-
-            // Upload to S3/MinIO
-            String publicUrl = s3FileService.uploadFile(file, "thumbnails");
-
-            // Update course thumbnailUrl
-            course.setThumbnailUrl(publicUrl);
-            courseRepository.save(course);
-
-            return ResponseEntity.ok(ApiResponse.success("Image uploaded", publicUrl));
-        } catch (IOException ex) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to upload image: " + ex.getMessage()));
-        }
+        String imageUrl = courseService.uploadCourseImage(courseId, file);
+        return ResponseEntity.ok(ApiResponse.success("Image uploaded successfully", imageUrl));
     }
 
     @DeleteMapping("/{courseId}/images/{imageId}")
@@ -54,13 +39,8 @@ public class CourseImageController {
         @PathVariable UUID courseId,
         @PathVariable UUID imageId
     ) {
-        // Kiểm tra khóa học tồn tại (sử dụng soft delete)
-        courseRepository.findActiveById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
-        // Logic (trong Service):
-        // 1. Xóa file trên S3/MinIO.
-        // 2. Xóa hàng trong bảng `cm_course_images`.
-        // courseImageService.deleteImage(courseId, imageId);
-        return ResponseEntity.ok(ApiResponse.success("Image deleted"));
+        courseService.deleteCourseImage(courseId, imageId);
+        return ResponseEntity.ok(ApiResponse.success("Image deleted successfully"));
     }
+
 }

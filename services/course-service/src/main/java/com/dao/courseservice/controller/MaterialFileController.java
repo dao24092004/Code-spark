@@ -4,7 +4,8 @@ import com.dao.common.dto.ApiResponse;
 import com.dao.courseservice.entity.Course;
 import com.dao.courseservice.exception.ResourceNotFoundException;
 import com.dao.courseservice.repository.CourseRepository;
-import com.dao.courseservice.service.S3FileService;
+import com.dao.courseservice.service.MaterialService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,32 +23,19 @@ import java.util.UUID;
 @Slf4j
 public class MaterialFileController {
 
-    private final CourseRepository courseRepository;
-    private final S3FileService s3FileService;
+    private final MaterialService materialService; // Dùng Service thay vì Repository
 
     @PostMapping("/courses/{courseId}/materials/upload")
     @PreAuthorize("hasAuthority('MATERIAL_WRITE')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadMaterial(
             @PathVariable UUID courseId,
             @RequestParam("file") MultipartFile file
-    ) throws IOException {
-        // Ensure course exists
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
-
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Empty file"));
-        }
-
-        // Upload to S3/MinIO
-        String publicUrl = s3FileService.uploadFile(file, "materials");
-
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-                "storageKey", publicUrl,
-                "url", publicUrl,
-                "filename", publicUrl.substring(publicUrl.lastIndexOf("/") + 1)
-        )));
-    }
+    ) {
+        // Mọi logic kiểm tra khóa học và upload đã nằm trong service
+        Map<String, String> uploadResult = materialService.uploadMaterialFile(courseId, file);
+        
+        return ResponseEntity.ok(ApiResponse.success("File uploaded successfully", uploadResult));
+}
 }
 
 

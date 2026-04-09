@@ -111,7 +111,6 @@
         <dependency>
             <groupId>com.dao</groupId>
             <artifactId>common-library</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

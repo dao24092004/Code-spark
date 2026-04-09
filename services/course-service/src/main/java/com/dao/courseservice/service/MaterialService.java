@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.dao.client.FileServiceClient;
+
 import com.dao.common.notification.NotificationMessage;
 import com.dao.common.notification.NotificationProducerService;
 
@@ -26,6 +29,7 @@ public interface MaterialService {
     List<MaterialResponse> getMaterialsForCourse(UUID courseId);
     void deleteMaterial(UUID materialId);
     MaterialResponse updateMaterial(UUID materialId, com.dao.courseservice.request.UpdateMaterialRequest request);
+    Map<String, String> uploadMaterialFile(UUID courseId, MultipartFile file);
 }
 
 @Service
@@ -38,6 +42,7 @@ class MaterialServiceImpl implements MaterialService {
     private final CourseRepository courseRepository;
     private final MaterialMapper materialMapper;
     private final NotificationProducerService notificationService;
+    private final com.dao.client.FileServiceClient fileServiceClient;
 
     @Override
     public MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request) {
@@ -111,5 +116,42 @@ class MaterialServiceImpl implements MaterialService {
 
         Material saved = materialRepository.save(material);
         return materialMapper.toMaterialResponse(saved);
+    }
+    @Override
+    public Map<String, String> uploadMaterialFile(UUID courseId, MultipartFile file) {
+        log.info("Processing file upload for course: {}", courseId);
+
+        // 1. Kiểm tra khóa học tồn tại
+        courseRepository.findActiveById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+
+        try {
+            // 2. Gọi FileService để upload
+            var response = fileServiceClient.uploadFile(file); 
+
+            // Kiểm tra response có hợp lệ và có chứa data không
+            if (response == null || response.getData() == null) {
+                throw new RuntimeException("Upload failed: No response from storage service");
+            }
+
+            // KHAI BÁO publicUrl từ response data
+            String publicUrl = response.getData(); 
+
+            // 3. Trích xuất filename từ URL
+            String filename = publicUrl.substring(publicUrl.lastIndexOf("/") + 1);
+            
+            return Map.of(
+                "storageKey", publicUrl,
+                "url", publicUrl,
+                "filename", filename
+            );
+        } catch (Exception e) {
+            log.error("Failed to upload material for course {}: {}", courseId, e.getMessage());
+            throw new RuntimeException("Storage service error: " + e.getMessage());
+        }
     }
 }
