@@ -23,7 +23,7 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api") // <-- Sửa đường dẫn gốc thành /api
+@RequestMapping("/api/v1") // <-- Sửa đường dẫn gốc thành /api
 @RequiredArgsConstructor
 public class QuizController {
 

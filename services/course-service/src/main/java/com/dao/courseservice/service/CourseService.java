@@ -173,6 +173,21 @@ class CourseServiceImpl implements CourseService {
         course.setVisibility("PUBLIC");
         courseRepository.save(course);
         log.info("Course {} published successfully.", courseId);
+
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId("ALL_STUDENTS"); 
+        
+        msg.setTitle("Khóa học mới mở!");
+        msg.setContent("Khóa học '" + course.getTitle() + "' vừa được mở. Vào học ngay!");
+        msg.setType("INFO");
+        msg.setSeverity("high"); 
+        
+        // Gửi kèm ID khóa học để Frontend làm chức năng click vào thông báo -> chuyển hướng đến khóa học
+        Map<String, Object> extraData = new HashMap<>();
+        extraData.put("courseId", course.getId().toString());
+        msg.setData(extraData);
+
+        notificationService.sendNotification(msg);
     }
 
     @Override

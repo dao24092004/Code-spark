@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api") // Đường dẫn gốc
+@RequestMapping("/api/v1") // Đường dẫn gốc
 @RequiredArgsConstructor
 public class MaterialController {
 

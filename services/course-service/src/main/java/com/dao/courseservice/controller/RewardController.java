@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/rewards")
+@RequestMapping("/api/v1/rewards")
 @RequiredArgsConstructor
 public class RewardController {
 
