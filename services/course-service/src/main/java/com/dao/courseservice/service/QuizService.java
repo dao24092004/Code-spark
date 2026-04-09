@@ -25,11 +25,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dao.common.notification.NotificationMessage;
+import com.dao.common.notification.NotificationProducerService;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 public interface QuizService {
     QuizDetailResponse getQuizDetailsForStudent(UUID quizId);
@@ -55,6 +59,7 @@ class QuizServiceImpl implements QuizService {
     private final QuizMapper quizMapper;
     private final ObjectMapper objectMapper;
     private final CourseRepository courseRepository;
+    private final NotificationProducerService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -91,6 +96,29 @@ class QuizServiceImpl implements QuizService {
         if (score > 0) {
             grantReward(request.getStudentId(), score * 10, "PASS_QUIZ", savedSubmission.getId(), quiz.getCourse().getId());
         }
+        Map<String, Object> extraData = new HashMap<>();
+        extraData.put("quizId", quiz.getId().toString());
+        extraData.put("courseId", quiz.getCourse().getId().toString());
+
+        // Thông báo 1: Gửi cho Học viên (Xác nhận nộp bài)
+        NotificationMessage studentMsg = new NotificationMessage();
+        studentMsg.setRecipientUserId(request.getStudentId().toString()); // Gửi đích danh ID học viên
+        studentMsg.setTitle("Nộp bài thành công");
+        studentMsg.setContent("Hệ thống đã ghi nhận bài thi '" + quiz.getTitle() + "' của bạn. Điểm số: " + score);
+        studentMsg.setType("INFO");
+        studentMsg.setSeverity("low");
+        studentMsg.setData(extraData);
+        notificationService.sendNotification(studentMsg);
+
+        // Thông báo 2: Gửi cho Giảng viên/Admin khóa học
+        NotificationMessage teacherMsg = new NotificationMessage();
+        teacherMsg.setRecipientUserId("ADMIN_COURSE_" + quiz.getCourse().getId().toString()); // Gửi cho nhóm Admin/Giáo viên của khóa này
+        teacherMsg.setTitle("Có học viên nộp bài");
+        teacherMsg.setContent("Học viên (ID: " + request.getStudentId() + ") vừa hoàn thành bài kiểm tra '" + quiz.getTitle() + "'.");
+        teacherMsg.setType("INFO");
+        teacherMsg.setSeverity("low");
+        teacherMsg.setData(extraData);
+        notificationService.sendNotification(teacherMsg);
 
         return quizMapper.toQuizSubmissionResultResponse(savedSubmission);
     }
@@ -139,6 +167,20 @@ class QuizServiceImpl implements QuizService {
         Quiz savedQuiz = quizRepository.save(quiz);
         log.info("Successfully created quiz with id: {}", savedQuiz.getId());
 
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId("COURSE_" + courseId.toString()); // Gửi toàn bộ học viên trong khóa
+        msg.setTitle("Bài kiểm tra mới!");
+        msg.setContent("Bài kiểm tra '" + savedQuiz.getTitle() + "' vừa được mở. Hãy vào làm bài nhé.");
+        msg.setType("WARNING"); // Để WARNING cho nổi bật, nhắc nhở làm bài
+        msg.setSeverity("high");
+        
+        Map<String, Object> extraData = new HashMap<>();
+        extraData.put("courseId", courseId.toString());
+        extraData.put("quizId", savedQuiz.getId().toString());
+        msg.setData(extraData);
+        
+        notificationService.sendNotification(msg);
+
         return quizMapper.toQuizAdminResponse(savedQuiz);
     }
 
@@ -176,6 +218,20 @@ class QuizServiceImpl implements QuizService {
 
         Quiz savedQuiz = quizRepository.save(existingQuiz);
         log.info("Successfully updated quiz {}", savedQuiz.getId());
+
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId("COURSE_" + savedQuiz.getCourse().getId().toString());
+        msg.setTitle("Cập nhật bài kiểm tra");
+        msg.setContent("Bài kiểm tra '" + savedQuiz.getTitle() + "' có sự thay đổi về nội dung/thời gian. Vui lòng kiểm tra lại!");
+        msg.setType("INFO");
+        msg.setSeverity("medium");
+        
+        Map<String, Object> extraData = new HashMap<>();
+        extraData.put("courseId", savedQuiz.getCourse().getId().toString());
+        extraData.put("quizId", savedQuiz.getId().toString());
+        msg.setData(extraData);
+        
+        notificationService.sendNotification(msg);
 
         return getQuizDetailsForAdmin(savedQuiz.getId());
     }

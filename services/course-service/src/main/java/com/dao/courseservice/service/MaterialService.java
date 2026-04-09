@@ -12,10 +12,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.dao.common.notification.NotificationMessage;
+import com.dao.common.notification.NotificationProducerService;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 public interface MaterialService {
     MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request);
@@ -33,6 +37,7 @@ class MaterialServiceImpl implements MaterialService {
     private final MaterialRepository materialRepository;
     private final CourseRepository courseRepository;
     private final MaterialMapper materialMapper;
+    private final NotificationProducerService notificationService;
 
     @Override
     public MaterialResponse addMaterialToCourse(UUID courseId, CreateMaterialRequest request) {
@@ -46,6 +51,25 @@ class MaterialServiceImpl implements MaterialService {
 
         Material savedMaterial = materialRepository.save(material);
         log.info("Successfully added material with id {}", savedMaterial.getId());
+
+        NotificationMessage msg = new NotificationMessage();
+        
+        // Gửi cho các sinh viên trong khóa học này (Consumer sẽ tự đi tìm sinh viên dựa vào tiền tố COURSE_)
+        msg.setRecipientUserId("COURSE_" + courseId.toString());
+        
+        msg.setTitle("Học liệu mới!");
+        // Lấy được luôn tên khóa học để thông báo thân thiện hơn
+        msg.setContent("Giảng viên vừa tải lên tài liệu mới cho khóa học '" + course.getTitle() + "'. Vào xem ngay nhé!");
+        msg.setType("INFO");
+        msg.setSeverity("medium");
+
+        // Đính kèm data để frontend làm nút "Bấm vào để xem tài liệu"
+        Map<String, Object> extraData = new HashMap<>();
+        extraData.put("courseId", courseId.toString());
+        extraData.put("materialId", savedMaterial.getId().toString());
+        msg.setData(extraData);
+
+        notificationService.sendNotification(msg);
 
         return materialMapper.toMaterialResponse(savedMaterial);
     }

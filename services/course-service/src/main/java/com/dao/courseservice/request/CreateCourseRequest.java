@@ -22,7 +22,7 @@ public class CreateCourseRequest {
     @Size(min = 3, max = 255, message = "Title must be between 3 and 255 characters")
     private String title;
 
-    @NotBlank(message = "Organization ID is required")
+    @NotNull(message = "Organization ID is required")
     private UUID organizationId;
 
     @NotBlank(message = "Description is required")
