@@ -1,63 +1,61 @@
-// file: server.js
-
 const express = require('express');
 const http = require('http'); // THÊM: HTTP module cho WebSocket
 const cors = require('cors');
+const path = require('path');
 const config = require('./src/config');
 
 const db = require('./src/models');
 const mainRouter = require('./src/routes'); // <-- 1. IMPORT ROUTER CHÍNH
 const { initializeWebSocket } = require('./src/config/websocket'); // THÊM: WebSocket config
 
+// ===============================================
+// 1. IMPORT KAFKA PRODUCER Ở ĐÂY
+// ===============================================
+const { connectProducer } = require('./src/services/notification.producer');
+
 const app = express();
 const PORT = process.env.PORT || config.server.port || 3000;
 
 // ===== ERROR HANDLERS TOÀN CỤC =====
-// Xử lý unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Promise Rejection:', reason);
-  // Không tắt server, chỉ log lỗi
 });
 
-// Xử lý uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
-  // Không tắt server, chỉ log lỗi
 });
 
-// Xử lý warning
 process.on('warning', (warning) => {
   console.warn('⚠️ Warning:', warning.name, warning.message);
-});
-
-
-// CORS is handled by API Gateway - Disabled to prevent duplicate headers
-// app.use(cors({
-//   origin: [
-//     'http://localhost:8080',  // API Gateway
-//     'http://localhost:4173',  // Frontend
-//     'http://localhost:5173',  // Frontend dev
-//     'http://localhost:8083'   // Other services
-//   ],
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Service-Name']
-// }));
-
-app.get('/', (req, res) => {
-  res.json({
-    service: 'Online Exam Service',
-    status: 'running',
-    timestamp: new Date().toISOString()
-  });
 });
 
 // Middleware để đọc JSON từ body của request
 app.use(express.json());
 
-// SỬ DỤNG ROUTER VỚI PREFIX '/api'
-// Dòng này nói với Express: "Mọi request đến '/api' hãy đưa cho mainRouter xử lý"
-app.use('/api', mainRouter);
+// --- [BƯỚC QUAN TRỌNG: DEBUG LOG] ---
+// Đoạn này sẽ giúp bạn nhìn thấy Gateway đang gửi cái gì sang
+app.use((req, res, next) => {
+    console.log('\n--- 🚀 [INCOMING REQUEST] ---');
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
+    console.log(`Path thực tế Nodejs nhận: ${req.path}`);
+    console.log(`Headers Authorization: ${req.headers['authorization'] ? '✅ OK' : '❌ Trống'}`);
+    console.log('------------------------------');
+    next();
+});
+
+// Trang chào mừng
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Online Exam Service',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    debug: "Nếu bạn thấy log này, route '/' đang chạy đúng"
+  });
+});
+
+// SỬ DỤNG ROUTER
+// Chúng ta dùng '/' vì Gateway thường đã rewrite URL rồi
+app.use('/', mainRouter);
 
 // Tạo HTTP server để hỗ trợ WebSocket
 const httpServer = http.createServer(app);
@@ -67,19 +65,20 @@ initializeWebSocket(httpServer);
 
 // Khởi động server
 httpServer.listen(PORT, async () => {
-  console.log(`🚀 Exam Service (HTTP + WebSocket) đang chạy trên cổng ${PORT}`);
+  console.log(`\n🚀 Online Exam Service đang chạy tại: http://localhost:${PORT}`);
+  console.log(`🔑 JWT Secret đang dùng: ${config.security.jwt.secret === 'change-me-in-production' ? '⚠️ MẶC ĐỊNH (Coi chừng lỗi)' : '✅ ĐÃ LOAD TỪ ENV'}`);
   
   try {
     await db.sequelize.authenticate();
     console.log('✅ Kết nối Database thành công.');
-    
-    // Sync database (optional - tạo bảng nếu chưa có)
-    // await db.sequelize.sync({ alter: false });
-    // console.log('✅ Database đã được đồng bộ.');
   } catch (error) {
     console.error('❌ Lỗi kết nối Database:', error);
-    console.error('Stack trace:', error.stack);
   }
+
+  // ===============================================
+  // 2. GỌI HÀM KẾT NỐI KAFKA NGAY SAU KHI SERVER CHẠY LÊN
+  // ===============================================
+  await connectProducer();
 });
 
 // Xử lý lỗi khi server không thể khởi động
@@ -91,18 +90,14 @@ httpServer.on('error', (error) => {
   }
 });
 
-// Giữ process alive
-process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM signal received: closing HTTP server');
+// Đóng server an toàn
+const gracefulShutdown = (signal) => {
+  console.log(`\n👋 Nhận tín hiệu ${signal}: đang đóng server...`);
   httpServer.close(() => {
-    console.log('✅ HTTP server closed');
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('\n👋 SIGINT signal received: closing HTTP server');
-  httpServer.close(() => {
-    console.log('✅ HTTP server closed');
+    console.log('✅ Server đã đóng hoàn toàn.');
     process.exit(0);
   });
-});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

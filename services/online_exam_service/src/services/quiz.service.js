@@ -4,9 +4,13 @@ const db = require('../models');
 const gradingService = require('./grading.service');
 const proctoringIntegrationService = require('./proctoring.integration');
 
+// ==========================================
+// 1. IMPORT KAFKA PRODUCER ĐỂ GỬI THÔNG BÁO
+// ==========================================
+const notificationProducer = require('./notification.producer');
+
 /**
  * Tính toán và lưu ranking/percentile cho submission.
- * studentId đã là UUID (BigInt đã chuyển sang UUID theo exam_db ERD).
  */
 async function calculateAndStoreRanking(quizId, submissionId, studentId, score) {
   try {
@@ -41,7 +45,6 @@ async function calculateAndStoreRanking(quizId, submissionId, studentId, score) 
 
 /**
  * Xử lý logic khi sinh viên bắt đầu làm bài.
- * studentId đến từ JWT (identity_db users.id = UUID).
  */
 async function startQuiz(userId, quizId, authToken) {
   const quiz = await db.Quiz.findByPk(quizId);
@@ -49,7 +52,7 @@ async function startQuiz(userId, quizId, authToken) {
     throw new Error(`Không tìm thấy bài quiz với ID: ${quizId}`);
   }
 
-  // Kiểm tra submission chưa nộp (dùng submittedAt thay vì status)
+  // Kiểm tra submission chưa nộp
   const existingSubmission = await db.QuizSubmission.findOne({
     where: {
       studentId: userId,
@@ -89,17 +92,14 @@ async function startQuiz(userId, quizId, authToken) {
     isFinal: false,
   });
 
-  // Gọi proctoring service
   if (authToken) {
     try {
       await proctoringIntegrationService.startMonitoringSession(userId, quizId, authToken);
     } catch (proctoringError) {
-      console.warn('Cảnh báo: Không thể khởi động dịch vụ giám sát, nhưng vẫn cho phép thi.',
-        proctoringError.message);
+      console.warn('Cảnh báo proctoring:', proctoringError.message);
     }
   }
 
-  // Lấy câu hỏi để trả về cho Frontend
   const quizWithDetails = await db.Quiz.findByPk(quizId, {
     include: {
       model: db.Question,
@@ -122,11 +122,7 @@ async function startQuiz(userId, quizId, authToken) {
 }
 
 /**
- * Xử lý logic khi sinh viên nộp bài.
- * 1. Cập nhật submission với câu trả lời.
- * 2. Lưu chi tiết từng câu trả lời vào bảng answers (exam_db).
- * 3. Chấm điểm tự động.
- * 4. Tính ranking.
+ * Xử lý nộp bài
  */
 async function submitQuiz(submissionId, answers, authHeader) {
   const submission = await db.QuizSubmission.findByPk(submissionId);
@@ -135,50 +131,43 @@ async function submitQuiz(submissionId, answers, authHeader) {
     throw new Error(`Không tìm thấy bài làm với ID: ${submissionId}`);
   }
 
-  // Kiểm tra đã nộp chưa (dùng submittedAt thay vì status)
   if (submission.submittedAt) {
     throw new Error('Bài thi này đã được nộp trước đó.');
   }
 
-  // --- Tìm proctoring session trước khi cập nhật submission ---
   let proctoringSessionId = null;
   try {
     const activeSessions = await proctoringIntegrationService.getActiveSessions(authHeader || undefined);
     const sessions = Array.isArray(activeSessions) ? activeSessions : (activeSessions?.data || []);
 
     const matchingSession = sessions.find(s => {
-      const sessionExamId = String(s.examId || s.exam_id || '');
-      const sessionUserId = String(s.userId || s.user_id || '');
-      const examIdStr = String(submission.quizId || '');
-      const studentIdStr = String(submission.studentId || '');
-
-      return sessionExamId === examIdStr
-        && sessionUserId === studentIdStr
-        && (s.status === 'in_progress' || s.status === 'IN_PROGRESS');
+      return String(s.examId || s.exam_id || '') === String(submission.quizId)
+        && String(s.userId || s.user_id || '') === String(submission.studentId)
+        && (String(s.status).toLowerCase() === 'in_progress');
     });
 
     if (matchingSession) {
       proctoringSessionId = matchingSession.id || matchingSession.sessionId;
     }
   } catch (error) {
-    console.warn('[QUIZ SERVICE] Không thể lấy danh sách proctoring sessions (non-critical):', error.message || error);
+    console.warn('[QUIZ SERVICE] Lỗi lấy session proctoring:', error.message);
   }
 
-  // --- Lưu chi tiết câu trả vào bảng answers (exam_db) ---
-  // Xóa câu trả lời cũ (phòng resubmit)
   await db.Answer.destroy({ where: { submissionId: submission.id } });
 
+  // -------------------------------------------------------------
+  // ĐÃ SỬA LỖI DATABASE Ở ĐÂY: Hỗ trợ cả 2 tên biến từ Frontend gửi lên
+  // -------------------------------------------------------------
   const answerRecords = answers.map(answer => ({
     submissionId: submission.id,
     questionId: answer.questionId,
-    selectedAnswer: answer.selectedOptionId,
+    selectedAnswer: answer.selectedOptionId || answer.selectedAnswer, 
     score: null,
     isCorrect: null,
   }));
 
   await db.Answer.bulkCreate(answerRecords);
 
-  // --- Cập nhật submission ---
   const submittedAt = new Date();
   submission.answers = JSON.stringify(answers);
   submission.submittedAt = submittedAt;
@@ -190,51 +179,68 @@ async function submitQuiz(submissionId, answers, authHeader) {
 
   await submission.save();
 
-  // --- Chấm điểm tự động ---
   const gradingResult = await gradingService.autoGrade(submissionId);
   const finalScore = gradingResult.score;
-  const finalScoreRaw = gradingResult.scoreRaw;
 
   await db.QuizSubmission.update(
     {
       correctAnswers: gradingResult.correctAnswers,
       wrongAnswers: gradingResult.wrongAnswers,
       totalQuestions: gradingResult.totalQuestions,
+      score: finalScore
     },
     { where: { id: submissionId } }
   );
 
-  // --- Tính ranking (non-blocking) ---
   try {
     await calculateAndStoreRanking(submission.quizId, submissionId, submission.studentId, finalScore);
   } catch (error) {
-    console.error('Error calculating ranking (non-critical):', error.message);
+    console.error('Lỗi tính ranking:', error.message);
   }
 
-  // --- Hoàn tất proctoring session (non-blocking) ---
   if (proctoringSessionId) {
     try {
-      await proctoringIntegrationService.completeMonitoringSession(
-        proctoringSessionId,
-        authHeader || undefined
-      );
+      await proctoringIntegrationService.completeMonitoringSession(proctoringSessionId, authHeader || undefined);
     } catch (error) {
-      console.warn('Không thể hoàn tất phiên giám sát (non-critical):', error.message || error);
+      console.warn('Lỗi kết thúc giám sát:', error.message);
     }
   }
+
+  // ==============================================================
+  // 2. LOGIC BẮN THÔNG BÁO LÊN KAFKA KHI NỘP BÀI XONG
+  // ==============================================================
+  try {
+    const quiz = await db.Quiz.findByPk(submission.quizId);
+    const quizTitle = quiz ? quiz.title : 'Bài thi';
+
+    const notificationPayload = {
+      recipientUserId: submission.studentId.toString(),
+      title: "Nộp bài thành công!",
+      content: `Hệ thống đã ghi nhận bài làm của bạn cho bài thi: "${quizTitle}". Bạn đạt ${finalScore} điểm.`,
+      type: "INFO",
+      severity: "low",
+      extraData: {
+        submissionId: submissionId.toString(),
+        quizId: submission.quizId.toString()
+      }
+    };
+
+    // Gọi Kafka Producer (Fire and forget, không dùng await)
+    notificationProducer.sendNotification(notificationPayload);
+  } catch (notifyError) {
+    console.error('[QUIZ SERVICE] Lỗi khi chuẩn bị gửi thông báo nộp bài:', notifyError);
+  }
+  // ==============================================================
 
   return {
     submissionId,
     score: finalScore,
-    scoreRaw: finalScoreRaw,
-    message: "Nộp bài và chấm điểm thành công!",
+    message: "Nộp bài thành công!",
   };
 }
 
 /**
- * Lấy danh sách tất cả các quiz (cho trang danh sách bài thi).
- * Chỉ trả về các exam đã xuất bản (status = 'OPEN' trong exam_db).
- * exam_db status: DRAFT, SCHEDULED, OPEN, CLOSED, CANCELLED
+ * Lấy danh sách Quiz
  */
 async function getAllQuizzes() {
   const quizzes = await db.Quiz.findAll({
@@ -246,26 +252,22 @@ async function getAllQuizzes() {
     order: [['id', 'ASC']],
   });
 
-  const quizzesWithStats = await Promise.all(
+  return await Promise.all(
     quizzes.map(async (quiz) => {
       const participantCount = await db.QuizSubmission.count({
         where: { quizId: quiz.id },
       });
-
-      return {
-        ...quiz.toJSON(),
-        participantCount
-      };
+      return { ...quiz.toJSON(), participantCount };
     })
   );
-
-  return quizzesWithStats;
 }
 
 /**
- * Lấy chi tiết quiz (không tạo submission).
+ * Lấy chi tiết Quiz
  */
 async function getQuizDetails(quizId) {
+  console.log(`[QUIZ SERVICE] Truy vấn chi tiết ID: ${quizId}`);
+
   const quiz = await db.Quiz.findByPk(quizId, {
     include: {
       model: db.Question,
@@ -282,6 +284,7 @@ async function getQuizDetails(quizId) {
   });
 
   if (!quiz) {
+    console.error(`[QUIZ SERVICE] Không tìm thấy bản ghi ID ${quizId} trong bảng exams`);
     throw new Error(`Không tìm thấy bài quiz với ID: ${quizId}`);
   }
 
@@ -289,27 +292,21 @@ async function getQuizDetails(quizId) {
 }
 
 /**
- * Lấy tất cả submissions của một student.
- * studentId từ JWT (UUID).
+ * Submissions của một student
  */
 async function getStudentSubmissions(studentId) {
-  const submissions = await db.QuizSubmission.findAll({
+  return await db.QuizSubmission.findAll({
     where: { studentId },
     order: [['id', 'DESC']],
   });
-  return submissions;
 }
 
 /**
- * Lấy kết quả chi tiết của một submission.
- * userId từ JWT (UUID) → so sánh với studentId trong exam_db (UUID).
+ * Kết quả chi tiết submission
  */
 async function getSubmissionResult(submissionId, userId) {
   const submission = await db.QuizSubmission.findOne({
-    where: {
-      id: submissionId,
-      studentId: userId
-    },
+    where: { id: submissionId, studentId: userId },
     include: [
       {
         model: db.Quiz,
@@ -317,132 +314,151 @@ async function getSubmissionResult(submissionId, userId) {
         include: {
           model: db.Question,
           as: 'questions',
-          include: {
-            model: db.QuestionOption,
-            as: 'options',
-          },
+          include: { model: db.QuestionOption, as: 'options' },
         },
       },
-      {
-        model: db.Answer,
-        as: 'answersDetail',
-      },
-      {
-        model: db.QuizRanking,
-        as: 'ranking',
-        required: false,
-      }
+      { model: db.Answer, as: 'answersDetail' },
+      { model: db.QuizRanking, as: 'ranking', required: false }
     ],
   });
 
-  if (!submission) {
-    throw new Error('Không tìm thấy bài thi hoặc bạn không có quyền xem kết quả này');
-  }
-
-  if (!submission.submittedAt) {
-    throw new Error('Bài thi này chưa nộp bài');
-  }
+  if (!submission) throw new Error('Không tìm thấy bài thi hoặc thiếu quyền truy cập');
+  if (!submission.submittedAt) throw new Error('Bài thi này chưa được nộp');
 
   const totalQuestions = submission.totalQuestions || submission.quiz.questions.length;
-  const correctAnswers = submission.correctAnswers || 0;
-  const wrongAnswers = submission.wrongAnswers || 0;
   const score = submission.score || 0;
-  const passed = score >= 70;
+  const passed = score >= (submission.quiz.passScore || 70);
 
-  const questionResults = [];
-  for (const question of submission.quiz.questions) {
+  const questionResults = submission.quiz.questions.map(question => {
     const studentAnswer = submission.answersDetail.find(a => a.questionId === question.id);
+    let isCorrect = studentAnswer?.isCorrect || false;
+    let studentSelectedOptionId = studentAnswer?.selectedAnswer || null;
 
-    let isCorrect = false;
-    let correctOptionIds = [];
-    let studentSelectedOptionId = null;
-    let studentAnswerText = null;
-    let optionsArray = [];
+    let optionsArray = (question.options || []).map(opt => ({
+      id: opt.id,
+      text: opt.optionText || opt.content,
+      isCorrect: opt.isCorrect,
+    }));
 
-    if (studentAnswer && studentAnswer.selectedAnswer) {
-      studentSelectedOptionId = studentAnswer.selectedAnswer;
-    }
+    return {
+      questionId: question.id,
+      questionText: question.text || question.content?.question || 'Câu hỏi',
+      questionType: question.type,
+      isCorrect,
+      studentSelectedOptionId,
+      earnedPoints: studentAnswer?.score || 0,
+      maxPoints: question.score || 1,
+      options: optionsArray,
+    };
+  });
 
-    // Options từ JSONB content
-    if (question.content && typeof question.content === 'object' && Array.isArray(question.content.options)) {
-      optionsArray = question.content.options.map((optText, idx) => ({
-        id: `${question.id}-opt-${idx}`,
-        text: optText,
-        isCorrect: idx === question.content.correctAnswer,
-      }));
-    } else if (question.options && question.options.length > 0) {
-      optionsArray = question.options.map(opt => ({
-        id: opt.id,
-        text: opt.optionText,
-        isCorrect: opt.isCorrect,
-      }));
-    }
+  return {
+    submissionId: submission.id,
+    examTitle: submission.quiz.title,
+    score: Math.round(score * 10) / 10,
+    totalQuestions,
+    passed,
+    submittedAt: submission.submittedAt,
+    questionResults,
+    rank: submission.ranking?.rank || null,
+  };
+}
 
-    correctOptionIds = optionsArray.filter(opt => opt.isCorrect).map(opt => opt.id);
+/**
+ * NHẬN DỮ LIỆU TỪ JAVA: LƯU QUIZ + QUESTIONS + OPTIONS
+ */
+async function syncQuizFromCourseService(data) {
+  console.log('[SYNC] Nhận yêu cầu đồng bộ FULL Quiz từ Java:', data.id);
+  
+  const transaction = await db.sequelize.transaction();
 
-    const normalizedType = (question.type || '').toLowerCase();
+  try {
+    // 1. Lưu thông complexity Quiz (bảng exams)
+    await db.Quiz.upsert({
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      durationMinutes: data.timeLimitMinutes || 60,
+      createdBy: data.createdBy || '00000000-0000-0000-0000-000000000000',
+      status: data.status || 'DRAFT',
+      passScore: 50, 
+      totalQuestions: data.questions ? data.questions.length : 0,
+    }, { transaction });
 
-    if (normalizedType === 'multiple_choice' || normalizedType === 'single_choice'
-      || normalizedType === 'true_false' || normalizedType.includes('choice')) {
-      if (studentSelectedOptionId) {
-        isCorrect = correctOptionIds.includes(studentSelectedOptionId);
-      }
-    } else if (normalizedType === 'essay') {
-      if (studentAnswer) {
-        studentAnswerText = studentAnswer.selectedAnswer;
-        isCorrect = studentAnswer.score > 0;
-      }
-    }
+    // 2. Lưu Câu hỏi và Đáp án
+    if (data.questions && Array.isArray(data.questions)) {
+      for (const q of data.questions) {
+        
+        // --- BỘ CHUYỂN ĐỔI TYPE TỪ JAVA SANG DB ---
+        let javaType = q.type ? q.type.toUpperCase() : '';
+        let dbQuestionType = 'MULTIPLE_CHOICE'; // Mặc định an toàn
+        
+        // Ánh xạ các loại của Java sang đúng 4 chữ mà DB cho phép
+        if (javaType === 'SINGLE_CHOICE' || javaType === 'MULTIPLE_CHOICE') {
+            dbQuestionType = 'MULTIPLE_CHOICE';
+        } else if (javaType === 'TRUE_FALSE') {
+            dbQuestionType = 'TRUE_FALSE';
+        } else if (javaType === 'SHORT_ANSWER') {
+            dbQuestionType = 'SHORT_ANSWER';
+        } else if (javaType === 'ESSAY') {
+            dbQuestionType = 'ESSAY';
+        }
 
-    let questionText = question.text || '';
-    if (!questionText && question.content) {
-      if (typeof question.content === 'object') {
-        questionText = question.content.question || question.content.text
-          || question.content.questionText || '';
-      } else if (typeof question.content === 'string') {
-        try {
-          const parsed = JSON.parse(question.content);
-          questionText = parsed.question || parsed.text || parsed.questionText || question.content;
-        } catch {
-          questionText = question.content;
+        // 2.1. Lưu câu hỏi (bảng questions)
+        await db.Question.upsert({
+          id: q.id,
+          type: dbQuestionType,
+          content: q.content,
+          text: q.content, 
+          difficulty: 1,
+          score: 1 
+        }, { transaction });
+
+        // 2.2. Lưu quan hệ Quiz - Question (bảng exam_questions)
+        await db.ExamQuestion.findOrCreate({
+          where: { 
+            examId: data.id, 
+            questionId: q.id 
+          },
+          defaults: {
+            displayOrder: q.displayOrder || 1
+          },
+          transaction
+        });
+
+        // 2.3. Lưu đáp án (bảng question_options)
+        if (q.options && Array.isArray(q.options)) {
+          for (const opt of q.options) {
+            await db.QuestionOption.findOrCreate({
+              where: { id: opt.id }, 
+              defaults: {
+                questionId: q.id,
+                content: opt.content,
+                isCorrect: opt.correct 
+              },
+              transaction
+            });
+            await db.QuestionOption.update({
+                content: opt.content,
+                isCorrect: opt.correct 
+            }, {
+                where: { id: opt.id },
+                transaction
+            });
+          }
         }
       }
     }
 
-    if (!questionText) {
-      questionText = `Question ${question.id}`;
-    }
+    await transaction.commit();
+    console.log(`[SYNC] Đồng bộ FULL Quiz ${data.id} thành công!`);
+    return { success: true, quizId: data.id };
 
-    questionResults.push({
-      questionId: question.id,
-      questionText,
-      questionType: question.type,
-      isCorrect,
-      correctOptionIds,
-      studentSelectedOptionId,
-      studentAnswerText,
-      earnedPoints: studentAnswer?.score || 0,
-      maxPoints: question.score || question.points || 1,
-      options: optionsArray,
-    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error(`[SYNC ERROR] Lỗi khi đồng bộ Quiz ${data.id}:`, error);
+    throw error;
   }
-
-  return {
-    submissionId: submission.id,
-    examId: submission.quizId,
-    examTitle: submission.quiz.title,
-    score: Math.round(score * 10) / 10,
-    totalQuestions,
-    correctAnswers,
-    wrongAnswers,
-    passed,
-    submittedAt: submission.submittedAt,
-    timeSpentSeconds: submission.timeSpentSeconds,
-    questionResults,
-    percentile: submission.ranking?.percentile || null,
-    rank: submission.ranking?.rank || null,
-    totalSubmissions: submission.ranking?.totalSubmissions || null,
-  };
 }
 
 module.exports = {
@@ -452,4 +468,5 @@ module.exports = {
   getQuizDetails,
   getStudentSubmissions,
   getSubmissionResult,
+  syncQuizFromCourseService
 };

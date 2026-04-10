@@ -1,7 +1,7 @@
 // file: src/services/grading.service.js
 
 const db = require('../models');
-
+const notificationProducer = require('./notification.producer');
 /**
  * Chấm điểm tự động cho một bài làm đã nộp.
  * exam_db: answers được lưu vào bảng answers (submitQuiz tạo trước).
@@ -105,11 +105,9 @@ async function manualGrade(answerId, score, comment) {
 
     answer.score = score;
     answer.instructorComment = comment;
-    // isCorrect dựa trên score > 0
     answer.isCorrect = score > 0;
     await answer.save();
 
-    // Tính lại tổng điểm submission
     const submission = await db.QuizSubmission.findByPk(answer.submissionId);
     const allAnswers = await db.Answer.findAll({ where: { submissionId: submission.id } });
 
@@ -122,6 +120,31 @@ async function manualGrade(answerId, score, comment) {
 
     submission.score = totalScore;
     await submission.save();
+
+    // ==============================================================
+    // THÊM: GỬI THÔNG BÁO CHO HỌC SINH KHI ĐƯỢC CHẤM ĐIỂM
+    // ==============================================================
+    try {
+      const quiz = await db.Quiz.findByPk(submission.quizId);
+      
+      const notificationPayload = {
+        recipientUserId: submission.studentId.toString(),
+        title: "Bài làm đã được chấm điểm",
+        content: `Giảng viên đã chấm điểm cho bài thi "${quiz ? quiz.title : 'của bạn'}". Vào xem ngay!`,
+        type: "INFO",
+        severity: "medium", // Mức độ trung bình vì liên quan đến kết quả học tập
+        extraData: {
+          submissionId: submission.id.toString(),
+          quizId: submission.quizId.toString(),
+          score: totalScore.toString()
+        }
+      };
+
+      notificationProducer.sendNotification(notificationPayload);
+    } catch (notifyError) {
+      console.error('[GRADING SERVICE] Lỗi gửi thông báo chấm điểm:', notifyError);
+    }
+    // ==============================================================
 
     return submission;
   } catch (error) {
