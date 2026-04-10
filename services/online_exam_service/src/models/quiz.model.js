@@ -1,9 +1,3 @@
-// file: src/models/quiz.model.js
-// exam_db: exams table — shared with exam-service (Java)
-// ERD: exams(id uuid, course_id uuid FK, org_id uuid, title, description,
-//        start_at, end_at, duration_minutes, pass_score, max_attempts,
-//        created_by uuid, status, randomize_question_order, randomize_option_order,
-//        show_correct_answers, partial_scoring_enabled, created_at)
 module.exports = (sequelize, DataTypes) => {
   const Quiz = sequelize.define('Quiz', {
     id: {
@@ -11,20 +5,14 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    // Organization (ERD: cross-db reference to organization_db)
-    orgId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      field: 'org_id'
-    },
-    // FK to course-service cm_courses
+    // FK kết nối sang course_db (Service khác)
     courseId: {
       type: DataTypes.UUID,
       allowNull: true,
       field: 'course_id'
     },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(500),
       allowNull: false,
     },
     description: {
@@ -56,10 +44,9 @@ module.exports = (sequelize, DataTypes) => {
       field: 'created_by'
     },
     status: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(50),
       defaultValue: 'DRAFT',
     },
-    // exam_db extras (Java entity columns not in ERD)
     examType: {
       type: DataTypes.STRING,
       field: 'exam_type'
@@ -71,15 +58,48 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       field: 'total_questions'
     },
+    // Các trường Boolean khớp với cấu trúc bảng exams bạn gửi
+    randomizeQuestionOrder: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'randomize_question_order'
+    },
+    randomizeOptionOrder: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'randomize_option_order'
+    },
+    showCorrectAnswers: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'show_correct_answers'
+    },
+    partialScoringEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'partial_scoring_enabled'
+    },
+    // Timestamps
     deletedAt: {
       type: DataTypes.DATE,
       field: 'deleted_at'
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      field: 'created_at'
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      field: 'updated_at'
     }
   }, {
-    tableName: 'exams',
+    tableName: 'exams', // Chắc chắn bảng này nằm trong exam_db
     timestamps: true,
+    underscored: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    paranoid: true, // Nếu bạn dùng deleted_at để xóa mềm
   });
+
   return Quiz;
 };
