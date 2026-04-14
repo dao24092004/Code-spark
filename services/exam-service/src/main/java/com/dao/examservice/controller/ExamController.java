@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
 @RestController
 @RequestMapping("/api/v1/exams")
 @RequiredArgsConstructor
@@ -49,6 +50,13 @@ public class ExamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Exam created successfully", toResponse(exam)));
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ExamResponse>>> getAllExams(Pageable pageable) {
+        // pageable lúc này đã chứa page=0, size=10... từ URL
+        Page<Exam> examPage = examService.searchExams(null, null, pageable); 
+        return ResponseEntity.ok(ApiResponse.success(examPage.map(this::toResponse)));
+    }
+    
     @PutMapping("/{id}/config")
     public ResponseEntity<ApiResponse<ExamResponse>> config(@PathVariable UUID id, @Valid @RequestBody ExamConfigRequest request) {
         log.info("Updating exam config: {}", id);

@@ -1,5 +1,7 @@
 package com.dao.examservice.service;
 
+import com.dao.common.notification.NotificationMessage;
+import com.dao.common.notification.NotificationProducerService;
 import com.dao.examservice.entity.Question;
 import com.dao.examservice.entity.QuestionTag;
 import com.dao.examservice.repository.QuestionRepository;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.util.*;
 
+import javax.management.Notification;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +27,8 @@ public class QuestionImportService {
     private final QuestionRepository questionRepository;
     private final QuestionTagRepository questionTagRepository;
     private final ObjectMapper objectMapper;
+        private final NotificationService notificationService;
+    private final NotificationProducerService notificationProducerService;
 
     /**
      * Import questions from Excel file
@@ -118,7 +124,35 @@ public class QuestionImportService {
         result.put("subject", subject);
         result.put("tags", tags);
 
+        try {
+            NotificationMessage msg = new NotificationMessage();
+            
+            // Lấy trực tiếp ID của user đang đăng nhập từ Spring Security (Không cần truyền tham số)
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                msg.setRecipientUserId(auth.getName()); 
+            } else {
+                msg.setRecipientUserId("SYSTEM");
+            }
+            
+            msg.setTitle("Excel Import Completed");
+            
+            String subjectName = (subject != null && !subject.isEmpty()) ? subject : "General";
+            msg.setContent("Import for '" + subjectName + "' finished. Success: " + importedCount + " | Skipped: " + skippedCount + " | Errors: " + errorCount);
+            
+            msg.setType(errorCount > 0 ? "WARNING" : "SUCCESS");
+            msg.setSeverity("medium");
+            
+            result.put("actionType", "IMPORT_COMPLETED");
+            msg.setData(result); 
+
+            notificationProducerService.sendNotification(msg);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi thông báo import Excel: {}", e.getMessage());
+        }
+
         return result;
+    
     }
 
     /**

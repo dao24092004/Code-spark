@@ -54,10 +54,10 @@ public interface ExamRepository extends JpaRepository<Exam, UUID> {
     /**
      * Search exams by multiple criteria with pagination.
      */
-    @Query("SELECT e FROM Exam e WHERE " +
-           "(:status IS NULL OR e.status = :status) AND " +
-           "(:title IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
-           "e.deletedAt IS NULL")
+        @Query("SELECT e FROM Exam e WHERE " +
+                "(:status IS NULL OR e.status = :status) AND " +
+                "(:title IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', CAST(:title AS text), '%'))) AND " +
+                "e.deletedAt IS NULL")
     Page<Exam> searchExams(
             @Param("status") Exam.ExamStatus status,
             @Param("title") String title,

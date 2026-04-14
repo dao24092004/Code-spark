@@ -1,5 +1,7 @@
 package com.dao.examservice.service;
 
+import com.dao.common.notification.NotificationMessage;
+import com.dao.common.notification.NotificationProducerService;
 import com.dao.examservice.client.CourseServiceClient;
 import com.dao.examservice.dto.request.ExamConfigRequest;
 import com.dao.examservice.dto.request.ExamCreationRequest;
@@ -39,6 +41,7 @@ public class ExamService {
     private final QuestionService questionService;
     private final CourseServiceClient courseServiceClient;
     private final NotificationService notificationService;
+    private final NotificationProducerService notificationProducerService;
 
     @Transactional
     public Exam createExam(ExamCreationRequest request) {
@@ -73,7 +76,20 @@ public class ExamService {
             exam.setPartialScoringEnabled(request.partialScoringEnabled);
         }
 
-        return examRepository.save(exam);
+        Exam savExam = examRepository.save(exam);
+        log.info("Successfully created exam with ID: {}", savExam.getId());
+
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId(request.createdBy.toString());
+        msg.setTitle("Bài kiểm tra đã được tạo");
+
+        msg.setContent("Bạn đã tạo thành công bài kiểm tra '" + exam.getTitle() + "'. Bạn có thể tiếp tục thêm câu hỏi và lên lịch thi.");
+        
+        msg.setType("INFO");
+        msg.setSeverity("Trung bình");
+        notificationProducerService.sendNotification(msg);
+
+        return savExam;
     }
 
     @Transactional
@@ -183,18 +199,25 @@ public class ExamService {
                 registrations.add(reg);
 
                 if (exam.getCourseId() != null) {
-                    notificationService.sendExamScheduledNotification(
-                        candidateId,
-                        exam.getTitle(),
-                        exam.getStartAt() != null ? exam.getStartAt().toString() : "N/A"
-                    );
+                    NotificationMessage msg = new NotificationMessage();
+                    msg.setRecipientUserId(candidateId.toString());
+                    msg.setTitle("Exam Scheduled");
+                    String startTime = exam.getStartAt() != null ? exam.getStartAt().toString() : "N/A";
+                    msg.setContent("Bạn đã được đăng ký thi. '" + exam.getTitle() + "'. Thời gian bắt đầu: " + startTime);
+                    msg.setType("INFO");
+                    msg.setSeverity("Trung bình");
+                    notificationProducerService.sendNotification(msg);
                 }
             }
             registrationRepository.saveAll(registrations);
         }
 
         exam.setUpdatedAt(Instant.now());
-        return exam;
+        
+        Exam savedExam = examRepository.saveAndFlush(exam);
+        log.info("Đã lên lịch và cập nhật thành công kỳ thi với ID: {}", savedExam.getId());
+        
+        return savedExam;
     }
 
     @Transactional(readOnly = true)
@@ -269,7 +292,39 @@ public class ExamService {
 
             exam.setStatus(newStatus);
             exam.setUpdatedAt(Instant.now());
-            return examRepository.save(exam);
+
+            Exam savedExam = examRepository.saveAndFlush(exam);
+            log.info("Successfully updated exam status to {} for id: {}", newStatus, savedExam.getId());
+
+            if (newStatus == Exam.ExamStatus.OPEN || newStatus == Exam.ExamStatus.CANCELLED) {
+
+                List<ExamRegistration> registrations = registrationRepository.findByExamId(savedExam.getId());
+
+                for (ExamRegistration reg : registrations) {
+                    try {
+                        NotificationMessage msg = new NotificationMessage();
+                        msg.setRecipientUserId(reg.getUserId().toString());
+                        
+                        if (newStatus == Exam.ExamStatus.OPEN) {
+                            msg.setTitle("Exam Opened");
+                            msg.setContent("Exam '" + savedExam.getTitle() + "' is now open. You can start your exam.");
+                            msg.setType("INFO"); 
+                            msg.setSeverity("high");
+                        } else {
+                            msg.setTitle("Exam Cancelled");
+                            msg.setContent("Exam '" + savedExam.getTitle() + "' has been cancelled.");
+                            msg.setType("ERROR");
+                            msg.setSeverity("high");
+                        }
+                        
+                        notificationProducerService.sendNotification(msg);
+                    } catch (Exception e) {
+
+                        log.error("Failed to send status update notification to user {}: {}", reg.getUserId(), e.getMessage());
+                    }
+                }
+            }
+            return savedExam;            
         } catch (IllegalArgumentException e) {
             throw new ValidationException("Invalid status: " + statusString + ". Valid values: DRAFT, SCHEDULED, OPEN, PUBLISHED, CLOSED, CANCELLED");
         }
@@ -306,6 +361,32 @@ public class ExamService {
         exam.setTotalQuestions(questionIds.size());
         exam.setUpdatedAt(Instant.now());
         examRepository.save(exam);
+
+        try {
+            NotificationMessage msg = new NotificationMessage();
+            
+            // Ưu tiên 1: Lấy user đang đăng nhập (người bấm nút random đề)
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+                msg.setRecipientUserId(auth.getName()); 
+            } 
+            // Ưu tiên 2: Nếu không có token, lấy ID của người đã tạo ra cái bài thi này
+            else if (exam.getCreatedBy() != null) {
+                msg.setRecipientUserId(exam.getCreatedBy().toString());
+            } else {
+                msg.setRecipientUserId("SYSTEM");
+            }
+            
+            msg.setTitle("Tạo Đề Tự Động Thành Công");
+            msg.setContent("Hệ thống đã chọn ngẫu nhiên thành công " + questionIds.size() + " câu hỏi cho đề thi '" + exam.getTitle() + "'.");
+            msg.setType("SUCCESS");
+            msg.setSeverity("low");
+            
+            notificationProducerService.sendNotification(msg);
+            log.info("Bắn thông báo tạo đề tự động thành công cho exam: {}", exam.getId());
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi thông báo generate questions: {}", e.getMessage());
+        }
 
         return questionIds;
     }
@@ -347,6 +428,18 @@ public class ExamService {
             }
         }
 
+        NotificationMessage msg = new NotificationMessage();
+        msg.setRecipientUserId(userId.toString());
+        msg.setTitle("Bạn đã hoàn thành kì thi");
+
+        String resulstText = passed ? "đạt" : "không đạt";
+        msg.setContent("Bạn đã hoàn thành kỳ thi '" + exam.getTitle() + "' với số điểm: " + score + ". " + (passed ? "Chúc mừng bạn đã vượt qua!" : "Rất tiếc, bạn chưa đạt điểm yêu cầu."));
+
+        msg.setType(passed ? "đạt" : "không đạt");
+        msg.setSeverity(passed ? "high" : "medium");
+        notificationProducerService.sendNotification(msg);
+        log.info("Sent exam completion notification to user {} for exam {}", userId, exam.getTitle());
+        
         notificationService.sendExamResultNotification(userId, exam.getTitle(), score, passed);
     }
 
