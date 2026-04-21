@@ -20,6 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.2",
+    "common-node": "file:../common-node",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "eureka-js-client": "^4.5.0",
@@ -45,5 +46,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "type": "commonjs"
 }

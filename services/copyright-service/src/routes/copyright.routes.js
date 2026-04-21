@@ -1,14 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
+const multer = require('multer');
 const copyrightController = require('../controllers/copyright.controller');
-const { authenticateToken, checkPermission } = require('../middleware/auth');
-const { uploadFile, uploadDocument } = require('../middleware/upload');
+const { checkPermission } = require('common-node');
 
-// Apply authentication middleware to all routes in this router
-router.use(authenticateToken);
+// 1. CẤU HÌNH MULTER: Lưu file tạm xuống ổ cứng để Controller có thể check đạo văn
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/') // Nhớ tạo thư mục 'uploads' ở gốc project
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname)
+    }
+});
 
-// --- Statistics & Analytics endpoints (before parameterized routes) ---
+const uploadFile = multer({ storage: storage }).single('file');
+const uploadDocument = multer({ storage: storage }).single('document');
+
+// --- Statistics & Analytics endpoints ---
 router.get('/stats', checkPermission('FILE_READ'), copyrightController.getCopyrightStats);
 router.get('/analytics', checkPermission('FILE_READ'), copyrightController.getAnalytics);
 router.get('/recent', checkPermission('FILE_READ'), copyrightController.getRecentCopyrights);
@@ -18,7 +27,6 @@ router.get('/blockchain/status', checkPermission('FILE_READ'), copyrightControll
 router.get('/search', checkPermission('FILE_READ'), copyrightController.searchCopyrights);
 
 // --- Similarity Check endpoints ---
-// Use uploadDocument for 'document' field
 router.post('/check-similarity', [checkPermission('FILE_WRITE'), uploadDocument], copyrightController.checkSimilarity);
 
 // --- Owner-specific routes ---
@@ -28,7 +36,6 @@ router.get('/owner/:ownerAddress', checkPermission('FILE_READ'), copyrightContro
 router.get('/download/:id', checkPermission('FILE_READ'), copyrightController.downloadDocument);
 
 // --- Main CRUD routes ---
-// Use uploadFile for 'file' field
 router.post('/', [checkPermission('FILE_WRITE'), uploadFile], copyrightController.createCopyright);
 
 router.get('/', checkPermission('FILE_READ'), copyrightController.getAllCopyrights);
