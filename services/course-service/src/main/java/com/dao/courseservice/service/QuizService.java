@@ -14,6 +14,7 @@ import com.dao.courseservice.repository.RewardRepository;
 import com.dao.courseservice.request.CreateQuizRequest;
 import com.dao.courseservice.request.SubmitQuizRequest;
 import com.dao.courseservice.request.UpdateQuizRequest;
+import com.dao.courseservice.response.ExamSyncPayload; // <--- Import Payload để đồng bộ
 import com.dao.courseservice.response.QuestionAdminResponse;
 import com.dao.courseservice.response.QuizAdminResponse;
 import com.dao.courseservice.response.QuizDetailResponse;
@@ -60,6 +61,7 @@ class QuizServiceImpl implements QuizService {
     private final ObjectMapper objectMapper;
     private final CourseRepository courseRepository;
     private final NotificationProducerService notificationService;
+    private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
     @Override
     @Transactional(readOnly = true)
@@ -100,9 +102,8 @@ class QuizServiceImpl implements QuizService {
         extraData.put("quizId", quiz.getId().toString());
         extraData.put("courseId", quiz.getCourse().getId().toString());
 
-        // Thông báo 1: Gửi cho Học viên (Xác nhận nộp bài)
         NotificationMessage studentMsg = new NotificationMessage();
-        studentMsg.setRecipientUserId(request.getStudentId().toString()); // Gửi đích danh ID học viên
+        studentMsg.setRecipientUserId(request.getStudentId().toString()); 
         studentMsg.setTitle("Nộp bài thành công");
         studentMsg.setContent("Hệ thống đã ghi nhận bài thi '" + quiz.getTitle() + "' của bạn. Điểm số: " + score);
         studentMsg.setType("INFO");
@@ -110,9 +111,8 @@ class QuizServiceImpl implements QuizService {
         studentMsg.setData(extraData);
         notificationService.sendNotification(studentMsg);
 
-        // Thông báo 2: Gửi cho Giảng viên/Admin khóa học
         NotificationMessage teacherMsg = new NotificationMessage();
-        teacherMsg.setRecipientUserId("ADMIN_COURSE_" + quiz.getCourse().getId().toString()); // Gửi cho nhóm Admin/Giáo viên của khóa này
+        teacherMsg.setRecipientUserId("ADMIN_COURSE_" + quiz.getCourse().getId().toString()); 
         teacherMsg.setTitle("Có học viên nộp bài");
         teacherMsg.setContent("Học viên (ID: " + request.getStudentId() + ") vừa hoàn thành bài kiểm tra '" + quiz.getTitle() + "'.");
         teacherMsg.setType("INFO");
@@ -167,11 +167,14 @@ class QuizServiceImpl implements QuizService {
         Quiz savedQuiz = quizRepository.save(quiz);
         log.info("Successfully created quiz with id: {}", savedQuiz.getId());
 
+        // --- ĐỒNG BỘ SANG NODE.JS KHI TẠO MỚI ---
+        syncToExamService(savedQuiz);
+
         NotificationMessage msg = new NotificationMessage();
-        msg.setRecipientUserId("COURSE_" + courseId.toString()); // Gửi toàn bộ học viên trong khóa
+        msg.setRecipientUserId("COURSE_" + courseId.toString()); 
         msg.setTitle("Bài kiểm tra mới!");
         msg.setContent("Bài kiểm tra '" + savedQuiz.getTitle() + "' vừa được mở. Hãy vào làm bài nhé.");
-        msg.setType("WARNING"); // Để WARNING cho nổi bật, nhắc nhở làm bài
+        msg.setType("WARNING"); 
         msg.setSeverity("high");
         
         Map<String, Object> extraData = new HashMap<>();
@@ -218,6 +221,9 @@ class QuizServiceImpl implements QuizService {
 
         Quiz savedQuiz = quizRepository.save(existingQuiz);
         log.info("Successfully updated quiz {}", savedQuiz.getId());
+
+        // --- ĐỒNG BỘ SANG NODE.JS KHI CẬP NHẬT ---
+        syncToExamService(savedQuiz);
 
         NotificationMessage msg = new NotificationMessage();
         msg.setRecipientUserId("COURSE_" + savedQuiz.getCourse().getId().toString());
@@ -272,5 +278,19 @@ class QuizServiceImpl implements QuizService {
         return quiz.getQuestions().stream()
                 .map(quizMapper::toQuestionForExam)
                 .collect(Collectors.toList());
+    }
+
+    private void syncToExamService(Quiz quiz) {
+        try {
+            // DÙNG LUÔN MAPPER ĐỂ CONVERT TOÀN BỘ QUIZ + QUESTIONS + OPTIONS SANG JSON
+            QuizAdminResponse payload = quizMapper.toQuizAdminResponse(quiz);
+
+            // Gửi sang Node.js
+            String examServiceUrl = "http://localhost:9004/api/api/instructor/quizzes/sync";
+            restTemplate.postForEntity(examServiceUrl, payload, String.class);
+            log.info("Successfully synced FULL quiz {} (with questions) to Node.js", quiz.getId());
+        } catch (Exception e) {
+            log.error("Failed to sync FULL quiz to Node.js Exam Service", e);
+        }
     }
 }

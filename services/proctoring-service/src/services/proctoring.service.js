@@ -12,6 +12,10 @@ const { Op } = db.Sequelize;
 
 const aiService = require('./ai.service');
 
+// --- IMPORT KAFKA PRODUCER TẠI ĐÂY ---
+// Đã thêm đuôi .js để Node.js phân giải chính xác nhất
+const { sendNotification } = require('./notification.producer.js');
+
 const ACTIVE_SESSION_TIMEOUT_MS = 2 * 60 * 1000; // 2 phút
 const activeSessionHeartbeats = new Map();
 
@@ -173,25 +177,29 @@ async function handleProctoringData(sessionId, studentId, imageBuffer) {
   console.log(`[Service] Phát hiện ${filteredViolations.length} vi phạm CẦN LƯU.`);
 
   for (const violation of filteredViolations) {
-    const eventData = {
-      sessionId: sessionId,
-      eventType: violation.event_type,
+    // --- [SỬA ĐỔI ĐỂ KHỚP VỚI JAVA] ---
+    const customData = {
       severity: violation.severity || 'MEDIUM',
       metadata: violation.metadata || {},
     };
 
     try {
-      const newEvent = await db.ProctoringEvent.create(eventData);
-      console.log(`[Database] Đã lưu vi phạm '${eventData.eventType}' vào DB, ID:`, newEvent.id);
+      const newEvent = await db.ProctoringEvent.create({
+        sessionId: sessionId,
+        eventType: violation.event_type,
+        eventData: JSON.stringify(customData), // Gộp hết vào chuỗi JSON
+        timestamp: new Date() // Java bắt buộc có trường này
+      });
+      console.log(`[Database] Đã lưu vi phạm '${violation.event_type}' vào DB, ID:`, newEvent.id);
 
       const io = getIO();
       io.to(String(session.examId)).emit('proctoring_alert', newEvent);
 
-      if (SEVERE_VIOLATIONS.includes(eventData.eventType)) {
-        console.log(`[Proctoring] Vi phạm nghiêm trọng [${eventData.eventType}]`);
+      if (SEVERE_VIOLATIONS.includes(violation.event_type)) {
+        console.log(`[Proctoring] Vi phạm nghiêm trọng [${violation.event_type}]`);
       }
     } catch (error) {
-      console.error(`Lỗi khi xử lý vi phạm '${eventData.eventType}':`, error);
+      console.error(`Lỗi khi xử lý vi phạm '${violation.event_type}':`, error);
     }
   }
 }
@@ -377,12 +385,18 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
       metadataPayload.mediaCapturePath = captureInfo.storagePath;
     }
 
+    // --- [SỬA ĐỔI ĐỂ KHỚP VỚI JAVA] ---
+    const customData = {
+      severity,
+      ...metadataPayload
+    };
+
     try {
       const savedEvent = await db.ProctoringEvent.create({
         sessionId: session.id,
         eventType,
-        severity,
-        metadata: metadataPayload,
+        eventData: JSON.stringify(customData), // Gộp vào eventData
+        timestamp: new Date() // Java bắt buộc có trường này
       });
 
       savedEvents.push(savedEvent);
@@ -403,6 +417,28 @@ async function saveDetectionsAsEvents({ sessionId, examId, studentId, detections
           });
         }
       }
+
+      // ==========================================
+      // BỔ SUNG: GỬI NOTIFICATION QUA KAFKA KHI CÓ VI PHẠM NGHIÊM TRỌNG (Cho Giám Thị)
+      // ==========================================
+      if (SEVERE_VIOLATIONS.includes(eventType)) {
+        await sendNotification({
+          recipientUserId: `PROCTORS_OF_EXAM_${examId}`, // Quy ước gửi broadcast cho giám thị
+          title: "Hệ thống AI phát hiện gian lận",
+          content: `Phát hiện vi phạm: ${eventType} từ sinh viên ID: ${studentId}`,
+          type: "AI_ALERT",
+          severity: severity.toLowerCase(),
+          extraData: {
+            examId: examId,
+            sessionId: session.id,
+            studentId: studentId,
+            violationType: eventType,
+            eventId: savedEvent.id,
+            imageUrl: captureInfo ? captureInfo.storagePath : null // Truyền cả link ảnh nếu có
+          }
+        });
+      }
+
     } catch (error) {
       console.error('[ProctoringService] Lỗi khi lưu sự kiện proctoring', {
         eventType,
@@ -550,6 +586,22 @@ async function terminateSession(sessionId, { terminatedBy, reason } = {}) {
       console.warn('[ProctoringService] Không thể thông báo sự kiện terminate qua socket', notifyError);
     }
 
+    // ==========================================
+    // BỔ SUNG: GỬI NOTIFICATION QUA KAFKA (Cho Sinh Viên bị đình chỉ)
+    // ==========================================
+    await sendNotification({
+      recipientUserId: session.userId,
+      title: "ĐÌNH CHỈ THI",
+      content: reason ? `Bài thi của bạn đã bị đình chỉ với lý do: ${reason}` : "Bài thi của bạn đã bị đình chỉ do vi phạm quy chế.",
+      type: "TERMINATE",
+      severity: "high",
+      extraData: {
+        examId: session.examId,
+        sessionId: session.id,
+        terminatedBy: terminatedBy
+      }
+    });
+
     return session;
   } catch (error) {
     console.error('[ProctoringService] Lỗi khi dừng phiên giám sát', error);
@@ -619,15 +671,19 @@ async function sendWarning(sessionId, { sentBy, message } = {}) {
       return null;
     }
 
+    // --- [SỬA ĐỔI ĐỂ KHỚP VỚI JAVA] ---
+    const customData = {
+      severity: 'MEDIUM',
+      isReviewed: false,
+      sentBy: sentBy ?? null,
+      message: message ?? 'Bạn đã nhận được cảnh báo từ giám thị'
+    };
+
     const warningEvent = await db.ProctoringEvent.create({
       sessionId: sessionId,
       eventType: 'ADMIN_WARNING',
-      severity: 'MEDIUM',
-      metadata: {
-        sentBy: sentBy ?? null,
-        message: message ?? 'Bạn đã nhận được cảnh báo từ giám thị',
-        timestamp: new Date().toISOString()
-      }
+      eventData: JSON.stringify(customData), // Ép thành String để lưu vào cột TEXT
+      timestamp: new Date() // Java bắt buộc có trường này
     });
 
     try {
@@ -650,6 +706,23 @@ async function sendWarning(sessionId, { sentBy, message } = {}) {
     } catch (notifyError) {
       console.warn('[ProctoringService] Không thể thông báo cảnh báo qua socket', notifyError);
     }
+
+    // ==========================================
+    // BỔ SUNG: GỬI NOTIFICATION QUA KAFKA (Cho Sinh Viên)
+    // ==========================================
+    await sendNotification({
+      recipientUserId: session.userId,
+      title: "Cảnh báo vi phạm nội quy phòng thi",
+      content: message ?? 'Bạn đã nhận được cảnh báo từ giám thị. Vui lòng tuân thủ quy định.',
+      type: "WARNING",
+      severity: "medium",
+      extraData: {
+        examId: session.examId,
+        sessionId: session.id,
+        sentBy: sentBy,
+        eventId: warningEvent.id
+      }
+    });
 
     return warningEvent;
   } catch (error) {
